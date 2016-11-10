@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+	<xs:simpleType name="uriOrLiteralType">
+		<xs:restriction base="xs:string">
+			<xs:pattern value="uri|literal"/>
+    	</xs:restriction>
+   	</xs:simpleType>
+    
+	<xs:complexType name="bindingType">
+		<xs:attribute name="variable" type="xs:string" use="required"></xs:attribute>
+		<xs:attribute name="value" type="xs:string" use="required"></xs:attribute>
+		<xs:attribute name="type" type="uriOrLiteralType" use="required"></xs:attribute>
+	</xs:complexType>
+
+	<xs:complexType name="networkSettingsType">
+    	<xs:attribute name="url" type="xs:string" use="optional" default="127.0.0.1">
+    	</xs:attribute>
+    	<xs:attribute name="port" type="xs:positiveInteger" use="optional" default="10100">
+    	</xs:attribute>
+    	<xs:attribute name="name" type="xs:string" use="optional" default="IoT"></xs:attribute>
+    </xs:complexType>
+
+    <xs:complexType name="namespaceType">
+		<xs:attribute name="prefix" type="xs:string" use="required" ></xs:attribute>
+		<xs:attribute name="suffix" type="xs:string" use="required" ></xs:attribute>
+	</xs:complexType>
+	
+	<xs:complexType name="namespacesType">
+  		<xs:sequence>
+    		<xs:element name="namespace" type="namespaceType" maxOccurs="unbounded" minOccurs="0"/>
+  		</xs:sequence>
+	</xs:complexType>
+	
+	<xs:complexType name="updatePrimitivesType">
+  		<xs:sequence>
+    		<xs:element name="update" type="primitiveType" maxOccurs="unbounded" minOccurs="0"/>
+  		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="subscribePrimitivesType">
+  		<xs:sequence>
+    		<xs:element name="subscribe" type="primitiveType" maxOccurs="unbounded" minOccurs="0"/>
+  		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="profileType">
+  		<xs:sequence>
+    		<xs:element name="parameters" type="networkSettingsType" maxOccurs="1" minOccurs="1"/>
+    		<xs:element name="namespaces" type="namespacesType" maxOccurs="1" minOccurs="0"/>
+    		<xs:element name="updates" type="updatePrimitivesType" maxOccurs="1" minOccurs="0"/>
+    		<xs:element name="subscribes" type="subscribePrimitivesType" maxOccurs="1" minOccurs="0"/>
+  		</xs:sequence>
+	</xs:complexType>
+
+	<xs:element name="applicationProfile" type="profileType"/>
+
+
+
+	<xs:complexType name="forcedBindingsType">
+		<xs:sequence>
+			<xs:element name="binding" type="bindingType" maxOccurs="unbounded" minOccurs="1"></xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+
+
+	<xs:complexType name="primitiveType">
+		<xs:sequence>
+			<xs:element name="sparql" type="xs:string" maxOccurs="1" minOccurs="1"></xs:element>
+			<xs:element name="forcedBindings"
+				type="forcedBindingsType" maxOccurs="1" minOccurs="0">
+			</xs:element>
+		</xs:sequence>
+		<xs:attribute name="id" type="xs:ID" use="required"></xs:attribute>
+	</xs:complexType>
+</xs:schema>
