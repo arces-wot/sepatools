@@ -2076,6 +2076,8 @@ public class SSAP_XMLTools
 	 */
 	public String insert_rdf_xml (String graph)
 	{
+		//Clean string from control chars
+		graph = graph.replace('\n', ' ').replace('\r', ' ').replace('\t', ' ');
 		
 		return "<SSAP_message>"
 				+"<transaction_type>INSERT</transaction_type>"
@@ -2084,9 +2086,10 @@ public class SSAP_XMLTools
 				+"<node_id>"+nodeID+"</node_id>" //+"<node_id>{"+nodeID+"}</node_id>"
 				+"<space_id>"+ SMART_SPACE_NAME +"</space_id>"
 				+"<parameter name=\"insert_graph\"  encoding=\"RDF-XML\">"
-			//	+ "<![CDATA["
-			    +correctEntityReferences((graph.replaceAll("[^\\x20-\\x7e]", "??")))
-			//    +"]]>"
+				+ "<![CDATA["
+			    //+correctEntityReferences((graph.replaceAll("[^\\x20-\\x7e]", "??")))
+			    + graph
+			    +"]]>"
 				+"</parameter>"
 				+"<parameter name = \"confirm\">TRUE</parameter>"
 				+"</SSAP_message>"; 

@@ -14,7 +14,7 @@ public abstract class Client implements IClient{
 	protected KPICore kp = null;
 	protected SIBResponse ret;
 	private boolean joined = false;
-		
+	
 	public void addNamespace(String prefix,String uri){
 		if (prefix2URIMap.containsKey(prefix)) removeNamespace(prefix);
 		URI2PrefixMap.put(uri, prefix);
@@ -45,15 +45,16 @@ public abstract class Client implements IClient{
 		kp = new KPICore(SIB_IP, SIB_PORT, SIB_NAME);	
 	}
 	
-	public Client(){
-		SPARQLApplicationProfile.load("ApplicationProfile.xml");
-		Parameters args = SPARQLApplicationProfile.getParameters();
+	public Client(SPARQLApplicationProfile appProfile){
+		if (!appProfile.isLoaded()) Logger.log(VERBOSITY.WARNING,"SEPA","CLIENT running with default parameters. No application profile loaded");
+		
+		Parameters args = appProfile.getParameters();
 		Logger.log(VERBOSITY.DEBUG,"SEPA","CLIENT Created IP:"+args.getUrl()+" Port:"+args.getPort()+" Name:"+args.getName());
 		
 		kp = new KPICore(args.getUrl(), args.getPort(),args.getName());
 		
-		Set<String> prefixes = SPARQLApplicationProfile.getPrefixes();
-		for (String prefix : prefixes) addNamespace(prefix,SPARQLApplicationProfile.getNamespaceURI(prefix));
+		Set<String> prefixes = appProfile.getPrefixes();
+		for (String prefix : prefixes) addNamespace(prefix,appProfile.getNamespaceURI(prefix));
 	}
 	
 	public boolean join() {
@@ -92,5 +93,11 @@ public abstract class Client implements IClient{
 		}
 		
 		return selectPattern+replacedSparql;
+	}
+	
+	public boolean loadRDFXMLOntology(String xml) {
+		if (!joined) return false;
+		SIBResponse ret  = kp.insert_rdf_xml(xml);
+		return ret.isConfirmed();
 	}
 }

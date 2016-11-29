@@ -1,54 +1,57 @@
 package arces.unibo.benchmark;
 
-import arces.unibo.SEPA.Logger;
-
 public class RoadExperiment extends SmartLightingBenchmark {
-
-	protected String tag ="RoadExp";
-
+	
+	//Data set
+	protected int roads[] = {100,100,100,10};
+	protected int roadSizes[] = {10,25,50,100};
+	
+	//Road subscriptions
+	protected int roadSubscriptionRoads[] = {6,105,204,308};
+	
+	//Lamp subscriptions
+	protected int lampSubscriptionRoads[][] = {{1,5},{101,104},{201,203},{301,307}};
+	protected int lampSubscriptionLamps[][] = {{1,10},{1,25},{1,50},{1,100}};
+	
 	public RoadExperiment() {
-		super();
-		
-		Logger.registerTag(tag);
-		
-		//Dataset
-		addRoads(1,10);
-		addRoads(1,25);
-		addRoads(1,50);
-		addRoads(1,100);
-		
-		//Road subscriptions
-		addRoadSubscription(6);
-		addRoadSubscription(105);
-		addRoadSubscription(204);
-		addRoadSubscription(308);
-		
-		//Lamp subscriptions
-		for (int X = 1; X < 6; X++) 
-			for (int Y = 1; Y < 11; Y++) addLampSubscription(X,Y);
-		for (int X = 101; X < 105; X++) 
-			for (int Y = 1; Y < 26; Y++) addLampSubscription(X,Y);
-		for (int X = 201; X < 204; X++) 
-			for (int Y = 1; Y < 51; Y++) addLampSubscription(X,Y);
-		for (int X = 301; X < 308; X++) 
-			for (int Y = 1; Y < 101; Y++) addLampSubscription(X,Y);
+		super();	
 	}
 
 	@Override
+	public void dataset() {
+		//Data set creation
+		int roadIndex = firstRoadIndex;	
+		nRoads = 0;
+		for (int i=0; i < roads.length; i++) {
+			roadIndex = addRoads(roads[i],roadSizes[i],roadIndex);	
+			nRoads = nRoads + roads[i];
+		}
+	}
+
+	@Override
+	public void subscribe() {
+		//Road subscription
+		for (int i=0; i < roadSubscriptionRoads.length; i++) addRoadSubscription(roadSubscriptionRoads[i]);
+		
+		//Lamp subscriptions
+		for (int i=0; i < lampSubscriptionRoads.length; i++) 
+			for (int X = lampSubscriptionRoads[i][0]; X < lampSubscriptionRoads[i][1]+1; X++)
+				for (int Y = lampSubscriptionLamps[i][0]; Y < lampSubscriptionLamps[i][1]+1; Y++) addLampSubscription(X,Y);		
+	}
+	
+	@Override
 	public void runExperiment() {
-		for (int road = 1; road < 311; road++) updateRoad(road,new Integer(100));
+		for (int road = 1; road < nRoads+1; road++) updateRoad(road,new Integer(100));
 	}
 
 	@Override
 	public void reset() {
-		for (int road = 1; road < 311; road++) updateRoad(road,new Integer(0));
+		for (int road = 1; road < nRoads+1; road++) updateRoad(road,new Integer(0));
 	}
 	
 	public static void main(String[] args) {
-		Logger.enableConsoleLog();
-		Logger.enableFileLog();
-		
 		RoadExperiment benchmark = new RoadExperiment();
 		benchmark.run(true,true,5000);
 	}
+
 }

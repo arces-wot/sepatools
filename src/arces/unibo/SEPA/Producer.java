@@ -3,7 +3,7 @@ package arces.unibo.SEPA;
 import arces.unibo.SEPA.Logger.VERBOSITY;
 
 public class Producer extends Client implements IProducer {
-	private String SPARQL_UPDATE = "";
+	private String SPARQL_UPDATE = null;
 	private String SPARQL_ID = "";
 	private String tag = "SEPA PRODUCER";
 	
@@ -12,10 +12,14 @@ public class Producer extends Client implements IProducer {
 		SPARQL_UPDATE = updateQuery.replaceAll("\n", "").replaceAll("\r", "").replaceAll("\t", "").trim();;
 	}
 	
-	public Producer(String updateID){
-		super();
+	public Producer(SPARQLApplicationProfile appProfile,String updateID){
+		super(appProfile);
 		SPARQL_ID = updateID;
-		SPARQL_UPDATE = SPARQLApplicationProfile.update(updateID).replaceAll("\n", "").replaceAll("\r", "").replaceAll("\t", "").trim();;
+		if (appProfile.update(updateID) == null) {
+			Logger.log(VERBOSITY.FATAL, tag, "Cannot find UPDATE ID: "+updateID);
+			return;
+		}
+		SPARQL_UPDATE = appProfile.update(updateID).replaceAll("\n", "").replaceAll("\r", "").replaceAll("\t", "").trim();;
 	}
 	
 	public boolean update(Bindings forcedBindings){
@@ -24,6 +28,10 @@ public class Producer extends Client implements IProducer {
 			 return false;
 		 }
 		 
+		 if (SPARQL_UPDATE == null) {
+			 Logger.log(VERBOSITY.FATAL, tag, "SPARQL UPDATE not defined");
+			 return false;
+		 }
 		 String sparql = prefixes() + replaceBindings(SPARQL_UPDATE,forcedBindings);
 		 
 		 Logger.log(VERBOSITY.DEBUG,tag,"<UPDATE> "+ SPARQL_ID+" ==> "+sparql);

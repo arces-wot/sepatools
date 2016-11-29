@@ -66,8 +66,8 @@
     </update>
     <update id="UPDATE_LAMP"><sparql><![CDATA[
     	INSERT { ?lamp bench:dimming ?dimming }
-    	DELETE { ?lamp bench:dimming ?old }
-    	WHERE { ?lamp bench:dimming ?old . ?lamp rdf:type bench:LAMP }]]></sparql>
+    	DELETE { ?lamp bench:dimming ?old } 
+    	WHERE {?lamp rdf:type bench:LAMP . ?lamp bench:dimming ?old}]]></sparql>
     	<forcedBindings>
       		<binding variable="?lamp" type="uri" value=""/>
   			<binding variable="?dimming" type="literal" value=""/>
@@ -93,7 +93,7 @@
     SELECT ?dimming WHERE { 
     	?lamp bench:dimming ?dimming . 
     	?lamp rdf:type bench:LAMP }]]></sparql>
-    <forcedBindings>
+    	<forcedBindings>
       		<binding variable="?lamp" type="uri" value=""/>
   		</forcedBindings>
   	</subscribe>
@@ -105,7 +105,7 @@
   		?post rdf:type bench:POST . 
   		?lamp rdf:type bench:LAMP . 
   		?road rdf:type bench:ROAD }]]></sparql>
-    <forcedBindings>
+    	<forcedBindings>
       		<binding variable="?road" type="uri" value=""/>
   		</forcedBindings>
   	</subscribe>

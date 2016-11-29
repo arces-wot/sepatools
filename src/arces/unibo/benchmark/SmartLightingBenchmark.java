@@ -11,11 +11,12 @@ import arces.unibo.SEPA.Consumer;
 import arces.unibo.SEPA.Logger;
 import arces.unibo.SEPA.Producer;
 import arces.unibo.SEPA.SPARQLApplicationProfile;
+
 import arces.unibo.SEPA.Logger.VERBOSITY;
 
 public abstract class SmartLightingBenchmark {
 	//Benchmark definition
-	private Vector<RoadPool> roads = new Vector<RoadPool>();
+	private Vector<RoadPool> roadPoll = new Vector<RoadPool>();
 	private Vector<Integer> roadSubscriptions = new Vector<Integer>();
 	private Vector<Lamp> lampSubscriptions = new Vector<Lamp>();
 
@@ -24,22 +25,31 @@ public abstract class SmartLightingBenchmark {
 	
 	private Producer lampUpdater;
 	private Producer roadUpdater;
-	private String tag = "SmartLightingBenchmark";
+	protected final String tag = "SmartLightingBenchmark";
 
 	private int lampNotifyN = 0;
 	private int roadNotifyN = 0;
-	private int nRoads = 0;
 	
 	public abstract void reset();
 	public abstract void runExperiment();
+	public abstract void dataset();
+	public abstract void subscribe();
+	
+	//Data set
+	protected int firstRoadIndex = 1;
+	protected int nRoads = 0;
+	
+	static SPARQLApplicationProfile appProfile = new SPARQLApplicationProfile();
 	
 	private class RoadPool {
 		private final int size;
 		private final int number;
+		private final int firstIndex;
 		
-		public RoadPool(int number,int size) {
+		public RoadPool(int number,int size,int firstIndex) {
 			this.size = size;
 			this.number = number;
+			this.firstIndex = firstIndex;
 		}
 
 		public int getSize() {
@@ -48,6 +58,10 @@ public abstract class SmartLightingBenchmark {
 
 		public int getNumber() {
 			return number;
+		}
+
+		public int getFirstIndex() {
+			return firstIndex;
 		}
 	}
 	private class Lamp {
@@ -74,22 +88,23 @@ public abstract class SmartLightingBenchmark {
  	public void addRoadSubscription(int roadIndex) {
 		roadSubscriptions.addElement(roadIndex);
 	}
-	public void addRoad(int size) {
-		roads.add(new RoadPool(1,size));
+	public int addRoad(int size,int index) {
+		return addRoads(1,size,index);
 	}
-	public void addRoads(int number,int size) {
-		roads.add(new RoadPool(number,size));
-	}
-		
-	public int roadNumber() {
-		return nRoads;
+	public int addRoads(int number,int size,int firstIndex) {
+		roadPoll.add(new RoadPool(number,size,firstIndex));
+		return firstIndex + number;
 	}
 	
 	public SmartLightingBenchmark() {
-		SPARQLApplicationProfile.load("LightingBenchmark.xml");
 		Logger.registerTag(tag);
-		lampUpdater = new Producer("UPDATE_LAMP");
-		roadUpdater = new Producer("UPDATE_ROAD");
+		Logger.enableConsoleLog();
+		Logger.enableFileLog();
+		Logger.setVerbosityLevel(VERBOSITY.INFO);
+		
+		appProfile.load("LightingBenchmark.xml");
+		lampUpdater = new Producer(appProfile,"UPDATE_LAMP");
+		roadUpdater = new Producer(appProfile,"UPDATE_ROAD");		
 	}
 	
 	private synchronized int incrementLampNotifies() {
@@ -107,21 +122,19 @@ public abstract class SmartLightingBenchmark {
 		private String lampURI = "";
 		private boolean running = true;
 		private Bindings bindings = new Bindings();
-		private String tag ="LampSubscription";
 		private Object sync = new Object();
 		
 		public LampSubscription(int roadIndex,int lampIndex) {
-			super("LAMP");
+			super(appProfile,"LAMP");
 			lampURI = "bench:Lamp_"+roadIndex+"_"+lampIndex;
 			bindings.addBinding("?lamp", new BindingURIValue(lampURI));
-			Logger.registerTag(tag);
 		}
 		
 		public boolean subscribe() {			
-			long startTime = System.currentTimeMillis();
+			long startTime = System.nanoTime();
 			subID=super.subscribe(bindings);
-			long stopTime = System.currentTimeMillis();
-			Logger.log(VERBOSITY.INFO, tag , "Subscribe LAMP "+subID+ " "+(stopTime-startTime));
+			long stopTime = System.nanoTime();
+			Logger.log(VERBOSITY.INFO, tag , "SUBSCRIBE LAMP "+lampURI+ " "+(stopTime-startTime));
 			
 			if (subID!=null) if (!subID.equals("")) return true;
 			return false;
@@ -167,21 +180,19 @@ public abstract class SmartLightingBenchmark {
 		private String roadURI ="";
 		private boolean running = true;
 		Bindings bindings = new Bindings();
-		private String tag = "RoadSubscription";
 		private Object sync = new Object();
 		
 		public RoadSubscription(int index) {
-			super("ROAD");
+			super(appProfile,"ROAD");
 			roadURI = "bench:Road_"+index;
 			bindings.addBinding("?road", new BindingURIValue(roadURI));
-			Logger.registerTag(tag);
 		}
 		
 		public boolean subscribe() {
-			long startTime = System.currentTimeMillis();
+			long startTime = System.nanoTime();
 			subID=super.subscribe(bindings);
-			long stopTime = System.currentTimeMillis();
-			Logger.log(VERBOSITY.INFO, tag , " Subscribe ROAD "+subID+" "+(stopTime-startTime));
+			long stopTime = System.nanoTime();
+			Logger.log(VERBOSITY.INFO, tag , "SUBSCRIBE ROAD "+roadURI+" "+(stopTime-startTime));
 			
 			if (subID!=null) if (!subID.equals("")) return true;
 			return false;
@@ -222,7 +233,7 @@ public abstract class SmartLightingBenchmark {
 		
 	}
 	
-	protected boolean subscribeLamp(int roadIndex,int postIndex) {
+	private boolean subscribeLamp(int roadIndex,int postIndex) {
 		LampSubscription sub = new LampSubscription(roadIndex,postIndex);
 		if (!sub.join()) return false;
 		new Thread(sub).start();
@@ -230,7 +241,7 @@ public abstract class SmartLightingBenchmark {
 		return sub.subscribe();
 	}
 	
-	protected boolean subscribeRoad(int roadIndex) {
+	private boolean subscribeRoad(int roadIndex) {
 		RoadSubscription sub = new RoadSubscription(roadIndex);
 		roadSubs.add(sub);
 		new Thread(sub).start();
@@ -238,15 +249,15 @@ public abstract class SmartLightingBenchmark {
 		return sub.subscribe();
 	}
 	
-	protected int populate(int nRoad,int nPost,int firstRoadIndex) {
+	private int populate(int nRoad,int nPost,int firstRoadIndex) {
 		
-		Producer road = new Producer("INSERT_ROAD");
-		Producer addPost2Road = new Producer("ADD_POST");
-		Producer sensor = new Producer("INSERT_SENSOR");
-		Producer post = new Producer("INSERT_POST");
-		Producer lamp = new Producer("INSERT_LAMP");
-		Producer addSensor2post  = new Producer("ADD_SENSOR");
-		Producer addLamp2post = new Producer("ADD_LAMP");
+		Producer road = new Producer(appProfile,"INSERT_ROAD");
+		Producer addPost2Road = new Producer(appProfile,"ADD_POST");
+		Producer sensor = new Producer(appProfile,"INSERT_SENSOR");
+		Producer post = new Producer(appProfile,"INSERT_POST");
+		Producer lamp = new Producer(appProfile,"INSERT_LAMP");
+		Producer addSensor2post  = new Producer(appProfile,"ADD_SENSOR");
+		Producer addLamp2post = new Producer(appProfile,"ADD_LAMP");
 		
 		if(!road.join()) return firstRoadIndex;
 		if(!addPost2Road.join()) return firstRoadIndex;
@@ -260,59 +271,61 @@ public abstract class SmartLightingBenchmark {
 		
 		Bindings bindings = new Bindings();
 		
-		int roadIndex = firstRoadIndex;
+		//int roadIndex = firstRoadIndex;
 		
-		while (nRoad>0) {
+		for (int roadIndex = firstRoadIndex; roadIndex < firstRoadIndex+nRoad; roadIndex++){
+		//while (nRoad>0) {
 			
 			String roadURI = "bench:Road_"+roadIndex;
 			
 			bindings.addBinding("?road", new BindingURIValue(roadURI));
 			
-			long startTime = System.currentTimeMillis();
+			long startTime = System.nanoTime();
 			boolean ret = road.update(bindings);
-			long stopTime = System.currentTimeMillis();
-			Logger.log(VERBOSITY.INFO, tag, "INSERT ROAD "+roadURI+" "+(stopTime-startTime));
+			long stopTime = System.nanoTime();
+			Logger.log(VERBOSITY.INFO, tag, "INSERT ROAD "+roadURI+" "+(stopTime-startTime)+" 1");
 			
 			if(!ret) return firstRoadIndex;
 			
-			int postNumber = nPost;
+			//int postNumber = nPost;
 			
-			while(postNumber>0) {
+			for (int postIndex = 1; postIndex < nPost+1; postIndex++) {
+			//while(postNumber>0) {
 				//URI
-				String postURI = "bench:Post_"+roadIndex+"_"+postNumber;
-				String lampURI = "bench:Lamp_"+roadIndex+"_"+postNumber;				
-				String temparatureURI = "bench:Temperature_"+roadIndex+"_"+postNumber;
-				String presenceURI = "bench:Presence_"+roadIndex+"_"+postNumber;
+				String postURI = "bench:Post_"+roadIndex+"_"+postIndex;
+				String lampURI = "bench:Lamp_"+roadIndex+"_"+postIndex;				
+				String temparatureURI = "bench:Temperature_"+roadIndex+"_"+postIndex;
+				String presenceURI = "bench:Presence_"+roadIndex+"_"+postIndex;
 							
 				bindings.addBinding("?post", new BindingURIValue(postURI));
 				bindings.addBinding("?lamp", new BindingURIValue(lampURI));
 				
 				//New post
-				startTime = System.currentTimeMillis();
+				startTime = System.nanoTime();
 				ret = post.update(bindings);
-				stopTime = System.currentTimeMillis();
-				Logger.log(VERBOSITY.INFO, tag, "INSERT POST "+postURI+" "+(stopTime-startTime));				
+				stopTime = System.nanoTime();
+				Logger.log(VERBOSITY.INFO, tag, "INSERT POST "+postURI+" "+(stopTime-startTime) + " 3");				
 				if(!ret) return firstRoadIndex;
 				
 				//Add post to road
-				startTime = System.currentTimeMillis();
+				startTime = System.nanoTime();
 				ret = addPost2Road.update(bindings);
-				stopTime = System.currentTimeMillis();
-				Logger.log(VERBOSITY.INFO, tag, "INSERT POST2ROAD "+postURI+" "+roadURI+" "+(stopTime-startTime));				
+				stopTime = System.nanoTime();
+				Logger.log(VERBOSITY.INFO, tag, "INSERT POST2ROAD "+postURI+" "+(stopTime-startTime)+ " 1");				
 				if(!ret) return firstRoadIndex;
 				
 				//New lamp				
-				startTime = System.currentTimeMillis();
+				startTime = System.nanoTime();
 				ret = lamp.update(bindings);
-				stopTime = System.currentTimeMillis();
-				Logger.log(VERBOSITY.INFO, tag, "INSERT LAMP "+lampURI+" "+(stopTime-startTime));				
+				stopTime = System.nanoTime();
+				Logger.log(VERBOSITY.INFO, tag, "INSERT LAMP "+lampURI+" "+(stopTime-startTime) + " 4");				
 				if(!ret) return firstRoadIndex;
 				
 				//Add lamp to post
-				startTime = System.currentTimeMillis();
+				startTime = System.nanoTime();
 				ret = addLamp2post.update(bindings);
-				stopTime = System.currentTimeMillis();
-				Logger.log(VERBOSITY.INFO, tag, "INSERT LAMP2POST "+lampURI+" "+postURI+" "+(stopTime-startTime));				
+				stopTime = System.nanoTime();
+				Logger.log(VERBOSITY.INFO, tag, "INSERT LAMP2POST "+lampURI+" "+(stopTime-startTime) + " 1");				
 				if(!ret) return firstRoadIndex;
 				
 				//New temperature sensor
@@ -321,16 +334,16 @@ public abstract class SmartLightingBenchmark {
 				bindings.addBinding("?unit", new BindingURIValue("bench:CELSIUS"));
 				bindings.addBinding("?value", new BindingLiteralValue("0"));
 				
-				startTime = System.currentTimeMillis();
+				startTime = System.nanoTime();
 				ret = sensor.update(bindings);
-				stopTime = System.currentTimeMillis();
-				Logger.log(VERBOSITY.INFO, tag, "INSERT SENSOR "+temparatureURI+" "+(stopTime-startTime));				
+				stopTime = System.nanoTime();
+				Logger.log(VERBOSITY.INFO, tag, "INSERT SENSOR "+temparatureURI+" "+(stopTime-startTime)+ " 5");				
 				if(!ret) return firstRoadIndex;
 
-				startTime = System.currentTimeMillis();
+				startTime = System.nanoTime();
 				ret = addSensor2post.update(bindings);
-				stopTime = System.currentTimeMillis();
-				Logger.log(VERBOSITY.INFO, tag, "INSERT SENSOR2POST "+temparatureURI+" "+postURI+" "+(stopTime-startTime));				
+				stopTime = System.nanoTime();
+				Logger.log(VERBOSITY.INFO, tag, "INSERT SENSOR2POST "+temparatureURI+" "+(stopTime-startTime) + " 1");				
 				if(!ret) return firstRoadIndex;
 				
 				//New presence sensor
@@ -339,23 +352,18 @@ public abstract class SmartLightingBenchmark {
 				bindings.addBinding("?unit", new BindingURIValue("bench:BOOLEAN"));
 				bindings.addBinding("?value", new BindingLiteralValue("false"));
 				
-				startTime = System.currentTimeMillis();
+				startTime = System.nanoTime();
 				ret = sensor.update(bindings);
-				stopTime = System.currentTimeMillis();
-				Logger.log(VERBOSITY.INFO, tag, "INSERT SENSOR "+presenceURI+" "+(stopTime-startTime));				
+				stopTime = System.nanoTime();
+				Logger.log(VERBOSITY.INFO, tag, "INSERT SENSOR "+presenceURI+" "+(stopTime-startTime)+ " 5");				
 				if(!ret) return firstRoadIndex;
 
-				startTime = System.currentTimeMillis();
+				startTime = System.nanoTime();
 				ret = addSensor2post.update(bindings);
-				stopTime = System.currentTimeMillis();
-				Logger.log(VERBOSITY.INFO, tag, "INSERT SENSOR2POST "+presenceURI+" "+postURI+" "+(stopTime-startTime));				
+				stopTime = System.nanoTime();
+				Logger.log(VERBOSITY.INFO, tag, "INSERT SENSOR2POST "+presenceURI+" "+(stopTime-startTime)+ " 1");				
 				if(!ret) return firstRoadIndex;
-				
-				postNumber--;	
 			}
-			
-			nRoad--;
-			roadIndex++;
 		}
 		
 		if(!road.leave()) return firstRoadIndex;
@@ -366,7 +374,7 @@ public abstract class SmartLightingBenchmark {
 		if(!addSensor2post.leave()) return firstRoadIndex;
 		if(!addLamp2post.leave()) return firstRoadIndex;
 		
-		return roadIndex;
+		return firstRoadIndex+nRoad;
 	}
 	
 	protected boolean updateLamp(int nRoad,int nLamp,Integer dimming) {
@@ -377,9 +385,9 @@ public abstract class SmartLightingBenchmark {
 		
 		if (!lampUpdater.join()) return false;
 		
-		long startTime = System.currentTimeMillis();		
+		long startTime = System.nanoTime();		
 		boolean ret = lampUpdater.update(bindings);
-		long stopTime = System.currentTimeMillis();
+		long stopTime = System.nanoTime();
 		
 		Logger.log(VERBOSITY.INFO, tag, "UPDATE LAMP "+lampURI+" "+(stopTime-startTime));
 		
@@ -394,9 +402,9 @@ public abstract class SmartLightingBenchmark {
 		
 		if(!roadUpdater.join()) return false;
 		
-		long startTime = System.currentTimeMillis();
+		long startTime = System.nanoTime();
 		boolean ret = roadUpdater.update(bindings);
-		long stopTime = System.currentTimeMillis();
+		long stopTime = System.nanoTime();
 		
 		Logger.log(VERBOSITY.INFO, tag, "UPDATE ROAD "+roadURI+" "+(stopTime-startTime));
 		
@@ -404,11 +412,11 @@ public abstract class SmartLightingBenchmark {
 	}
 	
 	private void load() {
-		int roadIndex = 1;
-		for (RoadPool road : roads) {
-			Logger.log(VERBOSITY.DEBUG, tag ,"INSERT "+ road.getNumber()+"x"+road.getSize()+ " roads ("+roadIndex+":"+ (roadIndex+road.getNumber()-1)+")");
-			roadIndex = populate(road.getNumber(),road.getSize(),roadIndex);
-			nRoads = nRoads +  road.getNumber();
+		dataset();
+		
+		for (RoadPool road : roadPoll) {
+			Logger.log(VERBOSITY.DEBUG, tag ,"INSERT "+ road.getNumber()+"x"+road.getSize()+ " roads ("+road.getFirstIndex()+":"+ (road.getFirstIndex()+road.getNumber()-1)+")");
+			populate(road.getNumber(),road.getSize(),road.getFirstIndex());
 		}
 	}
 	
@@ -432,6 +440,8 @@ public abstract class SmartLightingBenchmark {
 	}
 	
 	private void activateSubscriptions() {
+		subscribe();
+		
 		//SLAMP
 		for (Lamp lamp : lampSubscriptions) subscribeLamp(lamp.getRoad(),lamp.getPost());
 		

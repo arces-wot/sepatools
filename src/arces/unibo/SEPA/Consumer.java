@@ -7,37 +7,38 @@ import arces.unibo.KPI.iKPIC_subscribeHandler2;
 import arces.unibo.SEPA.Logger.VERBOSITY;
 
 public abstract class Consumer extends Client implements IConsumer {
-	private String SPARQL_SUBSCRIBE = "";
+	private String SPARQL_SUBSCRIBE = null;
 	private String subID ="";
 	private iKPIC_subscribeHandler2 mHandler = null;
 	private String tag = "SEPA CONSUMER";
 	
 	public Consumer(String subscribeQuery,String SIB_IP,int SIB_PORT,String SIB_NAME){
 		super(SIB_IP,SIB_PORT,SIB_NAME);
-		SPARQL_SUBSCRIBE = subscribeQuery.replaceAll("\n", "").replaceAll("\r", "").replaceAll("\t", "").trim();
+		SPARQL_SUBSCRIBE = subscribeQuery.replaceAll("\n", "").replaceAll("\r", "").replaceAll("\t", "");
 	}
 	
-	public Consumer(String subscribeID) {
-		super();
-		SPARQL_SUBSCRIBE = SPARQLApplicationProfile.subscribe(subscribeID).replaceAll("\n", "").replaceAll("\r", "").replaceAll("\t", "").trim();
+	public Consumer(SPARQLApplicationProfile appProfile,String subscribeID) {
+		super(appProfile);
+		if (appProfile.subscribe(subscribeID) == null) return;
+		SPARQL_SUBSCRIBE = appProfile.subscribe(subscribeID).replaceAll("\n", "").replaceAll("\r", "").replaceAll("\t", "").trim();
 	}
 	
 	public String subscribe(Bindings forcedBindings) {
-		if (mHandler != null) return subID;
-		
-		mHandler = new NotificationHandler();
+		//if (mHandler != null) return subID;
+		if (SPARQL_SUBSCRIBE == null) return "";
 		
 		String sparql = prefixes() + replaceBindings(SPARQL_SUBSCRIBE,forcedBindings);
 		
 		Logger.log(VERBOSITY.DEBUG,tag,"<SUBSCRIBE> ==> "+sparql);
 		
+		mHandler = new NotificationHandler();
 		ret = kp.subscribeSPARQL(sparql, mHandler);
 
 		if (ret == null) return null;		
-		subID = ret.subscription_id;
 		if(!ret.isConfirmed()) return null;
 		
-		Logger.log(VERBOSITY.DEBUG,tag,"SUBSCRIBE "+subID);
+		subID = ret.subscription_id;
+		Logger.log(VERBOSITY.DEBUG,tag,"SUBSCRIBE with ID: "+subID);
 		
 		BindingsResults queryResults = new BindingsResults(ret.sparqlquery_results,null,URI2PrefixMap);
 		if (queryResults != null) {

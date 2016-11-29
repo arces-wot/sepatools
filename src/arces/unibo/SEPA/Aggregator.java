@@ -12,9 +12,15 @@ public abstract class Aggregator extends Consumer implements IAggregator {
 		SPARQL_UPDATE = updateQuery.replaceAll("\n", "").replaceAll("\r", "").replaceAll("\t", "").trim();
 	}
 	
-	public Aggregator(String subscribeID,String updateID){
-		super(subscribeID);
-		SPARQL_UPDATE = SPARQLApplicationProfile.update(updateID).replaceAll("\n", "").replaceAll("\r", "").replaceAll("\t", "").trim();
+	public Aggregator(SPARQLApplicationProfile appProfile,String subscribeID,String updateID){
+		super(appProfile,subscribeID);
+		
+		if (appProfile.update(updateID) == null) {
+			Logger.log(VERBOSITY.FATAL,tag,"UPDATE ID " +UPDDATE_ID+" not found");
+			return;
+		}
+		
+		SPARQL_UPDATE = appProfile.update(updateID).replaceAll("\n", "").replaceAll("\r", "").replaceAll("\t", "").trim();
 		UPDDATE_ID = updateID;
 	} 
 		

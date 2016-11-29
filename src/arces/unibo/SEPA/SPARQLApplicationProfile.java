@@ -16,21 +16,22 @@ import org.jdom2.input.SAXBuilder;
 import arces.unibo.SEPA.Logger.VERBOSITY;
 
 public class SPARQLApplicationProfile {	
-	private static final String tag ="SPARQL PARSER";
+	private final String tag ="SPARQL PARSER";
 	
-	private static HashMap<String,String> updateMap = new HashMap<>();
-	private static HashMap<String,String> subscribeMap = new HashMap<>();
+	private HashMap<String,String> updateMap = new HashMap<>();
+	private HashMap<String,String> subscribeMap = new HashMap<>();
 	
-	private static HashMap<String,Bindings> updateBindingsMap = new HashMap<>();
-	private static HashMap<String,Bindings> subscribeBindingsMap = new HashMap<>();
+	private HashMap<String,Bindings> updateBindingsMap = new HashMap<>();
+	private HashMap<String,Bindings> subscribeBindingsMap = new HashMap<>();
 	
-	private static HashMap<String,String> namespaceMap = new HashMap<>();
+	private HashMap<String,String> namespaceMap = new HashMap<>();
 	
-	private static Parameters params = new Parameters();
+	private Parameters params = new Parameters();
 	
-	private static Document doc = null;
+	private Document doc = null;
+	private boolean loaded = false;
 	
-	public static class Parameters {
+	public class Parameters {
 		private String url = "127.0.0.1";
 		private int port = 10010;
 		private String name = "IoT";
@@ -56,25 +57,33 @@ public class SPARQLApplicationProfile {
 		
 	}
 	
-	public static Set<String> getSubscribeIds() {return subscribeMap.keySet();}
-	public static Set<String> getUpdateIds() {return updateMap.keySet();}
-	public static Set<String> getPrefixes() {return namespaceMap.keySet();}
-	public static Parameters getParameters() {return params;}
+	public String qName(String uri){
+		if (uri == null) return null;
+		for (String prefix : namespaceMap.keySet()) {
+			if (uri.startsWith(namespaceMap.get(prefix))) return uri.replace(namespaceMap.get(prefix), prefix+":");
+		}
+		return uri;
+	}
 	
-	public static String getNamespaceURI(String prefix) {
+	public Set<String> getSubscribeIds() {return subscribeMap.keySet();}
+	public Set<String> getUpdateIds() {return updateMap.keySet();}
+	public Set<String> getPrefixes() {return namespaceMap.keySet();}
+	public Parameters getParameters() {return params;}
+	
+	public String getNamespaceURI(String prefix) {
 		String ret = namespaceMap.get(prefix);
 		if (ret == null) Logger.log(VERBOSITY.ERROR, tag, "Prefix " + prefix + " NOT FOUND");
 		return ret;
 	}
-	public static Bindings subscribeBindings(String id) {
+	public Bindings subscribeBindings(String id) {
 		return subscribeBindingsMap.get(id);
 	}
 	
-	public static Bindings updateBindings(String id) {
+	public Bindings updateBindings(String id) {
 		return updateBindingsMap.get(id);
 	}
 	
-	public static String subscribe(String id) {
+	public String subscribe(String id) {
 		if (!subscribeMap.containsKey(id)) {
 			Logger.log(VERBOSITY.ERROR, tag, "SUBSCRIBE ID <" + id + "> NOT FOUND");
 			return null;
@@ -82,7 +91,7 @@ public class SPARQLApplicationProfile {
 		return subscribeMap.get(id);
 	}
 	
-	public static String update(String id) {
+	public String update(String id) {
 		if (!updateMap.containsKey(id)) {
 			Logger.log(VERBOSITY.ERROR, tag, "UPDATE ID <" + id + "> NOT FOUND");
 			return null;
@@ -90,8 +99,15 @@ public class SPARQLApplicationProfile {
 		return updateMap.get(id);
 	}
 		
-	public synchronized static boolean load(String fileName){
-		if (doc!=null) return true;
+	public synchronized boolean load(String fileName){
+		
+		loaded = false;
+		
+		subscribeMap.clear();
+		subscribeBindingsMap.clear();
+		updateMap.clear();
+		updateBindingsMap.clear();
+		namespaceMap.clear();
 		
 		SAXBuilder builder = new SAXBuilder();
 		File inputFile = new File(fileName);
@@ -176,6 +192,11 @@ public class SPARQLApplicationProfile {
 			}
 		}
 		
+		loaded = true;
+		
 		return true;
+	}
+	public boolean isLoaded() {
+		return loaded;
 	}
 }

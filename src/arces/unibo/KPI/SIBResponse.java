@@ -69,6 +69,11 @@ public class SIBResponse {
 
 	public SIBResponse(String xml)
 	{
+		if (xml == null) {
+			Status = "m3:Error SSAP is null";
+			return;
+		}
+		
 		int start = xml.indexOf("<SSAP_message>");
 		int stop = xml.indexOf("</SSAP_message>");
 		
