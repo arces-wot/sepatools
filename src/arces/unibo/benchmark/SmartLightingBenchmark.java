@@ -1,18 +1,19 @@
 package arces.unibo.benchmark;
 
-import java.util.ArrayList;
 import java.util.Vector;
 
-import arces.unibo.SEPA.BindingLiteralValue;
-import arces.unibo.SEPA.BindingURIValue;
-import arces.unibo.SEPA.Bindings;
-import arces.unibo.SEPA.BindingsResults;
-import arces.unibo.SEPA.Consumer;
-import arces.unibo.SEPA.Logger;
-import arces.unibo.SEPA.Producer;
-import arces.unibo.SEPA.SPARQLApplicationProfile;
+import arces.unibo.SEPA.application.Consumer;
+import arces.unibo.SEPA.application.Logger;
+import arces.unibo.SEPA.application.Producer;
+import arces.unibo.SEPA.application.SPARQLApplicationProfile;
 
-import arces.unibo.SEPA.Logger.VERBOSITY;
+import arces.unibo.SEPA.commons.ARBindingsResults;
+import arces.unibo.SEPA.commons.RDFTermLiteral;
+import arces.unibo.SEPA.commons.RDFTermURI;
+import arces.unibo.SEPA.commons.SPARQLBindingsResults;
+import arces.unibo.SEPA.commons.SPARQLQuerySolution;
+
+import arces.unibo.SEPA.application.Logger.VERBOSITY;
 
 public abstract class SmartLightingBenchmark {
 	//Benchmark definition
@@ -118,16 +119,16 @@ public abstract class SmartLightingBenchmark {
 	}
 	
 	class LampSubscription extends Consumer implements Runnable {	
-		private String subID ="";
+		private String subID;
 		private String lampURI = "";
 		private boolean running = true;
-		private Bindings bindings = new Bindings();
+		private SPARQLQuerySolution bindings = new SPARQLQuerySolution();
 		private Object sync = new Object();
 		
 		public LampSubscription(int roadIndex,int lampIndex) {
 			super(appProfile,"LAMP");
 			lampURI = "bench:Lamp_"+roadIndex+"_"+lampIndex;
-			bindings.addBinding("?lamp", new BindingURIValue(lampURI));
+			bindings.addBinding("lamp", new RDFTermURI(lampURI));
 		}
 		
 		public boolean subscribe() {			
@@ -136,23 +137,8 @@ public abstract class SmartLightingBenchmark {
 			long stopTime = System.nanoTime();
 			Logger.log(VERBOSITY.INFO, tag , "SUBSCRIBE LAMP "+lampURI+ " "+(stopTime-startTime));
 			
-			if (subID!=null) if (!subID.equals("")) return true;
-			return false;
+			return (subID != null);
 		}
-
-		@Override
-		public void notify(BindingsResults notify) {
-			Logger.log(VERBOSITY.INFO, tag, "Notify LAMP "+lampURI+" "+incrementLampNotifies());
-		}
-
-		@Override
-		public void notifyAdded(ArrayList<Bindings> bindingsResults) {}
-
-		@Override
-		public void notifyRemoved(ArrayList<Bindings> bindingsResults) {}
-
-		@Override
-		public void notifyFirst(ArrayList<Bindings> bindingsResults) {}
 		
 		public void terminate() {	
 			synchronized(sync) {
@@ -172,20 +158,38 @@ public abstract class SmartLightingBenchmark {
 				}
 			}
 		}
+
+		@Override
+		public void notify(ARBindingsResults notify, String spuid, Integer sequence) {
+			Logger.log(VERBOSITY.INFO, tag , "LAMP NOTIFY"+lampURI+ " "+spuid+" sequence: "+sequence + " total: "+incrementLampNotifies());
+			
+		}
+
+		@Override
+		public void notifyAdded(SPARQLBindingsResults bindingsResults, String spuid, Integer sequence) {
+		}
+
+		@Override
+		public void notifyRemoved(SPARQLBindingsResults bindingsResults, String spuid, Integer sequence) {
+		}
+
+		@Override
+		public void onSubscribe(SPARQLBindingsResults bindingsResults, String spuid) {
+		}
 		
 	}
 	
 	class RoadSubscription extends Consumer implements Runnable {		
-		private String subID = "";
+		private String subID;
 		private String roadURI ="";
 		private boolean running = true;
-		Bindings bindings = new Bindings();
+		SPARQLQuerySolution bindings = new SPARQLQuerySolution();
 		private Object sync = new Object();
 		
 		public RoadSubscription(int index) {
 			super(appProfile,"ROAD");
 			roadURI = "bench:Road_"+index;
-			bindings.addBinding("?road", new BindingURIValue(roadURI));
+			bindings.addBinding("?road", new RDFTermURI(roadURI));
 		}
 		
 		public boolean subscribe() {
@@ -194,23 +198,8 @@ public abstract class SmartLightingBenchmark {
 			long stopTime = System.nanoTime();
 			Logger.log(VERBOSITY.INFO, tag , "SUBSCRIBE ROAD "+roadURI+" "+(stopTime-startTime));
 			
-			if (subID!=null) if (!subID.equals("")) return true;
-			return false;
+			return (subID != null);
 		}
-
-		@Override
-		public void notify(BindingsResults notify) {
-			Logger.log(VERBOSITY.INFO,tag, "Notify ROAD "+roadURI+" "+incrementRoadNotifies());
-		}
-
-		@Override
-		public void notifyAdded(ArrayList<Bindings> bindingsResults) {}
-
-		@Override
-		public void notifyRemoved(ArrayList<Bindings> bindingsResults) {}
-
-		@Override
-		public void notifyFirst(ArrayList<Bindings> bindingsResults) {}
 		
 		public void terminate() {
 			synchronized(sync) {
@@ -229,6 +218,24 @@ public abstract class SmartLightingBenchmark {
 					} catch (InterruptedException e) {}
 				}
 			}
+		}
+
+		@Override
+		public void notify(ARBindingsResults notify, String spuid, Integer sequence) {
+			Logger.log(VERBOSITY.INFO, tag , "ROAD NOTIFY"+roadURI+ " "+spuid+" sequence: "+sequence + " total: "+incrementRoadNotifies());
+			
+		}
+
+		@Override
+		public void notifyAdded(SPARQLBindingsResults bindingsResults, String spuid, Integer sequence) {
+		}
+
+		@Override
+		public void notifyRemoved(SPARQLBindingsResults bindingsResults, String spuid, Integer sequence) {
+		}
+
+		@Override
+		public void onSubscribe(SPARQLBindingsResults bindingsResults, String spuid) {
 		}
 		
 	}
@@ -269,7 +276,7 @@ public abstract class SmartLightingBenchmark {
 		
 		Logger.log(VERBOSITY.DEBUG, tag , "Number of roads: "+nRoad+" Posts/road: "+nPost+" First road index: "+firstRoadIndex);
 		
-		Bindings bindings = new Bindings();
+		SPARQLQuerySolution bindings = new SPARQLQuerySolution();
 		
 		//int roadIndex = firstRoadIndex;
 		
@@ -278,10 +285,10 @@ public abstract class SmartLightingBenchmark {
 			
 			String roadURI = "bench:Road_"+roadIndex;
 			
-			bindings.addBinding("?road", new BindingURIValue(roadURI));
+			bindings.addBinding("road", new RDFTermURI(roadURI));
 			
 			long startTime = System.nanoTime();
-			boolean ret = road.update(bindings);
+			Boolean ret = road.update(bindings);
 			long stopTime = System.nanoTime();
 			Logger.log(VERBOSITY.INFO, tag, "INSERT ROAD "+roadURI+" "+(stopTime-startTime)+" 1");
 			
@@ -297,8 +304,8 @@ public abstract class SmartLightingBenchmark {
 				String temparatureURI = "bench:Temperature_"+roadIndex+"_"+postIndex;
 				String presenceURI = "bench:Presence_"+roadIndex+"_"+postIndex;
 							
-				bindings.addBinding("?post", new BindingURIValue(postURI));
-				bindings.addBinding("?lamp", new BindingURIValue(lampURI));
+				bindings.addBinding("post", new RDFTermURI(postURI));
+				bindings.addBinding("lamp", new RDFTermURI(lampURI));
 				
 				//New post
 				startTime = System.nanoTime();
@@ -329,10 +336,10 @@ public abstract class SmartLightingBenchmark {
 				if(!ret) return firstRoadIndex;
 				
 				//New temperature sensor
-				bindings.addBinding("?sensor", new BindingURIValue(temparatureURI));
-				bindings.addBinding("?type", new BindingURIValue("bench:TEMPERATURE"));
-				bindings.addBinding("?unit", new BindingURIValue("bench:CELSIUS"));
-				bindings.addBinding("?value", new BindingLiteralValue("0"));
+				bindings.addBinding("sensor", new RDFTermURI(temparatureURI));
+				bindings.addBinding("type", new RDFTermURI("bench:TEMPERATURE"));
+				bindings.addBinding("unit", new RDFTermURI("bench:CELSIUS"));
+				bindings.addBinding("value", new RDFTermLiteral("0"));
 				
 				startTime = System.nanoTime();
 				ret = sensor.update(bindings);
@@ -347,10 +354,10 @@ public abstract class SmartLightingBenchmark {
 				if(!ret) return firstRoadIndex;
 				
 				//New presence sensor
-				bindings.addBinding("?sensor", new BindingURIValue(presenceURI));
-				bindings.addBinding("?type", new BindingURIValue("bench:PRESENCE"));
-				bindings.addBinding("?unit", new BindingURIValue("bench:BOOLEAN"));
-				bindings.addBinding("?value", new BindingLiteralValue("false"));
+				bindings.addBinding("sensor", new RDFTermURI(presenceURI));
+				bindings.addBinding("type", new RDFTermURI("bench:PRESENCE"));
+				bindings.addBinding("unit", new RDFTermURI("bench:BOOLEAN"));
+				bindings.addBinding("value", new RDFTermLiteral("false"));
 				
 				startTime = System.nanoTime();
 				ret = sensor.update(bindings);
@@ -379,14 +386,14 @@ public abstract class SmartLightingBenchmark {
 	
 	protected boolean updateLamp(int nRoad,int nLamp,Integer dimming) {
 		String lampURI = "bench:Lamp_"+nRoad+"_"+nLamp;
-		Bindings bindings = new Bindings();
-		bindings.addBinding("?lamp", new BindingURIValue(lampURI));
-		bindings.addBinding("?dimming", new BindingLiteralValue(dimming.toString()));
+		SPARQLQuerySolution bindings = new SPARQLQuerySolution();
+		bindings.addBinding("lamp", new RDFTermURI(lampURI));
+		bindings.addBinding("dimming", new RDFTermLiteral(dimming.toString()));
 		
 		if (!lampUpdater.join()) return false;
 		
 		long startTime = System.nanoTime();		
-		boolean ret = lampUpdater.update(bindings);
+		Boolean ret = lampUpdater.update(bindings);
 		long stopTime = System.nanoTime();
 		
 		Logger.log(VERBOSITY.INFO, tag, "UPDATE LAMP "+lampURI+" "+(stopTime-startTime));
@@ -396,14 +403,14 @@ public abstract class SmartLightingBenchmark {
 	
 	protected boolean updateRoad(int nRoad,Integer dimming) {
 		String roadURI = "bench:Road_"+nRoad;
-		Bindings bindings = new Bindings();
-		bindings.addBinding("?road", new BindingURIValue(roadURI));
-		bindings.addBinding("?dimming", new BindingLiteralValue(dimming.toString()));
+		SPARQLQuerySolution bindings = new SPARQLQuerySolution();
+		bindings.addBinding("?road", new RDFTermURI(roadURI));
+		bindings.addBinding("?dimming", new RDFTermLiteral(dimming.toString()));
 		
 		if(!roadUpdater.join()) return false;
 		
 		long startTime = System.nanoTime();
-		boolean ret = roadUpdater.update(bindings);
+		Boolean ret = roadUpdater.update(bindings);
 		long stopTime = System.nanoTime();
 		
 		Logger.log(VERBOSITY.INFO, tag, "UPDATE ROAD "+roadURI+" "+(stopTime-startTime));

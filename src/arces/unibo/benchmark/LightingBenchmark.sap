@@ -10,28 +10,28 @@
   <update id="INSERT_ROAD"><sparql><![CDATA[
     	INSERT DATA { ?road rdf:type bench:ROAD }]]></sparql>
     	<forcedBindings>
-      		<binding variable="?road" type="uri" value=""/>
+      		<binding variable="road" type="uri" value=""/>
   		</forcedBindings>
     </update>
     <update id="ADD_POST"><sparql><![CDATA[
     	INSERT DATA { ?road bench:hasPost ?post }]]></sparql>
     	<forcedBindings>
-      		<binding variable="?road" type="uri" value=""/>
-      		<binding variable="?post" type="uri" value=""/>
+      		<binding variable="road" type="uri" value=""/>
+      		<binding variable="post" type="uri" value=""/>
   		</forcedBindings>
     </update>
     <update id="ADD_SENSOR"><sparql><![CDATA[
     	INSERT DATA { ?post bench:hasSensor ?sensor } ]]></sparql>
     	<forcedBindings>
-      		<binding variable="?sensor" type="uri" value=""/>
-      		<binding variable="?post" type="uri" value=""/>
+      		<binding variable="sensor" type="uri" value=""/>
+      		<binding variable="post" type="uri" value=""/>
   		</forcedBindings>
     </update>
     <update id="ADD_LAMP"><sparql><![CDATA[
     	INSERT DATA { ?post bench:hasLamp ?lamp } ]]></sparql>
     	<forcedBindings>
-      		<binding variable="?lamp" type="uri" value=""/>
-      		<binding variable="?post" type="uri" value=""/>
+      		<binding variable="lamp" type="uri" value=""/>
+      		<binding variable="post" type="uri" value=""/>
   		</forcedBindings>
     </update>
    <update id="INSERT_SENSOR"><sparql><![CDATA[
@@ -41,10 +41,10 @@
     	?sensor bench:value ?value . 
     	?sensor bench:timestamp "0" }]]></sparql>
     	<forcedBindings>
-      		<binding variable="?sensor" type="uri" value=""/>
-      		<binding variable="?type" type="uri" value=""/>
-      		<binding variable="?unit" type="uri" value=""/>
-      		<binding variable="?value" type="literal" value=""/>
+      		<binding variable="sensor" type="uri" value=""/>
+      		<binding variable="type" type="uri" value=""/>
+      		<binding variable="unit" type="uri" value=""/>
+      		<binding variable="value" type="literal" value=""/>
   		</forcedBindings>
     </update>
   <update id="INSERT_LAMP"><sparql><![CDATA[
@@ -53,7 +53,7 @@
     	?lamp bench:status bench:OFF . 
     	?lamp bench:type bench:LED }]]></sparql>
     	<forcedBindings>
-      		<binding variable="?lamp" type="uri" value=""/>
+      		<binding variable="lamp" type="uri" value=""/>
   		</forcedBindings>
     </update>
     <update id="INSERT_POST"><sparql><![CDATA[
@@ -61,7 +61,7 @@
     	?post bench:latitude "0" . 
     	?post bench:longitude "0" }]]></sparql>
     	<forcedBindings>
-      		<binding variable="?post" type="uri" value=""/>
+      		<binding variable="post" type="uri" value=""/>
   		</forcedBindings>
     </update>
     <update id="UPDATE_LAMP"><sparql><![CDATA[
@@ -69,8 +69,8 @@
     	DELETE { ?lamp bench:dimming ?old } 
     	WHERE {?lamp rdf:type bench:LAMP . ?lamp bench:dimming ?old}]]></sparql>
     	<forcedBindings>
-      		<binding variable="?lamp" type="uri" value=""/>
-  			<binding variable="?dimming" type="literal" value=""/>
+      		<binding variable="lamp" type="uri" value=""/>
+  			<binding variable="dimming" type="literal" value=""/>
   		</forcedBindings>
     </update>
     <update id="UPDATE_ROAD"><sparql><![CDATA[
@@ -83,8 +83,8 @@
     	?road rdf:type bench:ROAD . 
     	?post rdf:type bench:POST }]]></sparql>
     	<forcedBindings>
-      		<binding variable="?road" type="uri" value=""/>
-  			<binding variable="?dimming" type="literal" value=""/>
+      		<binding variable="road" type="uri" value=""/>
+  			<binding variable="dimming" type="literal" value=""/>
   		</forcedBindings>
     </update>
   </updates>
@@ -94,7 +94,7 @@
     	?lamp bench:dimming ?dimming . 
     	?lamp rdf:type bench:LAMP }]]></sparql>
     	<forcedBindings>
-      		<binding variable="?lamp" type="uri" value=""/>
+      		<binding variable="lamp" type="uri" value=""/>
   		</forcedBindings>
   	</subscribe>
   	<subscribe id="ROAD"><sparql><![CDATA[
@@ -106,7 +106,7 @@
   		?lamp rdf:type bench:LAMP . 
   		?road rdf:type bench:ROAD }]]></sparql>
     	<forcedBindings>
-      		<binding variable="?road" type="uri" value=""/>
+      		<binding variable="road" type="uri" value=""/>
   		</forcedBindings>
   	</subscribe>
   </subscribes>
