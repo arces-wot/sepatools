@@ -1,3 +1,20 @@
+/* This GUI can be used for debugging SEPA applications
+Copyright (C) 2016-2017 Luca Roffia (luca.roffia@unibo.it)
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 package arces.unibo.SEPA.application;
 
 import java.awt.Color;
@@ -12,6 +29,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -35,6 +53,7 @@ import javax.swing.JScrollPane;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Properties;
 import java.util.Set;
@@ -53,13 +72,13 @@ import java.awt.Canvas;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreePath;
 
-import arces.unibo.SEPA.client.SPARQLSEProtocolClient.NotificationHandler;
+import arces.unibo.SEPA.client.SecureEventProtocol.NotificationHandler;
 import arces.unibo.SEPA.commons.ARBindingsResults;
 import arces.unibo.SEPA.commons.Notification;
 import arces.unibo.SEPA.commons.RDFTermLiteral;
 import arces.unibo.SEPA.commons.RDFTermURI;
-import arces.unibo.SEPA.commons.SPARQLBindingsResults;
-import arces.unibo.SEPA.commons.SPARQLQuerySolution;
+import arces.unibo.SEPA.commons.BindingsResults;
+import arces.unibo.SEPA.commons.Bindings;
 
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.border.TitledBorder;
@@ -68,6 +87,7 @@ import java.awt.event.ItemListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.ItemEvent;
 import javax.swing.border.EtchedBorder;
+import javax.swing.JCheckBox;
 
 public class Dashboard implements NotificationHandler {
 	Properties appProperties = new Properties();
@@ -97,7 +117,7 @@ public class Dashboard implements NotificationHandler {
 	private JTextField txtFieldPath;
 	private JTable updateForcedBindings;
 	private JTable subscribeForcedBindings;
-	private JTable bindingsResultsTable;
+	private static JTable bindingsResultsTable;
 	private JTable namespacesTable;
 	private JTextField prefix;
 	private JTextField namespace;
@@ -112,11 +132,13 @@ public class Dashboard implements NotificationHandler {
 	private JLabel lblInfoVisualizer;
 	private Checkbox qNameCheckbox;
 	private JTree classTree;
+	private JPanel resultsPanel;
+	private static JCheckBox chckbxAutoscroll;
 	
-	SPARQLApplicationProfile appProfile = new SPARQLApplicationProfile();
+	ApplicationProfile appProfile = new ApplicationProfile();
 	
-	//Visualizer
-	//private SPARQLApplicationProfile vizProfile = new SPARQLApplicationProfile();
+	//Explorer
+	private ApplicationProfile explorerAP = new ApplicationProfile();
 	private ClassMonitor classMonitor;
 	private PropertyMonitor propertyMonitor;
 	private JTable propertiesTable;
@@ -127,7 +149,7 @@ public class Dashboard implements NotificationHandler {
 		OWLClassNodeModel domain; 
 		OWLClassNodeModel range;
 		
-		public PropertyMonitor(SPARQLApplicationProfile appProfile, String subscribeID) {
+		public PropertyMonitor(ApplicationProfile appProfile, String subscribeID) {
 			super(appProfile, subscribeID);
 		}
 
@@ -137,8 +159,8 @@ public class Dashboard implements NotificationHandler {
 		}
 
 		@Override
-		public void notifyAdded(SPARQLBindingsResults bindingsResults, String spuid, Integer sequence) {
-			for (SPARQLQuerySolution binding : bindingsResults.getBindings()) {
+		public void notifyAdded(BindingsResults bindingsResults, String spuid, Integer sequence) {
+			for (Bindings binding : bindingsResults.getBindings()) {
 				String propertyURI = "";
 				String domainURI = "";
 				String rangeURI = "";
@@ -157,16 +179,16 @@ public class Dashboard implements NotificationHandler {
 		}
 
 		@Override
-		public void notifyRemoved(SPARQLBindingsResults bindingsResults, String spuid, Integer sequence) {
+		public void notifyRemoved(BindingsResults bindingsResults, String spuid, Integer sequence) {
 			// TODO Auto-generated method stub
 			
 		}
 
 		@Override
-		public void onSubscribe(SPARQLBindingsResults bindingsResults, String spuid) {
+		public void onSubscribe(BindingsResults bindingsResults, String spuid) {
 			propertiesDM.getDataVector().clear();
 			
-			for (SPARQLQuerySolution binding : bindingsResults.getBindings()) {
+			for (Bindings binding : bindingsResults.getBindings()) {
 				String propertyURI = "";
 				String domainURI = "";
 				String rangeURI = "";
@@ -189,7 +211,7 @@ public class Dashboard implements NotificationHandler {
 		private HashMap<String,OWLClassNodeModel> treeMap = new HashMap<String,OWLClassNodeModel>();
 		OWLClassNodeModel root;
 		
-		public ClassMonitor(SPARQLApplicationProfile appProfile, String subscribeID) {
+		public ClassMonitor(ApplicationProfile appProfile, String subscribeID) {
 			super(appProfile, subscribeID);
 		}
 
@@ -197,8 +219,8 @@ public class Dashboard implements NotificationHandler {
 		public void notify(ARBindingsResults notify, String spuid, Integer sequence) {}
 
 		@Override
-		public void notifyAdded(SPARQLBindingsResults bindingsResults, String spuid, Integer sequence) {
-			for (SPARQLQuerySolution binding : bindingsResults.getBindings()) {
+		public void notifyAdded(BindingsResults bindingsResults, String spuid, Integer sequence) {
+			for (Bindings binding : bindingsResults.getBindings()) {
 				String classURI = null;
 				String classLabel = null;
 				String classComment = null;
@@ -245,21 +267,19 @@ public class Dashboard implements NotificationHandler {
 		}
 
 		@Override
-		public void notifyRemoved(SPARQLBindingsResults bindingsResults, String spuid, Integer sequence) {
+		public void notifyRemoved(BindingsResults bindingsResults, String spuid, Integer sequence) {
 			// TODO Auto-generated method stub
 			
 		}
 
 		@Override
-		public void onSubscribe(SPARQLBindingsResults bindingsResults, String spuid) {
+		public void onSubscribe(BindingsResults bindingsResults, String spuid) {
 			root = new OWLClassNodeModel("owl:Thing");
-			classTree.setModel(null);
+			classTree.setModel(new DefaultTreeModel(root));
+			
 			treeMap.clear();
 			
 			notifyAdded(bindingsResults,spuid,0);
-			
-			classTree.setModel(new DefaultTreeModel(root));
-			
 		}
 		
 	}
@@ -428,34 +448,43 @@ public class Dashboard implements NotificationHandler {
 		public void setResults(ARBindingsResults res) {						
 			if (res == null) return;
 			
+			Date date = new Date();
+			SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+			String timestamp = sdf.format(date);
+			
 			Set<String> vars = res.getAddedBindings().getVariables();
 			vars.addAll(res.getRemovedBindings().getVariables());
 			
 			if (!columns.containsAll(vars) || columns.size() != vars.size()) {
 				columns.clear();
+				vars.add("");
 				columns.addAll(vars);
 				super.fireTableStructureChanged();
 			}			
 			
 			if (res.getAddedBindings() != null) {
-				for (SPARQLQuerySolution sol : res.getAddedBindings().getBindings()) {
+				for (Bindings sol : res.getAddedBindings().getBindings()) {
 					HashMap<String,BindingValue> row = new HashMap<String,BindingValue>();
 					for (String var : sol.getVariables()) {
 						row.put(var, new BindingValue(sol.getBindingValue(var),sol.isLiteral(var),true));
 					}
+					row.put("", new BindingValue(timestamp,false,true));
 					rows.add(row);
 				}
 			}
 			if (res.getRemovedBindings() != null) {
-				for (SPARQLQuerySolution sol : res.getRemovedBindings().getBindings()) {
+				for (Bindings sol : res.getRemovedBindings().getBindings()) {
 					HashMap<String,BindingValue> row = new HashMap<String,BindingValue>();
 					for (String var : sol.getVariables()) {
 						row.put(var, new BindingValue(sol.getBindingValue(var),sol.isLiteral(var),false));
 					}
+					row.put("", new BindingValue(timestamp,false,false));
 					rows.add(row);
 				}
 			}
-				
+			
+			if(chckbxAutoscroll.isSelected()) bindingsResultsTable.changeSelection(bindingsResultsTable.getRowCount() - 1, 0, false, false);
+			
 			super.fireTableDataChanged();
 		}
 		
@@ -509,48 +538,63 @@ public class Dashboard implements NotificationHandler {
 			super.removeTableModelListener(l);
 		}
 
-		public void setAddedResults(SPARQLBindingsResults bindingsResults) {
+		public void setAddedResults(BindingsResults bindingsResults) {
 			if (bindingsResults == null) return;
+			
+			Date date = new Date();
+			SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+			String timestamp = sdf.format(date);
 			
 			Set<String> vars = bindingsResults.getVariables();
 			
 			if (!columns.containsAll(vars) || columns.size() != vars.size()) {
 				columns.clear();
+				vars.add("");
 				columns.addAll(vars);
 				super.fireTableStructureChanged();
 			}			
 			
-			for (SPARQLQuerySolution sol : bindingsResults.getBindings()) {
+			for (Bindings sol : bindingsResults.getBindings()) {
 				HashMap<String,BindingValue> row = new HashMap<String,BindingValue>();
 				for (String var : sol.getVariables()) {
 					row.put(var, new BindingValue(sol.getBindingValue(var),sol.isLiteral(var),true));
 				}
+				row.put("", new BindingValue(timestamp,false,true));
 				rows.add(row);
 			}
 				
+			if(chckbxAutoscroll.isSelected()) bindingsResultsTable.changeSelection(bindingsResultsTable.getRowCount() - 1, 0, false, false);
+			
 			super.fireTableDataChanged();
-
 		}
 		
-		public void setRemovedResults(SPARQLBindingsResults bindingsResults) {
+		public void setRemovedResults(BindingsResults bindingsResults) {
 			if (bindingsResults == null) return;
+			
+			Date date = new Date();
+			SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+			String timestamp = sdf.format(date);
 			
 			Set<String> vars = bindingsResults.getVariables();
 			
 			if (!columns.containsAll(vars) || columns.size() != vars.size()) {
 				columns.clear();
+				vars.add("");
 				columns.addAll(vars);
 				super.fireTableStructureChanged();
 			}			
 			
-			for (SPARQLQuerySolution sol : bindingsResults.getBindings()) {
+			for (Bindings sol : bindingsResults.getBindings()) {
 				HashMap<String,BindingValue> row = new HashMap<String,BindingValue>();
 				for (String var : sol.getVariables()) {
 					row.put(var, new BindingValue(sol.getBindingValue(var),sol.isLiteral(var),false));
 				}
+				row.put("", new BindingValue(timestamp,false,false));
 				rows.add(row);
 			}
 				
+			if(chckbxAutoscroll.isSelected()) bindingsResultsTable.changeSelection(bindingsResultsTable.getRowCount() - 1, 0, false, false);
+			
 			super.fireTableDataChanged();
 
 		}
@@ -590,7 +634,7 @@ public class Dashboard implements NotificationHandler {
 			
 			if (binding.isLiteral()) {
 	    		setFont(new Font(null,Font.BOLD,12));
-	    		setForeground(Color.RED);
+	    		setForeground(Color.BLACK);
 	    	}
 			else {
 				setFont(new Font(null,Font.PLAIN,12));
@@ -600,7 +644,7 @@ public class Dashboard implements NotificationHandler {
 				setBackground(Color.WHITE);
 			}
 			else 
-				setBackground(Color.GRAY);
+				setBackground(Color.LIGHT_GRAY);
 		}
 		
 		@Override
@@ -652,22 +696,27 @@ public class Dashboard implements NotificationHandler {
 		
 		initialize();
 		
-		//vizProfile.load("Visualizer.sap");
-		//classMonitor = new ClassMonitor(vizProfile,"CLASSES");
-		//propertyMonitor = new PropertyMonitor(vizProfile,"PROPERTIES");
+		explorerAP.load("explorer.sap");
+		classMonitor = new ClassMonitor(explorerAP,"CLASSES");
+		propertyMonitor = new PropertyMonitor(explorerAP,"PROPERTIES");
 	}
 	
 	private void loadProperties() {
 		FileInputStream in = null;
 		try {
-			in = new FileInputStream("resources/config.properties");
+			in = new FileInputStream("dashboard.properties");
 		} catch (FileNotFoundException e) {
-			e.printStackTrace();
+			appProperties.setProperty("subscribePort", "9000");
+			appProperties.setProperty("updatePort", "8000");
+			appProperties.setProperty("path", "/sparql");
+			appProperties.setProperty("ip", "localhost");
+			storeProperties(true);
+			return;
 		}
 		try {
 			appProperties.load(in);
 		} catch (IOException e) {
-			e.printStackTrace();
+			e.printStackTrace();			
 		}
 		try {
 			in.close();
@@ -676,15 +725,16 @@ public class Dashboard implements NotificationHandler {
 		}	
 	}
 	
-	private void storeProperties() {
+	private void storeProperties(boolean def) {
 		FileOutputStream out = null;
 		try {
-			out = new FileOutputStream("resources/config.properties");
+			out = new FileOutputStream("dashboard.properties");
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		}
 		try {
-			appProperties.store(out,"Last used values");
+			if (def) appProperties.store(out,"Default values");
+			else appProperties.store(out,"Last used values");
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -867,15 +917,17 @@ public class Dashboard implements NotificationHandler {
 							Integer.parseInt(textFieldSPort.getText()),txtFieldPath.getText(),window);
 					if (kp.join()) {
 						btnJoin.setText("Leave");
-						storeProperties();
+						storeProperties(false);
 						btnUpdate.setEnabled(true);
 						btnSubscribe.setEnabled(true);
 						btnQuery.setEnabled(true);
 						textFieldIP.setEnabled(false);
 						textFieldSPort.setEnabled(false);
 						txtFieldPath.setEnabled(false);
-						//btnLoadRdfxmlDataset.setEnabled(true);
+						textFieldUPort.setEnabled(false);
+						
 						lblInfo.setText("Joined @ "+textFieldIP.getText()+":"+textFieldSPort.getText()+" \""+txtFieldPath.getText()+"\"");
+						storeProperties(false);
 					}
 					else {
 						lblInfo.setText("Not joined...please check the connection parameters");
@@ -890,7 +942,8 @@ public class Dashboard implements NotificationHandler {
 						textFieldIP.setEnabled(true);
 						textFieldSPort.setEnabled(true);
 						txtFieldPath.setEnabled(true);
-						//btnLoadRdfxmlDataset.setEnabled(true);
+						textFieldUPort.setEnabled(true);
+						
 						lblInfo.setText("Left @ "+textFieldIP.getText()+":"+textFieldSPort.getText()+" \""+txtFieldPath.getText()+" \"");
 					}
 				}
@@ -924,7 +977,7 @@ public class Dashboard implements NotificationHandler {
 					subscribeForcedBindingsDM.clearBindings();
 					
 					if(appProfile.load(fileName)) {
-						storeProperties();
+						storeProperties(false);
 						frmSepaDashboard.setTitle("SEPA Dashboard" + " - " + fileName);
 						//Loading namespaces
 						for(String prefix : appProfile.getPrefixes()) {
@@ -1098,7 +1151,7 @@ public class Dashboard implements NotificationHandler {
 			        	sparql = sparql.trim();
 			        	SPARQLUpdate.setText(sparql);
 			        	
-			        	SPARQLQuerySolution bindings = appProfile.updateBindings(updatesList.getSelectedValue());
+			        	Bindings bindings = appProfile.updateBindings(updatesList.getSelectedValue());
 			        	updateForcedBindingsDM.clearBindings();
 			        	if (bindings == null) return;
 			        	for (String var : bindings.getVariables()){
@@ -1174,7 +1227,7 @@ public class Dashboard implements NotificationHandler {
 			        	SPARQLSubscribe.setText(sparql);
 			        }
 			        
-			        SPARQLQuerySolution bindings = appProfile.subscribeBindings(subscribesList.getSelectedValue());
+			        Bindings bindings = appProfile.subscribeBindings(subscribesList.getSelectedValue());
 			        subscribeForcedBindingsDM.clearBindings();
 			        if (bindings == null) return;
 			        for (String var : bindings.getVariables()){
@@ -1220,7 +1273,7 @@ public class Dashboard implements NotificationHandler {
 		btnUpdate.setEnabled(false);
 		btnUpdate.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				SPARQLQuerySolution forced = new SPARQLQuerySolution();
+				Bindings forced = new Bindings();
 				for (int index = 0; index < updateForcedBindingsDM.getRowCount(); index++){
 					String value = (String) updateForcedBindingsDM.getValueAt(index, 1);
 					String var = (String) updateForcedBindingsDM.getValueAt(index, 0);
@@ -1282,7 +1335,7 @@ public class Dashboard implements NotificationHandler {
 		btnSubscribe.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				if (btnSubscribe.getText().equals("SUBSCRIBE")) {
-					SPARQLQuerySolution forced = new SPARQLQuerySolution();
+					Bindings forced = new Bindings();
 					for (int index = 0; index < subscribeForcedBindings.getRowCount(); index++){
 						String value = (String) subscribeForcedBindings.getValueAt(index, 1);
 						boolean literal = (boolean) subscribeForcedBindings.getValueAt(index, 2);
@@ -1328,7 +1381,7 @@ public class Dashboard implements NotificationHandler {
 		btnQuery.setEnabled(false);
 		btnQuery.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				SPARQLQuerySolution forced = new SPARQLQuerySolution();
+				Bindings forced = new Bindings();
 				for (int index = 0; index < subscribeForcedBindings.getRowCount(); index++){
 					String value = (String) subscribeForcedBindings.getValueAt(index, 1);
 					boolean literal = (boolean) subscribeForcedBindings.getValueAt(index, 2);
@@ -1349,7 +1402,7 @@ public class Dashboard implements NotificationHandler {
 				}
 				lblInfo.setText("Running query...");
 				long start = System.currentTimeMillis();
-				SPARQLBindingsResults ret = kp.query(prefixes+query, forced);
+				BindingsResults ret = kp.query(prefixes+query, forced);
 				long stop = System.currentTimeMillis();
 				
 				bindingsDM.clear();
@@ -1363,20 +1416,20 @@ public class Dashboard implements NotificationHandler {
 		gbc_btnQuery.gridy = 0;
 		panel.add(btnQuery, gbc_btnQuery);
 		
-		JPanel results = new JPanel();
-		results.setBorder(new TitledBorder(null, "Results", TitledBorder.LEADING, TitledBorder.TOP, null, null));
+		resultsPanel = new JPanel();
+		resultsPanel.setBorder(new TitledBorder(null, "Results", TitledBorder.LEADING, TitledBorder.TOP, null, null));
 		GridBagConstraints gbc_results = new GridBagConstraints();
 		gbc_results.insets = new Insets(0, 0, 5, 0);
 		gbc_results.fill = GridBagConstraints.BOTH;
 		gbc_results.gridx = 0;
 		gbc_results.gridy = 3;
-		SPARQLPanel.add(results, gbc_results);
+		SPARQLPanel.add(resultsPanel, gbc_results);
 		GridBagLayout gbl_results = new GridBagLayout();
 		gbl_results.columnWidths = new int[]{0, 0};
 		gbl_results.rowHeights = new int[]{70, 0, 0};
 		gbl_results.columnWeights = new double[]{1.0, Double.MIN_VALUE};
 		gbl_results.rowWeights = new double[]{1.0, 0.0, Double.MIN_VALUE};
-		results.setLayout(gbl_results);
+		resultsPanel.setLayout(gbl_results);
 		
 		JScrollPane bindingsResults = new JScrollPane();
 		GridBagConstraints gbc_bindingsResults = new GridBagConstraints();
@@ -1384,7 +1437,7 @@ public class Dashboard implements NotificationHandler {
 		gbc_bindingsResults.fill = GridBagConstraints.BOTH;
 		gbc_bindingsResults.gridx = 0;
 		gbc_bindingsResults.gridy = 0;
-		results.add(bindingsResults, gbc_bindingsResults);
+		resultsPanel.add(bindingsResults, gbc_bindingsResults);
 		
 		bindingsResultsTable = new JTable(bindingsDM);
 		bindingsResults.setViewportView(bindingsResultsTable);
@@ -1396,11 +1449,11 @@ public class Dashboard implements NotificationHandler {
 		gbc_panel_1.fill = GridBagConstraints.BOTH;
 		gbc_panel_1.gridx = 0;
 		gbc_panel_1.gridy = 1;
-		results.add(panel_1, gbc_panel_1);
+		resultsPanel.add(panel_1, gbc_panel_1);
 		GridBagLayout gbl_panel_1 = new GridBagLayout();
-		gbl_panel_1.columnWidths = new int[]{0, 0, 0, 0};
+		gbl_panel_1.columnWidths = new int[]{0, 0, 0, 0, 0};
 		gbl_panel_1.rowHeights = new int[]{0, 0};
-		gbl_panel_1.columnWeights = new double[]{1.0, 0.0, 0.0, Double.MIN_VALUE};
+		gbl_panel_1.columnWeights = new double[]{1.0, 0.0, 0.0, 0.0, Double.MIN_VALUE};
 		gbl_panel_1.rowWeights = new double[]{0.0, Double.MIN_VALUE};
 		panel_1.setLayout(gbl_panel_1);
 		
@@ -1413,19 +1466,6 @@ public class Dashboard implements NotificationHandler {
 		gbc_lblInfo.gridy = 0;
 		panel_1.add(lblInfo, gbc_lblInfo);
 		
-		JButton btnClean = new JButton("Clear");
-		btnClean.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				bindingsDM.clear();
-				lblInfo.setText("Results cleaned");
-			}
-		});
-		GridBagConstraints gbc_btnClean = new GridBagConstraints();
-		gbc_btnClean.insets = new Insets(0, 0, 0, 5);
-		gbc_btnClean.gridx = 1;
-		gbc_btnClean.gridy = 0;
-		panel_1.add(btnClean, gbc_btnClean);
-		
 		qNameCheckbox = new Checkbox("QName");
 		qNameCheckbox.setState(true);
 		qNameCheckbox.addItemListener(new ItemListener() {
@@ -1435,15 +1475,39 @@ public class Dashboard implements NotificationHandler {
 			}
 		});
 		GridBagConstraints gbc_qNameCheckbox = new GridBagConstraints();
+		gbc_qNameCheckbox.insets = new Insets(0, 0, 0, 5);
 		gbc_qNameCheckbox.anchor = GridBagConstraints.WEST;
-		gbc_qNameCheckbox.gridx = 2;
+		gbc_qNameCheckbox.gridx = 1;
 		gbc_qNameCheckbox.gridy = 0;
 		panel_1.add(qNameCheckbox, gbc_qNameCheckbox);
 		
+		JButton btnClean = new JButton("Clear");
+		btnClean.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				bindingsDM.clear();
+				lblInfo.setText("Results cleaned");
+			}
+		});
+		
+		chckbxAutoscroll = new JCheckBox("Autoscroll");
+		chckbxAutoscroll.setSelected(true);
+		GridBagConstraints gbc_chckbxAutoscroll = new GridBagConstraints();
+		gbc_chckbxAutoscroll.insets = new Insets(0, 0, 0, 5);
+		gbc_chckbxAutoscroll.gridx = 2;
+		gbc_chckbxAutoscroll.gridy = 0;
+		panel_1.add(chckbxAutoscroll, gbc_chckbxAutoscroll);
+		GridBagConstraints gbc_btnClean = new GridBagConstraints();
+		gbc_btnClean.gridx = 3;
+		gbc_btnClean.gridy = 0;
+		panel_1.add(btnClean, gbc_btnClean);
+		
 		JSplitPane visualizer = new JSplitPane();
+		visualizer.setEnabled(false);
 		visualizer.setOneTouchExpandable(true);
 		visualizer.setContinuousLayout(true);
-		tabbedPane.addTab("Explorer", null, visualizer, null);
+		tabbedPane.addTab("Explorer", null, visualizer, "To be implemented...");
+		tabbedPane.setEnabledAt(1, true);
+		tabbedPane.setForegroundAt(1, Color.BLACK);
 		
 		JPanel classes = new JPanel();
 		visualizer.setLeftComponent(classes);
@@ -1574,10 +1638,9 @@ public class Dashboard implements NotificationHandler {
 		if (results != null) {
 			if (results.getAddedBindings() != null ) added = results.getAddedBindings().size();
 			if (results.getRemovedBindings() != null ) removed = results.getRemovedBindings().size();
-		
-			lblInfo.setText("Bindings results Added("+added+") + Removed ("+removed+")");
-			
 			bindingsDM.setResults(results);
+			
+			lblInfo.setText("Bindings results ("+bindingsDM.getRowCount()+") Added("+added+") + Removed ("+removed+")");
 			
 			Comparator<BindingValue> comparator = new Comparator<BindingValue>() {
 			    public int compare(BindingValue s1, BindingValue s2) {
@@ -1590,41 +1653,4 @@ public class Dashboard implements NotificationHandler {
 			bindingsResultsTable.setRowSorter(sorter);	
 		}
 	}
-
-	/*
-	@Override
-	public void notify(Notification notify) {
-		int added = 0;
-		int removed = 0;
-		
-		if (notify.getAddedBindings() != null) added = notify.getAddedBindings().size();
-		if (notify.getRemovedBindings() != null) removed = notify.getRemovedBindings().size();
-		
-		lblInfo.setText("Bindings results Added("+added+") + Removed ("+removed+")");
-		
-		bindingsDM.setResults(notify);
-		
-		Comparator<BindingValue> comparator = new Comparator<BindingValue>() {
-		    public int compare(BindingValue s1, BindingValue s2) {
-		        return s1.getValue().compareTo(s2.getValue());
-		    }
-		};
-		
-		TableRowSorter<TableModel>  sorter = new TableRowSorter<TableModel>(bindingsResultsTable.getModel());
-		for (int i=0; i < bindingsDM.getColumnCount(); i++) sorter.setComparator(i, comparator);
-		bindingsResultsTable.setRowSorter(sorter);
-		
-	}
-
-	@Override
-	public void notifyFirst(SPARQLBindingsResults notify) {
-		notify(notify);
-	}
-
-	@Override
-	public void notify(Notification notify) {
-		// TODO Auto-generated method stub
-		
-	}
-	*/
 }

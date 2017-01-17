@@ -1,3 +1,20 @@
+/* This class implements the SPARQL Secure Event (SE) 1.1 Protocol 
+    Copyright (C) 2016-2017 Luca Roffia (luca.roffia@unibo.it)
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 package arces.unibo.SEPA.server;
 
 import java.io.IOException;
@@ -41,7 +58,7 @@ public class WebSocketGate extends WebSocketApplication implements ResponseListe
 	private TokenHandler tokenHandler;
 	private RequestResponseHandler requestHandler;
 	
-	private int wsPort = 7777;
+	private int wsPort = 9000;
 	private int keepAlivePeriod = 5000;
 	
 	private HashMap<WebSocket,SEPAResponseListener> activeSockets = new HashMap<WebSocket,SEPAResponseListener>();
@@ -89,7 +106,7 @@ public class WebSocketGate extends WebSocketApplication implements ResponseListe
 		
 		if (properties == null) Logger.log(VERBOSITY.ERROR, tag, "Properties are null");
 		else {
-			wsPort = Integer.parseInt(properties.getProperty("wsPort", "7777"));
+			wsPort = Integer.parseInt(properties.getProperty("wsPort", "9000"));
 			keepAlivePeriod =  Integer.parseInt(properties.getProperty("keepAlivePeriod", "5000"));
 		}
 	}
@@ -119,11 +136,12 @@ public class WebSocketGate extends WebSocketApplication implements ResponseListe
 	public void onMessage(WebSocket socket, String text) {
 		Logger.log(VERBOSITY.DEBUG, tag, "onMessage: "+socket.toString()+" message:"+text);
 		Integer token = tokenHandler.getToken();
+		
 		Request request = parseRequest(token,text);
 		if(request == null) {
 			tokenHandler.releaseToken(token);
 			//TODO SPARQL 1.1 Subscribe language
-			socket.send("Not supported request: "+text);
+			socket.send("{\"error\":\""+"Not supported request: "+text +"\"}");
 			return;
 		}
 		

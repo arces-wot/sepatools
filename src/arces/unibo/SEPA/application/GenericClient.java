@@ -1,9 +1,26 @@
+/* This class implements a generic client of the SEPA Application Design Pattern (including the query primitive)
+Copyright (C) 2016-2017 Luca Roffia (luca.roffia@unibo.it)
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 package arces.unibo.SEPA.application;
 
 import arces.unibo.SEPA.application.Logger.VERBOSITY;
-import arces.unibo.SEPA.client.SPARQLSEProtocolClient.NotificationHandler;
-import arces.unibo.SEPA.commons.SPARQLBindingsResults;
-import arces.unibo.SEPA.commons.SPARQLQuerySolution;
+import arces.unibo.SEPA.client.SecureEventProtocol.NotificationHandler;
+import arces.unibo.SEPA.commons.BindingsResults;
+import arces.unibo.SEPA.commons.Bindings;
 
 public class GenericClient extends Client {
 	private String subID = null;
@@ -15,7 +32,7 @@ public class GenericClient extends Client {
 		this.handler = handler;
 	}
 	
-	public boolean update(String SPARQL_UPDATE,SPARQLQuerySolution forced) {
+	public boolean update(String SPARQL_UPDATE,Bindings forced) {
 		 if (protocolClient == null) {
 			 Logger.log(VERBOSITY.FATAL, tag, "Client not initialized");
 			 return false;
@@ -28,7 +45,7 @@ public class GenericClient extends Client {
 		return protocolClient.update(sparql);
 	 }
 	
-	public SPARQLBindingsResults query(String SPARQL_QUERY,SPARQLQuerySolution forced) {
+	public BindingsResults query(String SPARQL_QUERY,Bindings forced) {
 		if (protocolClient == null) {
 			 Logger.log(VERBOSITY.FATAL, tag, "Client not initialized");
 			 return null;
@@ -41,7 +58,7 @@ public class GenericClient extends Client {
 		return protocolClient.query(sparql);
 	}
 	
-	public String subscribe(String SPARQL_SUBSCRIBE,SPARQLQuerySolution forced) {	
+	public String subscribe(String SPARQL_SUBSCRIBE,Bindings forced) {	
 		if (protocolClient == null) {
 			 Logger.log(VERBOSITY.FATAL, tag, "Client not initialized");
 			 return null;

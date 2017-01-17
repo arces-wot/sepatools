@@ -1,3 +1,20 @@
+/* This class implements the scheduler of the Semantic Event Processing Architecture (SEPA) Engine
+    Copyright (C) 2016-2017 Luca Roffia (luca.roffia@unibo.it)
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 package arces.unibo.SEPA.server;
 
 import java.util.HashMap;
@@ -79,6 +96,9 @@ public class Scheduler extends Thread {
 				Logger.log(VERBOSITY.DEBUG, tag, "New update request: "+req.getSPARQL());
 				UpdateResponse res = endpoint.update(req);
 				requestHandler.addResponse(res);
+				
+				//Single UPDATE processing
+				requestHandler.waitAllSubscriptionChecks(spus.entrySet().size());
 			}
 		}
 		
@@ -144,12 +164,16 @@ public class Scheduler extends Thread {
 				
 				Logger.log(VERBOSITY.DEBUG, tag, "New unsubscribe request: "+req.getSPARQL());
 				
+				String spuid = req.getSubscribeUUID();
+				
 				synchronized(spus){
-					spus.get(req.getSubscribeUUID()).stopRunning();
-					spus.remove(req.getSubscribeUUID());
+					if (spus.containsKey(spuid)){
+						spus.get(spuid).stopRunning();
+						spus.remove(spuid);
+					}
 				}
 				
-				requestHandler.addResponse(new UnsubscribeResponse(req.getToken(),req.getSPARQL()));
+				requestHandler.addResponse(new UnsubscribeResponse(req.getToken(),spuid));
 			}
 		}
 		

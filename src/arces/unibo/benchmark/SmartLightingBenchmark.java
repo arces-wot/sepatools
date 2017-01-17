@@ -5,13 +5,13 @@ import java.util.Vector;
 import arces.unibo.SEPA.application.Consumer;
 import arces.unibo.SEPA.application.Logger;
 import arces.unibo.SEPA.application.Producer;
-import arces.unibo.SEPA.application.SPARQLApplicationProfile;
+import arces.unibo.SEPA.application.ApplicationProfile;
 
 import arces.unibo.SEPA.commons.ARBindingsResults;
 import arces.unibo.SEPA.commons.RDFTermLiteral;
 import arces.unibo.SEPA.commons.RDFTermURI;
-import arces.unibo.SEPA.commons.SPARQLBindingsResults;
-import arces.unibo.SEPA.commons.SPARQLQuerySolution;
+import arces.unibo.SEPA.commons.BindingsResults;
+import arces.unibo.SEPA.commons.Bindings;
 
 import arces.unibo.SEPA.application.Logger.VERBOSITY;
 
@@ -40,7 +40,7 @@ public abstract class SmartLightingBenchmark {
 	protected int firstRoadIndex = 1;
 	protected int nRoads = 0;
 	
-	static SPARQLApplicationProfile appProfile = new SPARQLApplicationProfile();
+	static ApplicationProfile appProfile = new ApplicationProfile();
 	
 	private class RoadPool {
 		private final int size;
@@ -122,7 +122,7 @@ public abstract class SmartLightingBenchmark {
 		private String subID;
 		private String lampURI = "";
 		private boolean running = true;
-		private SPARQLQuerySolution bindings = new SPARQLQuerySolution();
+		private Bindings bindings = new Bindings();
 		private Object sync = new Object();
 		
 		public LampSubscription(int roadIndex,int lampIndex) {
@@ -166,15 +166,15 @@ public abstract class SmartLightingBenchmark {
 		}
 
 		@Override
-		public void notifyAdded(SPARQLBindingsResults bindingsResults, String spuid, Integer sequence) {
+		public void notifyAdded(BindingsResults bindingsResults, String spuid, Integer sequence) {
 		}
 
 		@Override
-		public void notifyRemoved(SPARQLBindingsResults bindingsResults, String spuid, Integer sequence) {
+		public void notifyRemoved(BindingsResults bindingsResults, String spuid, Integer sequence) {
 		}
 
 		@Override
-		public void onSubscribe(SPARQLBindingsResults bindingsResults, String spuid) {
+		public void onSubscribe(BindingsResults bindingsResults, String spuid) {
 		}
 		
 	}
@@ -183,7 +183,7 @@ public abstract class SmartLightingBenchmark {
 		private String subID;
 		private String roadURI ="";
 		private boolean running = true;
-		SPARQLQuerySolution bindings = new SPARQLQuerySolution();
+		Bindings bindings = new Bindings();
 		private Object sync = new Object();
 		
 		public RoadSubscription(int index) {
@@ -227,15 +227,15 @@ public abstract class SmartLightingBenchmark {
 		}
 
 		@Override
-		public void notifyAdded(SPARQLBindingsResults bindingsResults, String spuid, Integer sequence) {
+		public void notifyAdded(BindingsResults bindingsResults, String spuid, Integer sequence) {
 		}
 
 		@Override
-		public void notifyRemoved(SPARQLBindingsResults bindingsResults, String spuid, Integer sequence) {
+		public void notifyRemoved(BindingsResults bindingsResults, String spuid, Integer sequence) {
 		}
 
 		@Override
-		public void onSubscribe(SPARQLBindingsResults bindingsResults, String spuid) {
+		public void onSubscribe(BindingsResults bindingsResults, String spuid) {
 		}
 		
 	}
@@ -276,7 +276,7 @@ public abstract class SmartLightingBenchmark {
 		
 		Logger.log(VERBOSITY.DEBUG, tag , "Number of roads: "+nRoad+" Posts/road: "+nPost+" First road index: "+firstRoadIndex);
 		
-		SPARQLQuerySolution bindings = new SPARQLQuerySolution();
+		Bindings bindings = new Bindings();
 		
 		//int roadIndex = firstRoadIndex;
 		
@@ -386,7 +386,7 @@ public abstract class SmartLightingBenchmark {
 	
 	protected boolean updateLamp(int nRoad,int nLamp,Integer dimming) {
 		String lampURI = "bench:Lamp_"+nRoad+"_"+nLamp;
-		SPARQLQuerySolution bindings = new SPARQLQuerySolution();
+		Bindings bindings = new Bindings();
 		bindings.addBinding("lamp", new RDFTermURI(lampURI));
 		bindings.addBinding("dimming", new RDFTermLiteral(dimming.toString()));
 		
@@ -403,7 +403,7 @@ public abstract class SmartLightingBenchmark {
 	
 	protected boolean updateRoad(int nRoad,Integer dimming) {
 		String roadURI = "bench:Road_"+nRoad;
-		SPARQLQuerySolution bindings = new SPARQLQuerySolution();
+		Bindings bindings = new Bindings();
 		bindings.addBinding("?road", new RDFTermURI(roadURI));
 		bindings.addBinding("?dimming", new RDFTermLiteral(dimming.toString()));
 		

@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<applicationProfile xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="ApplicationProfile.xsd">
+  <parameters name="LightingBenchmark" port="10123" url="127.0.0.1"/>
+  <namespaces>
+    <namespace prefix="rdf" suffix="http://www.w3.org/1999/02/22-rdf-syntax-ns#"/>
+  		<namespace prefix="bench" suffix="http://www.arces.unibo.it/LightingBenchmark#"/>
+  		<namespace prefix="rdfs" suffix="http://www.w3.org/2000/01/rdf-schema#"/>
+  </namespaces>
+  <updates>
+  <update id="INSERT_ROAD"><sparql><![CDATA[
+    	INSERT DATA { ?road rdf:type bench:ROAD }]]></sparql>
+    	<forcedBindings>
+      		<binding variable="road" type="uri" value=""/>
+  		</forcedBindings>
+    </update>
+    <update id="ADD_POST"><sparql><![CDATA[
+    	INSERT DATA { ?road bench:hasPost ?post }]]></sparql>
+    	<forcedBindings>
+      		<binding variable="road" type="uri" value=""/>
+      		<binding variable="post" type="uri" value=""/>
+  		</forcedBindings>
+    </update>
+    <update id="ADD_SENSOR"><sparql><![CDATA[
+    	INSERT DATA { ?post bench:hasSensor ?sensor } ]]></sparql>
+    	<forcedBindings>
+      		<binding variable="sensor" type="uri" value=""/>
+      		<binding variable="post" type="uri" value=""/>
+  		</forcedBindings>
+    </update>
+    <update id="ADD_LAMP"><sparql><![CDATA[
+    	INSERT DATA { ?post bench:hasLamp ?lamp } ]]></sparql>
+    	<forcedBindings>
+      		<binding variable="lamp" type="uri" value=""/>
+      		<binding variable="post" type="uri" value=""/>
+  		</forcedBindings>
+    </update>
+   <update id="INSERT_SENSOR"><sparql><![CDATA[
+    	INSERT DATA { ?sensor rdf:type bench:SENSOR . 
+    	?sensor bench:type ?type . 
+    	?sensor bench:unit ?unit . 
+    	?sensor bench:value ?value . 
+    	?sensor bench:timestamp "0" }]]></sparql>
+    	<forcedBindings>
+      		<binding variable="sensor" type="uri" value=""/>
+      		<binding variable="type" type="uri" value=""/>
+      		<binding variable="unit" type="uri" value=""/>
+      		<binding variable="value" type="literal" value=""/>
+  		</forcedBindings>
+    </update>
+  <update id="INSERT_LAMP"><sparql><![CDATA[
+    	INSERT DATA { ?lamp rdf:type bench:LAMP . 
+    	?lamp bench:dimming "0" . 
+    	?lamp bench:status bench:OFF . 
+    	?lamp bench:type bench:LED }]]></sparql>
+    	<forcedBindings>
+      		<binding variable="lamp" type="uri" value=""/>
+  		</forcedBindings>
+    </update>
+    <update id="INSERT_POST"><sparql><![CDATA[
+    	INSERT DATA { ?post rdf:type bench:POST . 
+    	?post bench:latitude "0" . 
+    	?post bench:longitude "0" }]]></sparql>
+    	<forcedBindings>
+      		<binding variable="post" type="uri" value=""/>
+  		</forcedBindings>
+    </update>
+    <update id="UPDATE_LAMP"><sparql><![CDATA[
+    	INSERT { ?lamp bench:dimming ?dimming }
+    	DELETE { ?lamp bench:dimming ?old } 
+    	WHERE {?lamp rdf:type bench:LAMP . ?lamp bench:dimming ?old}]]></sparql>
+    	<forcedBindings>
+      		<binding variable="lamp" type="uri" value=""/>
+  			<binding variable="dimming" type="literal" value=""/>
+  		</forcedBindings>
+    </update>
+    <update id="UPDATE_ROAD"><sparql><![CDATA[
+    	INSERT { ?lamp bench:dimming ?dimming }
+    	DELETE { ?lamp bench:dimming ?old }
+    	WHERE { ?lamp bench:dimming ?old . 
+    	?post bench:hasLamp ?lamp . 
+    	?road bench:hasPost ?post . 
+    	?lamp rdf:type bench:LAMP . 
+    	?road rdf:type bench:ROAD . 
+    	?post rdf:type bench:POST }]]></sparql>
+    	<forcedBindings>
+      		<binding variable="road" type="uri" value=""/>
+  			<binding variable="dimming" type="literal" value=""/>
+  		</forcedBindings>
+    </update>
+  </updates>
+  <subscribes>
+    <subscribe id="LAMP"><sparql><![CDATA[
+    SELECT ?dimming WHERE { 
+    	?lamp bench:dimming ?dimming . 
+    	?lamp rdf:type bench:LAMP }]]></sparql>
+    	<forcedBindings>
+      		<binding variable="lamp" type="uri" value=""/>
+  		</forcedBindings>
+  	</subscribe>
+  	<subscribe id="ROAD"><sparql><![CDATA[
+  	SELECT ?lamp ?dimming WHERE { 
+  		?lamp bench:dimming ?dimming . 
+  		?post bench:hasLamp ?lamp . 
+  		?road bench:hasPost ?post .
+  		?post rdf:type bench:POST . 
+  		?lamp rdf:type bench:LAMP . 
+  		?road rdf:type bench:ROAD }]]></sparql>
+    	<forcedBindings>
+      		<binding variable="road" type="uri" value=""/>
+  		</forcedBindings>
+  	</subscribe>
+  </subscribes>
+</applicationProfile>

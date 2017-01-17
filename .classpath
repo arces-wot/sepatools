@@ -9,6 +9,9 @@
 	<classpathentry kind="lib" path="gson-2.8.0.jar"/>
 	<classpathentry kind="lib" path="jdom-2.0.6.jar"/>
 	<classpathentry kind="lib" path="tyrus-standalone-client-1.13.jar"/>
+	<classpathentry kind="lib" path="org.eclipse.paho.client.mqttv3-1.0.2.jar"/>
+	<classpathentry kind="lib" path="bcprov-jdk15on-156.jar"/>
+	<classpathentry kind="lib" path="bcpkix-jdk15on-156.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

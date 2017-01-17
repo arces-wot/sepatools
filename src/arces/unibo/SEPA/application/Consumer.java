@@ -1,17 +1,36 @@
+/* This class abstracts a consumer of the SEPA Application Design Pattern
+Copyright (C) 2016-2017 Luca Roffia (luca.roffia@unibo.it)
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 package arces.unibo.SEPA.application;
 
 import arces.unibo.SEPA.application.Logger.VERBOSITY;
-import arces.unibo.SEPA.client.SPARQLSEProtocolClient.NotificationHandler;
+import arces.unibo.SEPA.client.SecureEventProtocol.NotificationHandler;
 
 import arces.unibo.SEPA.commons.ARBindingsResults;
 import arces.unibo.SEPA.commons.Notification;
-import arces.unibo.SEPA.commons.SPARQLBindingsResults;
-import arces.unibo.SEPA.commons.SPARQLQuerySolution;
+import arces.unibo.SEPA.commons.RDFTermURI;
+import arces.unibo.SEPA.commons.BindingsResults;
+import arces.unibo.SEPA.commons.Bindings;
 
 public abstract class Consumer extends Client implements IConsumer {
 	private String SPARQL_SUBSCRIBE = null;
 	private String subID ="";
-
+	private boolean onSubscribe = true;
+	
 	private String tag = "SEPA CONSUMER";
 	private ConsumerHandler handler;
 	
@@ -28,9 +47,39 @@ public abstract class Consumer extends Client implements IConsumer {
 			Integer sequence = notify.getSequence();
 			ARBindingsResults results = notify.getARBindingsResults();
 					
-			SPARQLBindingsResults added = results.getAddedBindings();
-			SPARQLBindingsResults removed = results.getRemovedBindings();
+			BindingsResults added = results.getAddedBindings();
+			BindingsResults removed = results.getRemovedBindings();
 
+			//Replace prefixes
+			for (Bindings bindings : added.getBindings()) {
+				for(String var : bindings.getVariables()) {
+					if (bindings.isURI(var)) {
+						for(String prefix : URI2PrefixMap.keySet())
+							if(bindings.getBindingValue(var).startsWith(prefix)) {
+								bindings.addBinding(var, new RDFTermURI(bindings.getBindingValue(var).replace(prefix, URI2PrefixMap.get(prefix)+":")));
+								break;
+							}
+					}
+				}
+			}
+			for (Bindings bindings : removed.getBindings()) {
+				for(String var : bindings.getVariables()) {
+					if (bindings.isURI(var)) {
+						for(String prefix : URI2PrefixMap.keySet())
+							if(bindings.getBindingValue(var).startsWith(prefix)) {
+								bindings.addBinding(var, new RDFTermURI(bindings.getBindingValue(var).replace(prefix, URI2PrefixMap.get(prefix)+":")));
+								break;
+							}
+					}
+				}
+			}
+			
+			if (onSubscribe) {
+				onSubscribe = false;
+				consumer.onSubscribe(added, spuid);
+				return;
+			}
+			
 			//Dispatch different notifications based on notify content
 			if (!added.isEmpty()) consumer.notifyAdded(added,spuid,sequence);
 			if (!removed.isEmpty()) consumer.notifyRemoved(removed,spuid,sequence);
@@ -39,7 +88,7 @@ public abstract class Consumer extends Client implements IConsumer {
 		
 	}
 	
-	public Consumer(SPARQLApplicationProfile appProfile,String subscribeID) {
+	public Consumer(ApplicationProfile appProfile,String subscribeID) {
 		super(appProfile);
 		if (appProfile == null) {
 			Logger.log(VERBOSITY.FATAL,tag,"Cannot be initialized with SUBSCRIBE ID: "+subscribeID+ " (application profile is null)");
@@ -51,7 +100,7 @@ public abstract class Consumer extends Client implements IConsumer {
 		handler = new ConsumerHandler(this);
 	}
 	
-	public String subscribe(SPARQLQuerySolution forcedBindings) {
+	public String subscribe(Bindings forcedBindings) {
 		if (SPARQL_SUBSCRIBE == null) {
 			 Logger.log(VERBOSITY.FATAL, tag, "SPARQL SUBSCRIBE not defined");
 			 return null;
@@ -66,6 +115,8 @@ public abstract class Consumer extends Client implements IConsumer {
 		
 		Logger.log(VERBOSITY.DEBUG,tag,"<SUBSCRIBE> ==> "+sparql);
 	
+		 onSubscribe = true;
+		 
 		return protocolClient.subscribe(sparql, handler);
 	}
 	 

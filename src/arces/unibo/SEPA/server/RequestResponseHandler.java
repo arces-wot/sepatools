@@ -1,3 +1,20 @@
+/* This class implements the interface between the input gates (e.g. HTTP, WS) and the scheduler/SPUs
+    Copyright (C) 2016-2017 Luca Roffia (luca.roffia@unibo.it)
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 package arces.unibo.SEPA.server;
 
 import java.util.HashMap;
@@ -45,6 +62,9 @@ public class RequestResponseHandler {
 	//Response listeners
 	private HashMap<Integer,ResponseListener> listeners = new HashMap<Integer,ResponseListener>();
 	private HashMap<String,ResponseListener> subscribers = new HashMap<String,ResponseListener>();
+	
+	//Single update processing (sequential subscriptions processing)
+	private static int subscriptionsChecked = 0;
 	
 	public RequestResponseHandler(Properties properties){
 		if (properties == null) Logger.log(VERBOSITY.ERROR, tag, "Properties are null");
@@ -150,5 +170,19 @@ public class RequestResponseHandler {
 			} catch (InterruptedException e) {}
 		}
 		return req;
+	}
+	
+	public synchronized void waitAllSubscriptionChecks(int n) {
+		subscriptionsChecked = 0;
+		while (subscriptionsChecked != n) {
+			try {
+				wait();
+			} catch (InterruptedException e) {}
+		}
+	}
+	
+	public synchronized void subscriptionCheckEnded() {
+		subscriptionsChecked++;
+		notifyAll();
 	}
 }

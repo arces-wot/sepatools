@@ -1,3 +1,20 @@
+/* This class represents the content of a SEPA notification
+Copyright (C) 2016-2017 Luca Roffia (luca.roffia@unibo.it)
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 package arces.unibo.SEPA.commons;
 
 import com.google.gson.JsonArray;
@@ -19,7 +36,7 @@ public class ARBindingsResults {
 		this.results = results;
 	} 
 	
-	public ARBindingsResults(SPARQLBindingsResults added,SPARQLBindingsResults removed) {
+	public ARBindingsResults(BindingsResults added,BindingsResults removed) {
 		JsonObject nullResults = new JsonObject();
 		JsonArray arr = new JsonArray();
 		nullResults.add("bindings", arr);
@@ -55,17 +72,17 @@ public class ARBindingsResults {
 		return results;
 	}
 
-	public SPARQLBindingsResults getAddedBindings() {
+	public BindingsResults getAddedBindings() {
 		JsonObject ret = new JsonObject();
 		ret.add("results", results.get("addedresults"));
 		ret.add("head", results.get("head"));
-		return new SPARQLBindingsResults(ret);
+		return new BindingsResults(ret);
 	}
 
-	public SPARQLBindingsResults getRemovedBindings() {
+	public BindingsResults getRemovedBindings() {
 		JsonObject ret = new JsonObject();
 		ret.add("results", results.get("removedresults"));
 		ret.add("head", results.get("head"));
-		return new SPARQLBindingsResults(ret);
+		return new BindingsResults(ret);
 	}
 }
