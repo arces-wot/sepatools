@@ -1,4 +1,4 @@
-/* This class represents a UNSUBSCRIBE response
+/* This class represents an error response message
 Copyright (C) 2016-2017 Luca Roffia (luca.roffia@unibo.it)
 
 This program is free software: you can redistribute it and/or modify
@@ -17,20 +17,33 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package arces.unibo.SEPA.commons;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 
-public class UnsubscribeResponse extends Response {
+public class PingResponse {
+	protected JsonObject json;
 	
-	public UnsubscribeResponse(Integer token, String SPUID) {
-		super(token, new JsonObject());
-		
-		JsonPrimitive jsonSpuid = new JsonPrimitive(SPUID);
-		json.add("unsubscribed", jsonSpuid);
+	public PingResponse() {
+		Date date = new Date();
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+		String timestamp = sdf.format(date);
+		json = new JsonObject();
+		JsonArray array = new JsonArray();
+		JsonObject time = new JsonObject();
+		time.add("timestamp", new JsonPrimitive(timestamp));
+		array.add(time);
+		json.add("ping", array );
 	}
 	
-	public String getSPUID() {
-		return super.toJson().get("unsubscribed").getAsString();
+	public String toString() {
+		return json.toString();
 	}
-
+	
+	public JsonObject toJson(){
+		return json;
+	}
 }

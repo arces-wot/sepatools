@@ -46,17 +46,22 @@ import javax.swing.table.TableModel;
 import javax.swing.table.TableRowSorter;
 import javax.swing.JPanel;
 import javax.swing.JList;
-import javax.swing.DefaultListModel;
+import javax.swing.AbstractListModel;
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
 import javax.swing.JScrollPane;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Properties;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.Vector;
 
 import javax.swing.JTabbedPane;
@@ -101,8 +106,74 @@ public class Dashboard implements NotificationHandler {
 	private ForcedBindingsTableModel updateForcedBindingsDM = new ForcedBindingsTableModel();
 	private ForcedBindingsTableModel subscribeForcedBindingsDM = new ForcedBindingsTableModel();
 	
-	private DefaultListModel<String> updateListDM = new DefaultListModel<String>();
-	private DefaultListModel<String> subscribeListDM = new DefaultListModel<String>();
+	//private DefaultListModel<String> updateListDM = new DefaultListModel<String>();
+	//private DefaultListModel<String> subscribeListDM = new DefaultListModel<String>();
+	
+	private SortedListModel updateListDM = new SortedListModel();
+	private SortedListModel subscribeListDM = new SortedListModel();
+	
+	class SortedListModel extends AbstractListModel<String> {
+
+		  /**
+		 * 
+		 */
+		private static final long serialVersionUID = -4860350252985388420L;
+		
+		SortedSet<String> model;
+
+		  public SortedListModel() {
+		    model = new TreeSet<String>();
+		  }
+
+		  public int getSize() {
+		    return model.size();
+		  }
+
+		  public String getElementAt(int index) {
+		    return (String) model.toArray()[index];
+		  }
+
+		  public void add(String element) {
+		    if (model.add(element)) {
+		      fireContentsChanged(this, 0, getSize());
+		    }
+		  }
+
+		  public void addAll(String elements[]) {
+		    Collection<String> c = Arrays.asList(elements);
+		    model.addAll(c);
+		    fireContentsChanged(this, 0, getSize());
+		  }
+
+		  public void clear() {
+		    model.clear();
+		    fireContentsChanged(this, 0, getSize());
+		  }
+
+		  public boolean contains(Object element) {
+		    return model.contains(element);
+		  }
+
+		  public Object firstElement() {
+		    return model.first();
+		  }
+
+		  public Iterator<String> iterator() {
+		    return model.iterator();
+		  }
+
+		  public Object lastElement() {
+		    return model.last();
+		  }
+
+		  public boolean removeElement(Object element) {
+		    boolean removed = model.remove(element);
+		    if (removed) {
+		      fireContentsChanged(this, 0, getSize());
+		    }
+		    return removed;
+		  }
+		}
 	
 	private DefaultTableModel propertiesDM;
 	private String propertiesHeader[] = new String[] {"Property", "Domain","Range","Comment"};
@@ -988,11 +1059,13 @@ public class Dashboard implements NotificationHandler {
 						}
 						//Loading updates
 						for(String update : appProfile.getUpdateIds()) {
-							updateListDM.addElement(update);
+							//updateListDM.addElement(update);
+							updateListDM.add(update);
 						}
 						//Loading updates
 						for(String subscribe : appProfile.getSubscribeIds()) {
-							subscribeListDM.addElement(subscribe);
+							//subscribeListDM.addElement(subscribe);
+							subscribeListDM.add(subscribe);
 						}
 					}
 				}
@@ -1103,43 +1176,49 @@ public class Dashboard implements NotificationHandler {
 		gbc_primitives.gridy = 2;
 		SPARQLPanel.add(primitives, gbc_primitives);
 		GridBagLayout gbl_primitives = new GridBagLayout();
-		gbl_primitives.columnWidths = new int[]{0, 0, 0};
-		gbl_primitives.rowHeights = new int[]{46, 115, 0, 0};
+		gbl_primitives.columnWidths = new int[]{684, 0, 0};
+		gbl_primitives.rowHeights = new int[]{119, 115, 0, 0};
 		gbl_primitives.columnWeights = new double[]{1.0, 1.0, Double.MIN_VALUE};
 		gbl_primitives.rowWeights = new double[]{1.0, 1.0, 0.0, Double.MIN_VALUE};
 		primitives.setLayout(gbl_primitives);
 		
-		JPanel panelUpdate = new JPanel();
-		GridBagConstraints gbc_panelUpdate = new GridBagConstraints();
-		gbc_panelUpdate.fill = GridBagConstraints.BOTH;
-		gbc_panelUpdate.insets = new Insets(0, 0, 5, 5);
-		gbc_panelUpdate.gridx = 0;
-		gbc_panelUpdate.gridy = 0;
-		primitives.add(panelUpdate, gbc_panelUpdate);
-		GridBagLayout gbl_panelUpdate = new GridBagLayout();
-		gbl_panelUpdate.columnWidths = new int[]{142, 0, 0};
-		gbl_panelUpdate.rowHeights = new int[]{15, 97, 0};
-		gbl_panelUpdate.columnWeights = new double[]{0.0, 1.0, Double.MIN_VALUE};
-		gbl_panelUpdate.rowWeights = new double[]{0.0, 0.0, Double.MIN_VALUE};
-		panelUpdate.setLayout(gbl_panelUpdate);
+		JSplitPane splitPanel_Update = new JSplitPane();
+		splitPanel_Update.setResizeWeight(0.5);
+		GridBagConstraints gbc_splitPanel_Update = new GridBagConstraints();
+		gbc_splitPanel_Update.insets = new Insets(0, 0, 5, 5);
+		gbc_splitPanel_Update.fill = GridBagConstraints.BOTH;
+		gbc_splitPanel_Update.gridx = 0;
+		gbc_splitPanel_Update.gridy = 0;
+		primitives.add(splitPanel_Update, gbc_splitPanel_Update);
+		
+		JPanel panel_4 = new JPanel();
+		splitPanel_Update.setLeftComponent(panel_4);
+		GridBagLayout gbl_panel_4 = new GridBagLayout();
+		gbl_panel_4.columnWidths = new int[]{66, 0};
+		gbl_panel_4.rowHeights = new int[]{17, 0, 0};
+		gbl_panel_4.columnWeights = new double[]{1.0, Double.MIN_VALUE};
+		gbl_panel_4.rowWeights = new double[]{0.0, 1.0, Double.MIN_VALUE};
+		panel_4.setLayout(gbl_panel_4);
 		
 		JLabel lblUpdates = new JLabel("UPDATEs");
 		GridBagConstraints gbc_lblUpdates = new GridBagConstraints();
-		gbc_lblUpdates.insets = new Insets(0, 0, 5, 5);
+		gbc_lblUpdates.fill = GridBagConstraints.HORIZONTAL;
+		gbc_lblUpdates.anchor = GridBagConstraints.NORTH;
+		gbc_lblUpdates.insets = new Insets(0, 0, 5, 0);
 		gbc_lblUpdates.gridx = 0;
 		gbc_lblUpdates.gridy = 0;
-		panelUpdate.add(lblUpdates, gbc_lblUpdates);
+		panel_4.add(lblUpdates, gbc_lblUpdates);
 		lblUpdates.setFont(new Font("Lucida Grande", Font.BOLD, 14));
 		
-		JScrollPane scrollPane_2 = new JScrollPane();
-		GridBagConstraints gbc_scrollPane_2 = new GridBagConstraints();
-		gbc_scrollPane_2.insets = new Insets(0, 0, 0, 5);
-		gbc_scrollPane_2.fill = GridBagConstraints.BOTH;
-		gbc_scrollPane_2.gridx = 0;
-		gbc_scrollPane_2.gridy = 1;
-		panelUpdate.add(scrollPane_2, gbc_scrollPane_2);
+		JScrollPane scrollPane = new JScrollPane();
+		GridBagConstraints gbc_scrollPane = new GridBagConstraints();
+		gbc_scrollPane.fill = GridBagConstraints.BOTH;
+		gbc_scrollPane.gridx = 0;
+		gbc_scrollPane.gridy = 1;
+		panel_4.add(scrollPane, gbc_scrollPane);
 		
 		JList<String> updatesList = new JList<String>(updateListDM);
+		scrollPane.setViewportView(updatesList);
 		updatesList.addListSelectionListener(new ListSelectionListener() {
 			public void valueChanged(ListSelectionEvent e) {
 				if (e.getValueIsAdjusting() == false) {
@@ -1162,56 +1241,67 @@ public class Dashboard implements NotificationHandler {
 			    }
 			}
 		});
-		scrollPane_2.setViewportView(updatesList);
 		updatesList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+		
+		JPanel panel_5 = new JPanel();
+		splitPanel_Update.setRightComponent(panel_5);
+		GridBagLayout gbl_panel_5 = new GridBagLayout();
+		gbl_panel_5.columnWidths = new int[]{101, 0};
+		gbl_panel_5.rowHeights = new int[]{16, 0, 0};
+		gbl_panel_5.columnWeights = new double[]{1.0, Double.MIN_VALUE};
+		gbl_panel_5.rowWeights = new double[]{0.0, 1.0, Double.MIN_VALUE};
+		panel_5.setLayout(gbl_panel_5);
 		
 		JLabel lblForcedBindings = new JLabel("Forced bindings");
 		GridBagConstraints gbc_lblForcedBindings = new GridBagConstraints();
 		gbc_lblForcedBindings.anchor = GridBagConstraints.NORTH;
 		gbc_lblForcedBindings.insets = new Insets(0, 0, 5, 0);
-		gbc_lblForcedBindings.gridx = 1;
+		gbc_lblForcedBindings.gridx = 0;
 		gbc_lblForcedBindings.gridy = 0;
-		panelUpdate.add(lblForcedBindings, gbc_lblForcedBindings);
+		panel_5.add(lblForcedBindings, gbc_lblForcedBindings);
 		
-		JScrollPane scrollPane = new JScrollPane();
-		GridBagConstraints gbc_scrollPane = new GridBagConstraints();
-		gbc_scrollPane.fill = GridBagConstraints.BOTH;
-		gbc_scrollPane.gridx = 1;
-		gbc_scrollPane.gridy = 1;
-		panelUpdate.add(scrollPane, gbc_scrollPane);
+		JScrollPane scrollPane_2 = new JScrollPane();
+		GridBagConstraints gbc_scrollPane_2 = new GridBagConstraints();
+		gbc_scrollPane_2.fill = GridBagConstraints.BOTH;
+		gbc_scrollPane_2.gridx = 0;
+		gbc_scrollPane_2.gridy = 1;
+		panel_5.add(scrollPane_2, gbc_scrollPane_2);
 		
 		updateForcedBindings = new JTable(updateForcedBindingsDM);
-		scrollPane.setViewportView(updateForcedBindings);
+		scrollPane_2.setViewportView(updateForcedBindings);
 		
-		JPanel panelSubscribe = new JPanel();
-		GridBagConstraints gbc_panelSubscribe = new GridBagConstraints();
-		gbc_panelSubscribe.fill = GridBagConstraints.BOTH;
-		gbc_panelSubscribe.insets = new Insets(0, 0, 5, 0);
-		gbc_panelSubscribe.gridx = 1;
-		gbc_panelSubscribe.gridy = 0;
-		primitives.add(panelSubscribe, gbc_panelSubscribe);
-		GridBagLayout gbl_panelSubscribe = new GridBagLayout();
-		gbl_panelSubscribe.columnWidths = new int[]{152, 0, 0};
-		gbl_panelSubscribe.rowHeights = new int[]{13, 0, 0};
-		gbl_panelSubscribe.columnWeights = new double[]{0.0, 1.0, Double.MIN_VALUE};
-		gbl_panelSubscribe.rowWeights = new double[]{0.0, 1.0, Double.MIN_VALUE};
-		panelSubscribe.setLayout(gbl_panelSubscribe);
+		JSplitPane splitPanel_Subscribe = new JSplitPane();
+		GridBagConstraints gbc_splitPanel_Subscribe = new GridBagConstraints();
+		gbc_splitPanel_Subscribe.insets = new Insets(0, 0, 5, 0);
+		gbc_splitPanel_Subscribe.fill = GridBagConstraints.BOTH;
+		gbc_splitPanel_Subscribe.gridx = 1;
+		gbc_splitPanel_Subscribe.gridy = 0;
+		primitives.add(splitPanel_Subscribe, gbc_splitPanel_Subscribe);
+		
+		JPanel panel_6 = new JPanel();
+		splitPanel_Subscribe.setLeftComponent(panel_6);
+		GridBagLayout gbl_panel_6 = new GridBagLayout();
+		gbl_panel_6.columnWidths = new int[]{193, 0};
+		gbl_panel_6.rowHeights = new int[]{17, 132, 0};
+		gbl_panel_6.columnWeights = new double[]{1.0, Double.MIN_VALUE};
+		gbl_panel_6.rowWeights = new double[]{0.0, 0.0, Double.MIN_VALUE};
+		panel_6.setLayout(gbl_panel_6);
 		
 		JLabel lblSubscribes = new JLabel("SUBSCRIBEs");
 		GridBagConstraints gbc_lblSubscribes = new GridBagConstraints();
-		gbc_lblSubscribes.insets = new Insets(0, 0, 5, 5);
+		gbc_lblSubscribes.anchor = GridBagConstraints.NORTH;
+		gbc_lblSubscribes.insets = new Insets(0, 0, 5, 0);
 		gbc_lblSubscribes.gridx = 0;
 		gbc_lblSubscribes.gridy = 0;
-		panelSubscribe.add(lblSubscribes, gbc_lblSubscribes);
+		panel_6.add(lblSubscribes, gbc_lblSubscribes);
 		lblSubscribes.setFont(new Font("Lucida Grande", Font.BOLD, 14));
 		
 		JScrollPane scrollPane_3 = new JScrollPane();
 		GridBagConstraints gbc_scrollPane_3 = new GridBagConstraints();
-		gbc_scrollPane_3.insets = new Insets(0, 0, 0, 5);
 		gbc_scrollPane_3.fill = GridBagConstraints.BOTH;
 		gbc_scrollPane_3.gridx = 0;
 		gbc_scrollPane_3.gridy = 1;
-		panelSubscribe.add(scrollPane_3, gbc_scrollPane_3);
+		panel_6.add(scrollPane_3, gbc_scrollPane_3);
 		
 		JList<String> subscribesList = new JList<String>(subscribeListDM);
 		subscribesList.addListSelectionListener(new ListSelectionListener() {
@@ -1239,34 +1329,43 @@ public class Dashboard implements NotificationHandler {
 		scrollPane_3.setViewportView(subscribesList);
 		subscribesList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		
+		JPanel panel_7 = new JPanel();
+		splitPanel_Subscribe.setRightComponent(panel_7);
+		GridBagLayout gbl_panel_7 = new GridBagLayout();
+		gbl_panel_7.columnWidths = new int[]{454, 0};
+		gbl_panel_7.rowHeights = new int[]{16, 126, 0};
+		gbl_panel_7.columnWeights = new double[]{1.0, Double.MIN_VALUE};
+		gbl_panel_7.rowWeights = new double[]{0.0, 1.0, Double.MIN_VALUE};
+		panel_7.setLayout(gbl_panel_7);
+		
 		JLabel lblForcedBindings_1 = new JLabel("Forced bindings");
 		GridBagConstraints gbc_lblForcedBindings_1 = new GridBagConstraints();
 		gbc_lblForcedBindings_1.anchor = GridBagConstraints.NORTH;
 		gbc_lblForcedBindings_1.insets = new Insets(0, 0, 5, 0);
-		gbc_lblForcedBindings_1.gridx = 1;
+		gbc_lblForcedBindings_1.gridx = 0;
 		gbc_lblForcedBindings_1.gridy = 0;
-		panelSubscribe.add(lblForcedBindings_1, gbc_lblForcedBindings_1);
+		panel_7.add(lblForcedBindings_1, gbc_lblForcedBindings_1);
 		
 		JScrollPane scrollPane_1 = new JScrollPane();
 		GridBagConstraints gbc_scrollPane_1 = new GridBagConstraints();
 		gbc_scrollPane_1.fill = GridBagConstraints.BOTH;
-		gbc_scrollPane_1.gridx = 1;
+		gbc_scrollPane_1.gridx = 0;
 		gbc_scrollPane_1.gridy = 1;
-		panelSubscribe.add(scrollPane_1, gbc_scrollPane_1);
+		panel_7.add(scrollPane_1, gbc_scrollPane_1);
 		
 		subscribeForcedBindings = new JTable(subscribeForcedBindingsDM);
 		scrollPane_1.setViewportView(subscribeForcedBindings);
 		
-		JScrollPane scrollPane_5 = new JScrollPane();
-		GridBagConstraints gbc_scrollPane_5 = new GridBagConstraints();
-		gbc_scrollPane_5.fill = GridBagConstraints.BOTH;
-		gbc_scrollPane_5.insets = new Insets(0, 0, 5, 5);
-		gbc_scrollPane_5.gridx = 0;
-		gbc_scrollPane_5.gridy = 1;
-		primitives.add(scrollPane_5, gbc_scrollPane_5);
+		JScrollPane scrollPane_Update = new JScrollPane();
+		GridBagConstraints gbc_scrollPane_Update = new GridBagConstraints();
+		gbc_scrollPane_Update.fill = GridBagConstraints.BOTH;
+		gbc_scrollPane_Update.insets = new Insets(0, 0, 5, 5);
+		gbc_scrollPane_Update.gridx = 0;
+		gbc_scrollPane_Update.gridy = 1;
+		primitives.add(scrollPane_Update, gbc_scrollPane_Update);
 		
 		SPARQLUpdate = new JTextArea();
-		scrollPane_5.setViewportView(SPARQLUpdate);
+		scrollPane_Update.setViewportView(SPARQLUpdate);
 		SPARQLUpdate.setLineWrap(true);
 		
 		btnUpdate = new JButton("UPDATE");
@@ -1300,16 +1399,16 @@ public class Dashboard implements NotificationHandler {
 			}
 		});
 		
-		JScrollPane scrollPane_6 = new JScrollPane();
-		GridBagConstraints gbc_scrollPane_6 = new GridBagConstraints();
-		gbc_scrollPane_6.fill = GridBagConstraints.BOTH;
-		gbc_scrollPane_6.insets = new Insets(0, 0, 5, 0);
-		gbc_scrollPane_6.gridx = 1;
-		gbc_scrollPane_6.gridy = 1;
-		primitives.add(scrollPane_6, gbc_scrollPane_6);
+		JScrollPane scrollPane_Subscribe = new JScrollPane();
+		GridBagConstraints gbc_scrollPane_Subscribe = new GridBagConstraints();
+		gbc_scrollPane_Subscribe.fill = GridBagConstraints.BOTH;
+		gbc_scrollPane_Subscribe.insets = new Insets(0, 0, 5, 0);
+		gbc_scrollPane_Subscribe.gridx = 1;
+		gbc_scrollPane_Subscribe.gridy = 1;
+		primitives.add(scrollPane_Subscribe, gbc_scrollPane_Subscribe);
 		
 		SPARQLSubscribe = new JTextArea();
-		scrollPane_6.setViewportView(SPARQLSubscribe);
+		scrollPane_Subscribe.setViewportView(SPARQLSubscribe);
 		SPARQLSubscribe.setLineWrap(true);
 		GridBagConstraints gbc_btnUpdate = new GridBagConstraints();
 		gbc_btnUpdate.insets = new Insets(0, 0, 0, 5);
@@ -1366,8 +1465,10 @@ public class Dashboard implements NotificationHandler {
 				}
 				else {
 					if (kp.unsubscribe()) {
-						btnSubscribe.setText("SUBSCRIBE");	
+						lblInfo.setText("Successfully unsubscribed ");	
 					}
+					
+					btnSubscribe.setText("SUBSCRIBE");	
 				}
 			}
 		});

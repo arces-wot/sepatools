@@ -17,19 +17,15 @@
 
 package arces.unibo.SEPA.server;
 
+import java.util.Observable;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import arces.unibo.SEPA.application.Logger;
 import arces.unibo.SEPA.application.Logger.VERBOSITY;
-import arces.unibo.SEPA.commons.ARBindingsResults;
-import arces.unibo.SEPA.commons.ErrorResponse;
-import arces.unibo.SEPA.commons.Notification;
-import arces.unibo.SEPA.commons.QueryResponse;
-import arces.unibo.SEPA.commons.Response;
-import arces.unibo.SEPA.commons.BindingsResults;
-import arces.unibo.SEPA.commons.Bindings;
 import arces.unibo.SEPA.commons.SubscribeRequest;
 import arces.unibo.SEPA.commons.SubscribeResponse;
+import arces.unibo.SEPA.commons.SubscriptionProcessingResult;
 import arces.unibo.SEPA.commons.UpdateResponse;
 
 /**
@@ -40,111 +36,82 @@ import arces.unibo.SEPA.commons.UpdateResponse;
 * @version 0.1
 * */
 
-public class SPU extends Thread {
+public abstract class SPU extends Observable implements Runnable {
 	private static String tag ="SPU";
-	
-	private SubscribeRequest subscribe = null;
-	private Endpoint endpoint = null;
-	private RequestResponseHandler handler = null;
-	
-	private boolean running = true;
-	
+		
 	private String uuid = null;
-	private Integer sequence = 0;
+	private ConcurrentLinkedQueue<SubscriptionProcessingInputData> spuData = new ConcurrentLinkedQueue<SubscriptionProcessingInputData>();
+	private boolean running = true;
+	protected SubscriptionProcessingInputData subscription = new SubscriptionProcessingInputData();
 	
-	private boolean newUpdate = false;
-	
-	public SPU(SubscribeRequest subscribe,Endpoint endpoint,RequestResponseHandler handler) {
-		this.subscribe = subscribe;
-		this.endpoint = endpoint;
-		this.handler = handler;
-		uuid = UUID.randomUUID().toString();
+	class SubscriptionProcessingInputData {
+		public UpdateResponse update = null;
+		public QueryProcessor queryProcessor = null;
+		public SubscribeRequest subscribe = null;	
 	}
 	
-	public void stopRunning() {
+	public SPU(SubscribeRequest subscribe,Endpoint endpoint) {
+		uuid = UUID.randomUUID().toString();
+		subscription.subscribe = subscribe;
+		subscription.queryProcessor = new QueryProcessor(endpoint);
+		spuData.offer(subscription);
+	}
+	
+	public synchronized void stopRunning() {
 		running = false;
-		interrupt();
+		notifyAll();
 	}
 	
 	public String getUUID() {
 		return uuid;
 	}
 	
-	@Override
-	public void run() {
-		//Send response
-		Response ret = endpoint.query(subscribe);
-		if (ret.getClass().equals(ErrorResponse.class)) return;		
-		QueryResponse queryResults = (QueryResponse) ret;
-		
-		SubscribeResponse response = new SubscribeResponse(queryResults.getToken(),getUUID());
-		handler.addResponse(response);
-		
-		BindingsResults lastBindings = queryResults.getBindingsResults();
-		if (!lastBindings.isEmpty()) {
-			ARBindingsResults bindings =  new ARBindingsResults(lastBindings,null);
-			Notification notification = new Notification(getUUID(),bindings,sequence++);
-			handler.addNotification(notification);	
-		}
-		
-		//Main loop
-		Logger.log(VERBOSITY.INFO, tag, getName()+" Entering main loop...");
-		while(running){			
-			//Wait for a new update
-			if(!wait4Update()) return;
-			
-			ret = endpoint.query(subscribe);
-			if (ret.getClass().equals(ErrorResponse.class)) {
-				handler.subscriptionCheckEnded();
-				continue;		
-			}
-			QueryResponse currentResults = (QueryResponse) ret;
-			
-			BindingsResults currentBindings = currentResults.getBindingsResults();
-			BindingsResults newBindings = new BindingsResults(currentBindings);
-			
-			BindingsResults added = new BindingsResults(currentBindings.getVariables(),null);
-			BindingsResults removed = new BindingsResults(currentBindings.getVariables(),null);
-			
-			for(Bindings solution : lastBindings.getBindings()) {
-				if(!currentBindings.contains(solution)) removed.add(solution);
-				else currentBindings.remove(solution);	
-			}
-			
-			for(Bindings solution : currentBindings.getBindings()) {
-				if(!lastBindings.contains(solution)) added.add(solution);	
-			}
-				
-			//Send notification
-			if (!added.isEmpty() || !removed.isEmpty()){
-				ARBindingsResults bindings =  new ARBindingsResults(added,removed);
-				Notification notification = new Notification(getUUID(),bindings,sequence++);
-				handler.addNotification(notification);
-			}
-			
-			lastBindings = new BindingsResults(newBindings);
-			
-			handler.subscriptionCheckEnded();
-		}	
-	}
+	//To be implemented by specific implementations
+	public abstract void init();
+	public abstract SubscriptionProcessingResult process(SubscriptionProcessingInputData update);
 	
-	public synchronized boolean wait4Update() {
-		newUpdate = false;
-		while(!newUpdate){
-			try {
-				Logger.log(VERBOSITY.INFO, tag, getName()+" Waiting new update response...");
-				wait();
-			} catch (InterruptedException e) {
-				if (!newUpdate) return false;
-			}
-		}
-		newUpdate = false;
-		return true;
-	}
-	
-	public synchronized void check4Notification(UpdateResponse res) {
-		newUpdate = true;
+	public synchronized void subscriptionCheck(UpdateResponse res) {
+		subscription.update = res;
+		spuData.offer(subscription);
 		notifyAll();
 	}
-
+	
+	private synchronized SubscriptionProcessingInputData waitUpdate() {
+		while(spuData.isEmpty()){
+			try {
+				Logger.log(VERBOSITY.DEBUG, tag, getUUID() + " Waiting new update response...");
+				wait();
+			} catch (InterruptedException e) {}
+			
+			if (!running) return null;
+		}
+		
+		return spuData.poll();	
+	}
+	@Override
+	public void run() {
+		//Notify subscription ID (SPU ID)
+		SubscriptionProcessingInputData request = spuData.poll();
+		SubscribeResponse response = new SubscribeResponse(request.subscribe.getToken(),getUUID());
+		setChanged();
+		notifyObservers(response);
+			
+		init();
+		
+		//Main loop
+		Logger.log(VERBOSITY.DEBUG, tag, getUUID()+" Entering main loop...");
+		while(running){			
+			//Wait new update
+			SubscriptionProcessingInputData update = waitUpdate();
+			
+			if (update == null && !running) return;
+			
+			//Processing
+			SubscriptionProcessingResult result = process(update);
+			
+			//Results notification
+			setChanged();
+			notifyObservers(result);
+		}	
+	}
 }

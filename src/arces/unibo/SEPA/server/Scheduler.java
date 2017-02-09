@@ -17,18 +17,24 @@
 
 package arces.unibo.SEPA.server;
 
-import java.util.HashMap;
+import java.util.Observable;
+import java.util.Observer;
 import java.util.Properties;
 
 import arces.unibo.SEPA.application.Logger;
 import arces.unibo.SEPA.application.Logger.VERBOSITY;
+import arces.unibo.SEPA.commons.ErrorResponse;
+import arces.unibo.SEPA.commons.Notification;
 import arces.unibo.SEPA.commons.QueryRequest;
-import arces.unibo.SEPA.commons.Response;
+import arces.unibo.SEPA.commons.QueryResponse;
+import arces.unibo.SEPA.commons.Request;
 import arces.unibo.SEPA.commons.SubscribeRequest;
+import arces.unibo.SEPA.commons.SubscribeResponse;
 import arces.unibo.SEPA.commons.UnsubscribeRequest;
 import arces.unibo.SEPA.commons.UnsubscribeResponse;
 import arces.unibo.SEPA.commons.UpdateRequest;
 import arces.unibo.SEPA.commons.UpdateResponse;
+import arces.unibo.SEPA.server.RequestResponseHandler.ResponseListener;
 
 /**
  * This class represents the scheduler of the SUB Engine
@@ -38,67 +44,41 @@ import arces.unibo.SEPA.commons.UpdateResponse;
 * @version 0.1
 * */
 
-public class Scheduler extends Thread {
+public class Scheduler extends Thread implements Observer {
 	private static String tag = "Scheduler";
 	
 	private RequestResponseHandler requestHandler;
-	private Endpoint endpoint;
-	private HashMap<String,SPU> spus = new HashMap<String,SPU>();
+	private TokenHandler tokenHandler;
+	private Processor processor;
 	
 	private UpdateScheduler updateScheduler = new UpdateScheduler();
 	private SubscribeScheduler subscribeScheduler = new SubscribeScheduler();
 	private UnsubscribeScheduler unsubscribeScheduler = new UnsubscribeScheduler();
 	private QueryScheduler queryScheduler = new QueryScheduler();
-	
-	private SPUScheduler spuScheduler = new SPUScheduler();
-	
+		
 	private boolean running = true;
 	
-	public Scheduler(Properties properties,RequestResponseHandler requestHandler,Endpoint endpoint) {
-		this.endpoint = endpoint;
-		if (endpoint == null) Logger.log(VERBOSITY.ERROR, tag, "Endpoint is null");
+	public Scheduler(Properties properties,Processor processor) {
+		requestHandler = new RequestResponseHandler(properties);
+		tokenHandler = new TokenHandler(properties);
 		
-		this.requestHandler = requestHandler;
-		if (requestHandler == null) Logger.log(VERBOSITY.ERROR, tag, "Request handler is null");
-		
-		if (properties == null) Logger.log(VERBOSITY.ERROR, tag, "Properties are null");
-	}	
-	
-	private class SPUScheduler extends Thread {
-		@Override
-		public void run() {
-			while(running){
-				Logger.log(VERBOSITY.DEBUG, tag, "Waiting for update response...");
-				UpdateResponse res = requestHandler.waitUpdateResponse();
-				
-				Logger.log(VERBOSITY.DEBUG, tag, "Check for notifications");
-				
-				synchronized(spus) {
-					for (SPU spu : spus.values()) spu.check4Notification(res);
-				}
-			}
+		if (processor == null) Logger.log(VERBOSITY.ERROR, tag, "Processor is null");
+		else {
+			this.processor = processor;
+			this.processor.addObserver(this);
 		}
-		
-		@Override
-		public void start() {
-			this.setName("SPU Scheduler");
-			super.start();
-		}	
-	}
+	}	
 	
 	private class UpdateScheduler extends Thread {
 		@Override
 		public void run() {
 			while(running){
 				Logger.log(VERBOSITY.DEBUG, tag, "Waiting for update requests...");
-				UpdateRequest req = requestHandler.waitUpdateRequest();
+				UpdateRequest req = requestHandler.waitUpdateRequest();				
 				
-				Logger.log(VERBOSITY.DEBUG, tag, "New update request: "+req.getSPARQL());
-				UpdateResponse res = endpoint.update(req);
-				requestHandler.addResponse(res);
-				
-				//Single UPDATE processing
-				requestHandler.waitAllSubscriptionChecks(spus.entrySet().size());
+				//Process UPDATE
+				Logger.log(VERBOSITY.DEBUG, tag, ">> UPDATE request #"+req.getToken());
+				processor.processUpdate(req);
 			}
 		}
 		
@@ -116,9 +96,9 @@ public class Scheduler extends Thread {
 				Logger.log(VERBOSITY.DEBUG, tag, "Waiting for query requests...");
 				QueryRequest req = requestHandler.waitQueryRequest();
 				
-				Logger.log(VERBOSITY.DEBUG, tag, "New query request: "+req.getSPARQL());
-				Response res = endpoint.query(req);
-				requestHandler.addResponse(res);
+				//Process QUERY
+				Logger.log(VERBOSITY.DEBUG, tag, ">> QUERY request #"+req.getToken());
+				processor.processQuery(req);
 			}
 		}
 		
@@ -136,15 +116,9 @@ public class Scheduler extends Thread {
 				Logger.log(VERBOSITY.DEBUG, tag, "Waiting for subscribe requests...");
 				SubscribeRequest req = requestHandler.waitSubscribeRequest();
 				
-				Logger.log(VERBOSITY.DEBUG, tag, "New subscribe request: "+req.getSPARQL());
-				
-				SPU spu = new SPU(req,endpoint,requestHandler);
-				
-				synchronized(spus) {
-					spus.put(spu.getUUID(),spu);
-				}
-				spu.setName("SPU_"+spu.getUUID());
-				spu.start();
+				//Process SUBSCRIBE
+				Logger.log(VERBOSITY.DEBUG, tag, ">> SUBSCRIBE request #"+req.getToken());
+				processor.processSubscribe(req);
 			}
 		}
 		
@@ -160,20 +134,11 @@ public class Scheduler extends Thread {
 		public void run() {			
 			while(running){
 				Logger.log(VERBOSITY.DEBUG, tag, "Waiting for unsubscribe requests...");
-				UnsubscribeRequest req = requestHandler.waitUnsubscribeRequest();
+				UnsubscribeRequest req = requestHandler.waitUnsubscribeRequest();				
 				
-				Logger.log(VERBOSITY.DEBUG, tag, "New unsubscribe request: "+req.getSPARQL());
-				
-				String spuid = req.getSubscribeUUID();
-				
-				synchronized(spus){
-					if (spus.containsKey(spuid)){
-						spus.get(spuid).stopRunning();
-						spus.remove(spuid);
-					}
-				}
-				
-				requestHandler.addResponse(new UnsubscribeResponse(req.getToken(),spuid));
+				//Process UNSUBSCRIBE
+				Logger.log(VERBOSITY.DEBUG, tag, ">> UNSUBSCRIBE request #"+req.getToken());
+				processor.processUnsubscribe(req);
 			}
 		}
 		
@@ -192,6 +157,55 @@ public class Scheduler extends Thread {
 		subscribeScheduler.start();
 		unsubscribeScheduler.start();
 		queryScheduler.start();
-		spuScheduler.start();
 	}
+
+	@Override
+	public void update(Observable o, Object arg) {
+		if (arg.getClass().equals(Notification.class)) {
+			Notification notify = (Notification) arg;
+			requestHandler.addNotification(notify);
+			Logger.log(VERBOSITY.DEBUG, tag, "<< NOTIFICATION ("+notify.getSequence()+") "+notify.getSPUID());
+		}
+		else if (arg.getClass().equals(QueryResponse.class)) {
+			QueryResponse response = (QueryResponse) arg;
+			requestHandler.addResponse(response);
+			Logger.log(VERBOSITY.DEBUG, tag, "<< QUERY response #"+response.getToken());
+		}
+		else if (arg.getClass().equals(UpdateResponse.class)) {
+			UpdateResponse response = (UpdateResponse) arg;
+			requestHandler.addResponse(response);
+			Logger.log(VERBOSITY.DEBUG, tag, "<< UPDATE response #"+response.getToken());
+		}
+		else if (arg.getClass().equals(SubscribeResponse.class)) {
+			SubscribeResponse response = (SubscribeResponse) arg;
+			requestHandler.addResponse(response);
+			Logger.log(VERBOSITY.DEBUG, tag, "<< SUBSCRIBE response #"+response.getToken());
+		}
+		else if (arg.getClass().equals(UnsubscribeResponse.class)) {
+			UnsubscribeResponse response = (UnsubscribeResponse) arg;
+			requestHandler.addResponse(response);
+			Logger.log(VERBOSITY.DEBUG, tag, "<< UNSUBSCRIBE response #"+response.getToken());
+		}
+		else if (arg.getClass().equals(ErrorResponse.class)) {
+			ErrorResponse response = (ErrorResponse) arg;
+			requestHandler.addResponse(response);
+			Logger.log(VERBOSITY.WARNING, tag, "<< Error response: #"+response.getToken());
+		}
+		else {
+			Logger.log(VERBOSITY.WARNING, tag, "<< Unsupported response: "+arg.toString());
+		}
+	}
+
+	public Integer getToken() {
+		return tokenHandler.getToken();
+	}
+
+	public void addRequest(Request request, ResponseListener listener) {
+		requestHandler.addRequest(request, listener);
+	}
+
+	public void releaseToken(Integer token) {
+		tokenHandler.releaseToken(token);
+	}
+
 }

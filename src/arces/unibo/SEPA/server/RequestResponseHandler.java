@@ -25,11 +25,13 @@ import arces.unibo.SEPA.application.Logger;
 import arces.unibo.SEPA.application.Logger.VERBOSITY;
 import arces.unibo.SEPA.commons.Notification;
 import arces.unibo.SEPA.commons.QueryRequest;
+import arces.unibo.SEPA.commons.QueryResponse;
 import arces.unibo.SEPA.commons.Request;
 import arces.unibo.SEPA.commons.Response;
 import arces.unibo.SEPA.commons.SubscribeRequest;
 import arces.unibo.SEPA.commons.SubscribeResponse;
 import arces.unibo.SEPA.commons.UnsubscribeRequest;
+import arces.unibo.SEPA.commons.UnsubscribeResponse;
 import arces.unibo.SEPA.commons.UpdateRequest;
 import arces.unibo.SEPA.commons.UpdateResponse;
 
@@ -60,129 +62,192 @@ public class RequestResponseHandler {
 	private ConcurrentLinkedQueue<UpdateResponse> updateResponseQueue = new ConcurrentLinkedQueue<UpdateResponse>();
 	
 	//Response listeners
-	private HashMap<Integer,ResponseListener> listeners = new HashMap<Integer,ResponseListener>();
+	private HashMap<Integer,ResponseListener> responseListeners = new HashMap<Integer,ResponseListener>();
 	private HashMap<String,ResponseListener> subscribers = new HashMap<String,ResponseListener>();
-	
-	//Single update processing (sequential subscriptions processing)
-	private static int subscriptionsChecked = 0;
 	
 	public RequestResponseHandler(Properties properties){
 		if (properties == null) Logger.log(VERBOSITY.ERROR, tag, "Properties are null");
 	}
 	
-	public synchronized void addResponse(Response response) {
+	/**
+	 * This method add the response (e.g, UPDATE, QUERY, SUBSCRIBE, UNSUBSCRIBE)
+	 * 
+	 * @see Response
+	* */
+	public void addResponse(Response response) {
 		Integer token = response.getToken();
-		Logger.log(VERBOSITY.DEBUG, tag, "Add response #"+token);
 		
-		ResponseListener listener = listeners.get(token);
-		if (listener == null) Logger.log(VERBOSITY.WARNING, tag, "Listener is null"); 
-		else {
-			listener.notifyResponse(response);
-		}
-		listeners.remove(token);
+		//Notify listener
+		ResponseListener listener = responseListeners.get(token);
+		if (listener != null) listener.notifyResponse(response);
+		responseListeners.remove(token);
 		
 		if (response.getClass().equals(SubscribeResponse.class)) {
+			Logger.log(VERBOSITY.DEBUG, tag, "SUBSCRIBE response #"+token);
 			subscribers.put(((SubscribeResponse) response).getSPUID(),listener);
 		}
 		else if (response.getClass().equals(UpdateResponse.class)) {	
-			updateResponseQueue.offer((UpdateResponse)response);
-			notifyAll();
+			Logger.log(VERBOSITY.DEBUG, tag, "UPDATE response #"+token);
+			synchronized(updateResponseQueue) {
+				updateResponseQueue.offer((UpdateResponse)response);
+				updateResponseQueue.notifyAll();
+			}
+		}
+		else if (response.getClass().equals(UnsubscribeResponse.class)) {	
+			Logger.log(VERBOSITY.DEBUG, tag, "UNSUBSCRIBE response #"+token);
+		}
+		else if (response.getClass().equals(QueryResponse.class)) {	
+			Logger.log(VERBOSITY.DEBUG, tag, "QUERY response #"+token);
 		}
 	}
 	
+	/**
+	 * This method add a notification sent by a SPU
+	 * 
+	 * @see Notification
+	* */
 	public void addNotification(Notification notification) {
+		Logger.log(VERBOSITY.DEBUG, tag, "NOTIFICATION ("+notification.getSequence()+") "+notification.getSPUID());
 		subscribers.get(notification.getSPUID()).notifyResponse(notification);
 	}
 	
-	public synchronized void addRequest(Request req,ResponseListener listener) {
+	/**
+	 * This method is used by producers (e.g. HTTP Gate) to add a request (e.g, UPDATE, QUERY, SUBSCRIBE, UNSUBSCRIBE). The registered listener will receive a notification when the request will be completed
+	 * 
+	 * @see Request, ResponseListener
+	* */
+	public void addRequest(Request req,ResponseListener listener) {
 		//Register response listener
-		listeners.put(req.getToken(), listener);
+		responseListeners.put(req.getToken(), listener);
 		
-		//Add request to the request queue
+		//Add request to the right queue
 		if (req.getClass().equals(QueryRequest.class)) {
-			Logger.log(VERBOSITY.INFO, tag, "Add QUERY request #"+req.getToken());
-			queryRequestQueue.offer((QueryRequest)req);
+			
+			synchronized(queryRequestQueue) {
+				Logger.log(VERBOSITY.DEBUG, tag, "QUERY request #"+req.getToken());
+				queryRequestQueue.offer((QueryRequest)req);
+				queryRequestQueue.notifyAll();
+			}
 		}
 		else if (req.getClass().equals(UpdateRequest.class)) {
-			Logger.log(VERBOSITY.INFO, tag, "Add UPDATE request #"+req.getToken());
-			updateRequestQueue.offer((UpdateRequest)req);
+			
+			synchronized(updateRequestQueue) {
+				Logger.log(VERBOSITY.DEBUG, tag, "UPDATE request #"+req.getToken());
+				updateRequestQueue.offer((UpdateRequest)req);
+				updateRequestQueue.notifyAll();
+			}
 		}
 		else if (req.getClass().equals(SubscribeRequest.class)) {
-			Logger.log(VERBOSITY.INFO, tag, "Add SUBSCRIBE request #"+req.getToken());
-			subscribeRequestQueue.offer((SubscribeRequest)req);
+			
+			synchronized(subscribeRequestQueue) {
+				Logger.log(VERBOSITY.DEBUG, tag, "SUBSCRIBE request #"+req.getToken());
+				subscribeRequestQueue.offer((SubscribeRequest)req);
+				subscribeRequestQueue.notifyAll();
+			}
 		}
 		else {
-			Logger.log(VERBOSITY.INFO, tag, "Add UNSUBSCRIBE request #"+req.getToken());
-			unsubscribeRequestQueue.offer((UnsubscribeRequest)req);
+			
+			synchronized(unsubscribeRequestQueue) {
+				Logger.log(VERBOSITY.DEBUG, tag, "UNSUBSCRIBE request #"+req.getToken());
+				unsubscribeRequestQueue.offer((UnsubscribeRequest)req);
+				unsubscribeRequestQueue.notifyAll();
+			}
 		}
-		
-		notifyAll();
 	}
 	
-	public synchronized UpdateResponse waitUpdateResponse() {
+	/**
+	 * This method blocks until a new UPDATE response has been added
+	 * 
+	 * @see UpdateResponse
+	* */
+	public UpdateResponse waitUpdateResponse() {
 		UpdateResponse res;
-		
-		while((res = updateResponseQueue.poll())==null) 
-			try {
-				wait();
-			}
-			catch (InterruptedException e) {}
+			
+		synchronized(updateResponseQueue) {
+			while((res = updateResponseQueue.poll()) == null)
+				try {
+					Logger.log(VERBOSITY.DEBUG, tag, "Waiting for UPDATE responses...");
+					updateResponseQueue.wait();
+				} catch (InterruptedException e) {}
+		}
 		
 		return res;
 	}
 	
-	public synchronized QueryRequest waitQueryRequest() {
+	/**
+	 * This method blocks until a new QUERY request has been added
+	 * 
+	 * @see QueryRequest
+	* */
+	public QueryRequest waitQueryRequest() {
 		QueryRequest req;
-		while ((req = queryRequestQueue.poll()) == null) {
-			try {
-				wait();
-			}
-			catch (InterruptedException e) {}
-		}
-		return req;
-	}
-	
-	public synchronized UpdateRequest waitUpdateRequest() {
-		UpdateRequest req;
-		while ((req = updateRequestQueue.poll()) == null) {
-			try {
-				wait();
-			} catch (InterruptedException e) {}
-		}
-		return req;
-	}
 		
-	public synchronized SubscribeRequest waitSubscribeRequest() {
+		synchronized(queryRequestQueue) {
+			while((req = queryRequestQueue.poll()) == null)
+				try {
+					Logger.log(VERBOSITY.DEBUG, tag, "Waiting for QUERY requests...");
+					queryRequestQueue.wait();
+				} catch (InterruptedException e) {}
+		}
+		
+		return req;
+	}
+	
+	/**
+	 * This method blocks until a new UPDATE request has been added
+	 * 
+	 * @see UpdateRequest
+	* */
+	public UpdateRequest waitUpdateRequest() {
+		UpdateRequest req;
+		
+		synchronized(updateRequestQueue) {
+			while((req = updateRequestQueue.poll()) == null)
+				try {
+					Logger.log(VERBOSITY.DEBUG, tag, "Waiting for UPDATE requests...");
+					updateRequestQueue.wait();
+				} catch (InterruptedException e) {}
+		}
+		
+		return req;
+	}
+	
+	/**
+	 * This method blocks until a new SUBSCCRIBE request has been added
+	 * 
+	 * @see SubscribeRequest
+	* */
+	public SubscribeRequest waitSubscribeRequest() {
 		SubscribeRequest req;
-		while ((req = subscribeRequestQueue.poll()) == null) {
-			try {
-				wait();
-			} catch (InterruptedException e) {}
+		
+		synchronized(subscribeRequestQueue) {
+			while((req = subscribeRequestQueue.poll()) == null)
+				try {
+					Logger.log(VERBOSITY.DEBUG, tag, "Waiting for SUBSCRIBE requests...");
+					subscribeRequestQueue.wait();
+				} catch (InterruptedException e) {}
 		}
+		
 		return req;
 	}
 	
-	public synchronized UnsubscribeRequest waitUnsubscribeRequest() {
+	/**
+	 * This method blocks until a new UNSUBSCCRIBE request has been added
+	 * 
+	 * @see UnsubscribeRequest
+	* */
+
+	public UnsubscribeRequest waitUnsubscribeRequest() {
 		UnsubscribeRequest req;
-		while ((req = unsubscribeRequestQueue.poll()) == null) {
-			try {
-				wait();
-			} catch (InterruptedException e) {}
+		
+		synchronized(unsubscribeRequestQueue) {
+			while((req = unsubscribeRequestQueue.poll()) == null)
+				try {
+					Logger.log(VERBOSITY.DEBUG, tag, "Waiting for UNSUBSCRIBE requests...");
+					unsubscribeRequestQueue.wait();
+				} catch (InterruptedException e) {}
 		}
+		
 		return req;
-	}
-	
-	public synchronized void waitAllSubscriptionChecks(int n) {
-		subscriptionsChecked = 0;
-		while (subscriptionsChecked != n) {
-			try {
-				wait();
-			} catch (InterruptedException e) {}
-		}
-	}
-	
-	public synchronized void subscriptionCheckEnded() {
-		subscriptionsChecked++;
-		notifyAll();
 	}
 }

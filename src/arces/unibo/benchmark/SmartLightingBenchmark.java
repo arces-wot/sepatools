@@ -103,7 +103,7 @@ public abstract class SmartLightingBenchmark {
 		Logger.enableFileLog();
 		Logger.setVerbosityLevel(VERBOSITY.INFO);
 		
-		appProfile.load("LightingBenchmark.xml");
+		appProfile.load("LightingBenchmark.sap");
 		lampUpdater = new Producer(appProfile,"UPDATE_LAMP");
 		roadUpdater = new Producer(appProfile,"UPDATE_ROAD");		
 	}

@@ -1,4 +1,4 @@
-/* This class represents a UNSUBSCRIBE response
+/* This class represents the result of a subscription processing made by an SPU
 Copyright (C) 2016-2017 Luca Roffia (luca.roffia@unibo.it)
 
 This program is free software: you can redistribute it and/or modify
@@ -17,20 +17,24 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package arces.unibo.SEPA.commons;
 
-import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
-
-public class UnsubscribeResponse extends Response {
+public class SubscriptionProcessingResult {
+	private String spuid;
+	private Notification notification;
 	
-	public UnsubscribeResponse(Integer token, String SPUID) {
-		super(token, new JsonObject());
-		
-		JsonPrimitive jsonSpuid = new JsonPrimitive(SPUID);
-		json.add("unsubscribed", jsonSpuid);
+	public SubscriptionProcessingResult(String spuid,Notification notification){
+		this.spuid = spuid;
+		this.notification = notification;
+	}
+	
+	public boolean toBeNotified(){
+		return notification != null;
+	}
+	
+	public Notification getNotification() {
+		return notification;
 	}
 	
 	public String getSPUID() {
-		return super.toJson().get("unsubscribed").getAsString();
+		return spuid;
 	}
-
 }

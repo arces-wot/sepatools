@@ -18,8 +18,6 @@
 package arces.unibo.SEPA.server;
 
 import java.io.IOException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Properties;
@@ -34,7 +32,9 @@ import org.glassfish.grizzly.websockets.WebSocketEngine;
 
 import arces.unibo.SEPA.application.Logger;
 import arces.unibo.SEPA.application.Logger.VERBOSITY;
+import arces.unibo.SEPA.commons.ErrorResponse;
 import arces.unibo.SEPA.commons.Notification;
+import arces.unibo.SEPA.commons.PingResponse;
 import arces.unibo.SEPA.commons.Request;
 import arces.unibo.SEPA.commons.Response;
 import arces.unibo.SEPA.commons.SubscribeRequest;
@@ -52,11 +52,10 @@ import arces.unibo.SEPA.server.RequestResponseHandler.ResponseListener;
 * @version 0.1
 * */
 
-public class WebSocketGate extends WebSocketApplication implements ResponseListener {
+public class WebSocketGate extends WebSocketApplication {//implements ResponseListener {
 	private String tag ="WebSocketGate";
 	
-	private TokenHandler tokenHandler;
-	private RequestResponseHandler requestHandler;
+	private Scheduler scheduler;
 	
 	private int wsPort = 9000;
 	private int keepAlivePeriod = 5000;
@@ -64,28 +63,31 @@ public class WebSocketGate extends WebSocketApplication implements ResponseListe
 	private HashMap<WebSocket,SEPAResponseListener> activeSockets = new HashMap<WebSocket,SEPAResponseListener>();
 	
 	public class SEPAResponseListener implements ResponseListener {
-		private WebSocket socket;
-		
+		private WebSocket socket;	
 		private HashSet<String> spuIds = new HashSet<String>();
 		
 		@Override
-		public void notifyResponse(Response response) {
-			Logger.log(VERBOSITY.DEBUG, tag, "Response notification "+response.toString());
-			
-			if (!response.getClass().equals(Notification.class)) tokenHandler.releaseToken(response.getToken());
-			
+		public void notifyResponse(Response response) {		
 			if (response.getClass().equals(SubscribeResponse.class)) {
-				spuIds.add(((SubscribeResponse)response).getSPUID());
-			}
-		
-			if(response.getClass().equals(UnsubscribeResponse.class)) {
-				spuIds.remove(((UnsubscribeResponse)response).getSPUID());
-			}
+				Logger.log(VERBOSITY.DEBUG, tag, "SUBSCRIBE response #"+response.getToken());
 				
-			synchronized(socket) {
-				if (socket != null) 
-					if (socket.isConnected()) socket.send(response.toString());	
+				spuIds.add(((SubscribeResponse)response).getSPUID());
+			
+			}else if(response.getClass().equals(UnsubscribeResponse.class)) {
+				Logger.log(VERBOSITY.DEBUG, tag, "UNSUBSCRIBE response #"+response.getToken()+" ");
+				
+				spuIds.remove(((UnsubscribeResponse)response).getSPUID());
+				
+				synchronized(activeSockets) {
+					if (spuIds.isEmpty()) activeSockets.remove(socket);
+				}
 			}
+			
+			//Send response to client
+			if (socket != null) if (socket.isConnected()) socket.send(response.toString());	
+			
+			//Release token
+			if (!response.getClass().equals(Notification.class)) scheduler.releaseToken(response.getToken());
 		}
 		
 		public Set<String> getSPUIDs() {
@@ -97,12 +99,9 @@ public class WebSocketGate extends WebSocketApplication implements ResponseListe
 		}
 	}
 	
-	public WebSocketGate(Properties properties,TokenHandler tokenHandler,RequestResponseHandler requestHandler){
-		this.tokenHandler = tokenHandler;
-		if (tokenHandler == null) Logger.log(VERBOSITY.ERROR, tag, "Token handler is null");
-		
-		this.requestHandler = requestHandler;
-		if (requestHandler == null) Logger.log(VERBOSITY.ERROR, tag, "Request handler is null");
+	public WebSocketGate(Properties properties,Scheduler scheduler){
+		if (scheduler == null) Logger.log(VERBOSITY.ERROR, tag, "Scheduler is null");
+		this.scheduler = scheduler;
 		
 		if (properties == null) Logger.log(VERBOSITY.ERROR, tag, "Properties are null");
 		else {
@@ -115,37 +114,40 @@ public class WebSocketGate extends WebSocketApplication implements ResponseListe
 	public void onClose(WebSocket socket, DataFrame frame) {
 		Logger.log(VERBOSITY.DEBUG, tag, "onClose: "+socket.toString());
 		
-		if (keepAlivePeriod == 0) {
-			for (String spuid: activeSockets.get(socket).getSPUIDs()){
-				Integer token = tokenHandler.getToken();
-				Logger.log(VERBOSITY.DEBUG, tag, "Add unsubscribe request "+token);
-				requestHandler.addRequest(new UnsubscribeRequest(token,spuid),this);		
-			}
-			activeSockets.remove(socket); 
-		}
+		if (keepAlivePeriod == 0) unsubscribeAllSPUs(socket);
 	}
 
 	@Override
 	public void onConnect(WebSocket socket) {
 		Logger.log(VERBOSITY.DEBUG, tag, "onConnect: "+socket.toString());
 		SEPAResponseListener listener = new SEPAResponseListener(socket);
-		activeSockets.put(socket, listener);
+		
+		synchronized(activeSockets) {
+			activeSockets.put(socket, listener);
+		}
 	}
 	
 	@Override
 	public void onMessage(WebSocket socket, String text) {
-		Logger.log(VERBOSITY.DEBUG, tag, "onMessage: "+socket.toString()+" message:"+text);
-		Integer token = tokenHandler.getToken();
+		Integer token = scheduler.getToken();
 		
 		Request request = parseRequest(token,text);
+		
 		if(request == null) {
-			tokenHandler.releaseToken(token);
-			//TODO SPARQL 1.1 Subscribe language
-			socket.send("{\"error\":\""+"Not supported request: "+text +"\"}");
+			Logger.log(VERBOSITY.DEBUG, tag, "Not supported request: "+text);
+			
+			ErrorResponse response = new ErrorResponse(token,"Not supported request: "+text);
+			
+			socket.send(response.toString());
+			
+			scheduler.releaseToken(token);
+			
 			return;
 		}
 		
-		requestHandler.addRequest(request,activeSockets.get(socket));	
+		synchronized(activeSockets) {
+			scheduler.addRequest(request,activeSockets.get(socket));	
+		}
 	}
 	
 	//TODO SPARQL 1.1 Subscribe language
@@ -183,7 +185,15 @@ public class WebSocketGate extends WebSocketApplication implements ResponseListe
 		return true;
 	}
 	
-	public class KeepAlive extends Thread implements ResponseListener{
+	private synchronized void unsubscribeAllSPUs(WebSocket socket) {
+		for(String spuid : activeSockets.get(socket).getSPUIDs()) {
+			Integer token = scheduler.getToken();
+			Logger.log(VERBOSITY.DEBUG, tag, "UNSUBSCRIBE request #"+token);
+			scheduler.addRequest(new UnsubscribeRequest(token,spuid),activeSockets.get(socket));		
+		}
+	}
+	
+	public class KeepAlive extends Thread {//implements ResponseListener{
 		public void run() {
 			while(true) {
 				try {
@@ -191,39 +201,27 @@ public class WebSocketGate extends WebSocketApplication implements ResponseListe
 				} catch (InterruptedException e) {
 					return;
 				}
+				
+				//Send heart beat on each active socket to detect broken sockets
+				HashSet<WebSocket> brokenSockets = new HashSet<WebSocket>();
+				
 				synchronized(activeSockets) {
-					HashSet<WebSocket> disconnectedSockets = new HashSet<WebSocket>();
 					for(WebSocket socket : activeSockets.keySet()) {	
-						Date date = new Date();
-						SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
-						String timestamp = sdf.format(date);
-						if (socket.isConnected()) socket.send("{\"ping\":\""+timestamp +"\"}");
-						else disconnectedSockets.add(socket);
-					}
-					for (WebSocket socket : disconnectedSockets) {
-						for (String spuid: activeSockets.get(socket).getSPUIDs()){
-							Integer token = tokenHandler.getToken();
-							Logger.log(VERBOSITY.DEBUG, tag, "Add unsubscribe request "+token);
-							requestHandler.addRequest(new UnsubscribeRequest(token,spuid),this);		
-						}
 						
-						activeSockets.remove(socket);
+						if (socket.isConnected()) {
+							PingResponse ping = new PingResponse();
+							socket.send(ping.toString());
+						}
+						else brokenSockets.add(socket);
 					}
 				}
+				
+				//Send a UNSUBSCRIBE request to all SPUs belonging to broken sockets
+				for (WebSocket socket : brokenSockets) {
+					unsubscribeAllSPUs(socket);
+				}
+					
 			}
 		}
-
-		@Override
-		public void notifyResponse(Response response) {
-			Logger.log(VERBOSITY.DEBUG, tag, "Response notification "+response.toString());
-			tokenHandler.releaseToken(response.getToken());
-			
-		}
-	}
-
-	@Override
-	public void notifyResponse(Response response) {
-		Logger.log(VERBOSITY.DEBUG, tag, "Response notification "+response.toString());
-		tokenHandler.releaseToken(response.getToken());
 	}
 }

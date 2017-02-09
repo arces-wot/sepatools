@@ -108,35 +108,52 @@ public class SecureEventProtocol {
 	
 	public BindingsResults query(String sparql) {
 		JsonObject json = new JsonParser().parse(SPARQLPrimitive(sparql,false)).getAsJsonObject();
+		
 		if(!json.get("status").getAsBoolean()) return null;
+		
 		return new BindingsResults(new JsonParser().parse(json.get("body").getAsString()).getAsJsonObject());
 	}
 
-	private synchronized String sendSync(String string) {
+	private String sendSync(String string) {
 		syncRequest  = true;
 		syncResponse = "timeout";
 		
 		if(wsClientSession.isOpen()) {
 			try {
 				wsClientSession.getBasicRemote().sendText(string);
-			} catch (IOException e) {
+			} catch (IOException e) 
+			{
 				JsonObject res = new JsonObject();
+				
 				if (syncRequest == true) res.add("status", new JsonPrimitive(false));
 				else res.add("status", new JsonPrimitive(true));
+				
 				res.add("body", new JsonPrimitive(e.getMessage()));
 				
 				return res.toString();
 			}
-			try {
-				wait(2000);
-			} catch (InterruptedException e) {}
+			waitResponse();
 		}
+		
 		JsonObject res = new JsonObject();
-		if (syncRequest == true) res.add("status", new JsonPrimitive(false));
-		else res.add("status", new JsonPrimitive(true));
+		res.add("status", new JsonPrimitive(!syncRequest));
 		res.add("body", new JsonPrimitive(syncResponse));
 		
 		return res.toString();
+	}
+	
+	public synchronized void waitResponse() {
+	    while(syncRequest) {
+	        try {
+	            wait(2000);
+	        } catch (InterruptedException e) {}
+	    }
+	}
+	
+	public synchronized void notifyResponse(String message) {
+		syncResponse = message;
+		syncRequest = false;
+	    notifyAll();
 	}
 	
 	public String subscribe(String sparql, NotificationHandler mHandler) {
@@ -144,29 +161,34 @@ public class SecureEventProtocol {
 			this.handler = mHandler;
 			
 			final ClientEndpointConfig cec = ClientEndpointConfig.Builder.create().build();
+			
 			ClientManager client = ClientManager.createClient();
-	        client.connectToServer(new Endpoint() {
+	        
+			client.connectToServer(new Endpoint() {
 	            @Override
 	            public void onOpen(Session session, EndpointConfig config) {
 	            	wsClientSession = session;
 	            	wsClientSession.addMessageHandler(new MessageHandler.Whole<String>() {
-                        @Override
+                       
+	            		@Override
                         public void onMessage(String message) {
                         	Logger.log(VERBOSITY.DEBUG, tag, message);
                         	
   			        	  	JsonObject notify = new JsonParser().parse(message).getAsJsonObject();
-  			  				if(notify.get("ping")!= null) return;
+  			  				if(notify.get("ping") != null) return;
   			  			 
   			  				if (syncRequest) {
-  			  					syncResponse = message;
-  			  					syncRequest = false;
-  			  					notifyAll();
+  			  					notifyResponse(message);
   			  				}
   			  				else {
   			  					String spuid = notify.get("spuid").getAsString();
+  			  					
   			  					Integer sequence = notify.get("sequence").getAsInt();
+  			  					
   			  					ARBindingsResults results = new ARBindingsResults(notify);
+  			  					
   			  					Notification n = new Notification(spuid,results,sequence);
+  			  					
   			  					if(handler != null) handler.notify(n);
   			  				}	
                         }
@@ -180,6 +202,7 @@ public class SecureEventProtocol {
 		String response = sendSync("subscribe="+sparql);
 		
 		JsonObject json = new JsonParser().parse(response).getAsJsonObject();
+		
 		if(json.get("status").getAsBoolean()) return new JsonParser().parse(json.get("body").getAsString()).getAsJsonObject().get("spuid").getAsString();
 		else return null;
 	}
@@ -191,6 +214,7 @@ public class SecureEventProtocol {
 		String response = sendSync("unsubscribe="+subID);
 		
 		JsonObject json = new JsonParser().parse(response).getAsJsonObject();
+		
 		if(json.get("status").getAsBoolean()) {
 			try {
 				wsClientSession.close();

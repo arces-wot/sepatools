@@ -39,8 +39,11 @@ public class Engine extends Thread {
 	private final String propertiesFile = "engine.properties";
 	private Properties properties = new Properties();
 	
-	//Update and subscribe request scheduler
+	//Primitives scheduler/dispatcher
 	private Scheduler scheduler = null;
+	
+	//Primitives processor
+	private Processor processor = null;
 	
 	//SPARQL 1.1 Protocol handler
 	private HTTPGate httpGate = null;
@@ -48,23 +51,18 @@ public class Engine extends Thread {
 	//SPARQL 1.1 SE Protocol handler
 	private WebSocketGate websocketGate = null;
 	
-	//Used to assign a unique token to every request
-	private TokenHandler tokenHandler = null;
-	
-	//Underpinning SPARQL 1.1 processing service 
-	private Endpoint endpoint = null;
-	
-	//Requests queue manager
-	private RequestResponseHandler requestHandler = null;
-	
 	public Engine() {}
 	
 	public static void main(String[] args) {
-		System.out.println("SEPA Engine  Copyright (C) 2016-2017  Luca Roffia");
-		System.out.println("This program comes with ABSOLUTELY NO WARRANTY");
-		System.out.println("This is free software, and you are welcome to redistribute it under certain conditions");
-		System.out.println("GNU GENERAL PUBLIC LICENSE, Version 3, 29 June 2007");
-	    		
+		System.out.println("##########################################################################################");
+		System.out.println("# SEPA Engine Ver 0.1  Copyright (C) 2016-2017                                           #");
+		System.out.println("# University of Bologna (Italy)                                                          #");
+		System.out.println("# Contact: luca.roffia@unibo.it                                                          #");
+		System.out.println("# This program comes with ABSOLUTELY NO WARRANTY                                         #");                                    
+		System.out.println("# This is free software, and you are welcome to redistribute it under certain conditions #");
+		System.out.println("# GNU GENERAL PUBLIC LICENSE, Version 3, 29 June 2007                                    #");
+		System.out.println("##########################################################################################");
+		
 		Logger.loadSettings();
 		
 		Engine engine = new Engine();
@@ -87,10 +85,8 @@ public class Engine extends Thread {
 		Logger.log(VERBOSITY.INFO, tag, "SUB Engine starting...");	
 		
 		httpGate.start();
-		
-		scheduler.start();
-		
 		websocketGate.start();
+		scheduler.start();
 		
 		super.start();
 		Logger.log(VERBOSITY.INFO, tag, "SUB Engine started");	
@@ -102,14 +98,11 @@ public class Engine extends Thread {
 			if (!loadProperties(defaultPropertiesFile)) defaultProperties = true;
 		}
 		
-		endpoint = new Endpoint(properties);
-		tokenHandler = new TokenHandler(properties);
-		requestHandler = new RequestResponseHandler(properties);
+		processor = new Processor(properties);
+		scheduler = new Scheduler(properties,processor);
 		
-		httpGate = new HTTPGate(properties,tokenHandler,requestHandler);
-		websocketGate = new WebSocketGate(properties,tokenHandler,requestHandler);
-		
-		scheduler = new Scheduler(properties,requestHandler,endpoint);
+		httpGate = new HTTPGate(properties,scheduler);
+		websocketGate = new WebSocketGate(properties,scheduler);
 		
 		storeProperties(defaultProperties);
 		

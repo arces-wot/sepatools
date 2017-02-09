@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <applicationProfile xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="ApplicationProfile.xsd">
-  <parameters name="LightingBenchmark" port="10123" url="127.0.0.1"/>
+  <parameters path="/sparql" subscribePort="9000" updatePort="8000" url="localhost"/>
   <namespaces>
     <namespace prefix="rdf" suffix="http://www.w3.org/1999/02/22-rdf-syntax-ns#"/>
   		<namespace prefix="bench" suffix="http://www.arces.unibo.it/LightingBenchmark#"/>
@@ -65,8 +65,8 @@
   		</forcedBindings>
     </update>
     <update id="UPDATE_LAMP"><sparql><![CDATA[
+    	DELETE { ?lamp bench:dimming ?old }
     	INSERT { ?lamp bench:dimming ?dimming }
-    	DELETE { ?lamp bench:dimming ?old } 
     	WHERE {?lamp rdf:type bench:LAMP . ?lamp bench:dimming ?old}]]></sparql>
     	<forcedBindings>
       		<binding variable="lamp" type="uri" value=""/>
@@ -74,8 +74,8 @@
   		</forcedBindings>
     </update>
     <update id="UPDATE_ROAD"><sparql><![CDATA[
-    	INSERT { ?lamp bench:dimming ?dimming }
     	DELETE { ?lamp bench:dimming ?old }
+    	INSERT { ?lamp bench:dimming ?dimming }
     	WHERE { ?lamp bench:dimming ?old . 
     	?post bench:hasLamp ?lamp . 
     	?road bench:hasPost ?post . 

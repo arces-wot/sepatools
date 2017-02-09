@@ -67,7 +67,7 @@ public class TokenHandler {
 	 * Returns a new token if more tokens are available or null otherwise
 	 * @returns an Integer representing the token
 	 */
-	public synchronized Integer getToken()
+	public Integer getToken()
 	{
 		Integer token;
 		
@@ -96,7 +96,7 @@ public class TokenHandler {
 	 * Release an used token
 	 * @returns true if success, false if the token to be released has not been acquired
 	 */
-	public synchronized boolean releaseToken(Integer token)
+	public boolean releaseToken(Integer token)
 	{	
 		boolean ret = true;
      	synchronized(jar) {

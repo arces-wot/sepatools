@@ -164,6 +164,15 @@ public class Endpoint {
 			}
 		}
 		
+		Logger.log(VERBOSITY.INFO, tag, "SPARQL endpoint service properties");
+		Logger.log(VERBOSITY.INFO, tag, "Host:" + endpointProperties.getHost());
+		Logger.log(VERBOSITY.INFO, tag, "Port:" + endpointProperties.getPort());
+		Logger.log(VERBOSITY.INFO, tag, "Scheme:" + endpointProperties.getHttpScheme());
+		Logger.log(VERBOSITY.INFO, tag, "Path:" + endpointProperties.getPath());
+		Logger.log(VERBOSITY.INFO, tag, "Query method:" + endpointProperties.getQueryMethod());
+		Logger.log(VERBOSITY.INFO, tag, "Update method:" + endpointProperties.getUpdateMethod());
+		Logger.log(VERBOSITY.INFO, tag, "Query results format:" + endpointProperties.getQueryResultsFormat());
+			
 		responseHandler = new ResponseHandler<String>() {
 	        @Override
 	        public String handleResponse(final HttpResponse response) throws ClientProtocolException, IOException {
@@ -323,7 +332,9 @@ public class Endpoint {
 			responseBody = httpclient.execute(httpRequest, responseHandler);
 	    	
 			timing = System.nanoTime() - timing;
-	    	Logger.log(VERBOSITY.INFO, "timing", "QueryTime "+timing+ " ns");
+	    	
+			if(op.equals(SPARQLOperation.QUERY)) Logger.log(VERBOSITY.INFO, "timing", "QueryTime "+timing+ " ns");
+			else Logger.log(VERBOSITY.INFO, "timing", "UpdateTime "+timing+ " ns");
 	    }
 	    catch(java.net.ConnectException e) {
 	    	Logger.log(VERBOSITY.ERROR, tag, e.getMessage());

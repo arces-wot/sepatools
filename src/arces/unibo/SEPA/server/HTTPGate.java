@@ -49,22 +49,19 @@ public class HTTPGate extends Thread {
 	
 	private static int httpPort = 8000; 
 	private static int httpTimeout = 2000;
+
+	private Scheduler scheduler;
 	
-	private TokenHandler tokenHandler;
-	
-	private RequestResponseHandler requestHandler;
-	
-	public HTTPGate(Properties properties,TokenHandler tokenHandler,RequestResponseHandler requestHandler) {
+	public HTTPGate(Properties properties,Scheduler scheduler){
 		if (properties == null) Logger.log(VERBOSITY.ERROR, tag, "Properties are null");
 		else {
 			httpTimeout = Integer.parseInt(properties.getProperty("httpTimeout", "2000"));
 			httpPort = Integer.parseInt(properties.getProperty("httpPort", "8000"));
 		}
 			
-		this.tokenHandler = tokenHandler;
-		if (tokenHandler == null) Logger.log(VERBOSITY.ERROR, tag, "Token handler is null");
-		this.requestHandler = requestHandler;
-		if (requestHandler == null) Logger.log(VERBOSITY.ERROR, tag, "Request handler is null");
+		this.scheduler = scheduler;
+		if (scheduler == null) Logger.log(VERBOSITY.ERROR, tag, "Scheduler is null");
+	
 	}
 
 	@Override
@@ -181,7 +178,7 @@ public class HTTPGate extends Thread {
 				String[] query = httpExchange.getRequestURI().getQuery().split("&");
 				for (String param : query) {
 					String[] value = param.split("=");
-					if (value[0].equals("query")) return new QueryRequest(tokenHandler.getToken(),value[1]);
+					if (value[0].equals("query")) return new QueryRequest(scheduler.getToken(),value[1]);
 				}
 				failureResponse(httpExchange,400,"Query must be in the form: \"query=<SPARQL 1.1 Query>\"");
 				return null;	
@@ -196,14 +193,14 @@ public class HTTPGate extends Thread {
 					failureResponse(httpExchange,400,"Exception on reading SPARQL from POST body");
 					return null;
 				}
-				if(httpExchange.getRequestHeaders().get("Content-Type").contains("application/sparql-query")) return new QueryRequest(tokenHandler.getToken(),sparql);
-				if(httpExchange.getRequestHeaders().get("Content-Type").contains("application/sparql-update")) return new UpdateRequest(tokenHandler.getToken(),sparql);
+				if(httpExchange.getRequestHeaders().get("Content-Type").contains("application/sparql-query")) return new QueryRequest(scheduler.getToken(),sparql);
+				if(httpExchange.getRequestHeaders().get("Content-Type").contains("application/sparql-update")) return new UpdateRequest(scheduler.getToken(),sparql);
 
 				if(httpExchange.getRequestHeaders().get("Content-Type").contains("application/x-www-form-urlencoded")) {
 					if (sparql.contains("query="))
-						return new QueryRequest(tokenHandler.getToken(),sparql);
+						return new QueryRequest(scheduler.getToken(),sparql);
 					if (sparql.contains("update="))
-						return new UpdateRequest(tokenHandler.getToken(),sparql);
+						return new UpdateRequest(scheduler.getToken(),sparql);
 				}
 									
 				Logger.log(VERBOSITY.ERROR, tag,"Request MUST conform to SPARQL 1.1 Protocol (https://www.w3.org/TR/sparql11-protocol/)");
@@ -243,7 +240,7 @@ public class HTTPGate extends Thread {
 				}
 				
 				//Add request
-				if (request != null) requestHandler.addRequest(request,this);
+				if (request != null) scheduler.addRequest(request,this);
 				else return;
 								
 				//Waiting response
@@ -255,7 +252,7 @@ public class HTTPGate extends Thread {
 				//Send HTTP response
 				sendResponse(request.getToken());
 				
-				tokenHandler.releaseToken(request.getToken()); 
+				scheduler.releaseToken(request.getToken()); 
 			}
 			
 			private void sendResponse(Integer token) {

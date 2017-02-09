@@ -12,6 +12,7 @@
 	<classpathentry kind="lib" path="org.eclipse.paho.client.mqttv3-1.0.2.jar"/>
 	<classpathentry kind="lib" path="bcprov-jdk15on-156.jar"/>
 	<classpathentry kind="lib" path="bcpkix-jdk15on-156.jar"/>
+	<classpathentry kind="lib" path="jena-arq-2.13.0.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
