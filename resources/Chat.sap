@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<applicationProfile xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../SEPA/application/ApplicationProfile.xsd">
+  <parameters path="/sparql" subscribeport="9000" updateport="8000" url="192.168.1.5"/>
+  <namespaces>
+    <namespace prefix="chat" suffix="http://www.arces.unibo.it/chat#"/>
+  </namespaces>
+  <updates>
+    <update id="MESSAGE">
+      <sparql><![CDATA[
+      insert data {?message chat:message ?text . ?message chat:user ?nickname}]]></sparql>
+      <forcedBindings>
+      		<binding variable="message" type="uri" value=""/>
+      		<binding variable="text" type="literal" value=""/>
+      		<binding variable="nickname" type="literal" value=""/>
+  		</forcedBindings>
+    </update>
+  </updates>
+  <subscribes>
+    <subscribe id="MESSAGE">
+      <sparql>
+      <![CDATA[
+      select ?text ?user {?message chat:message ?text . ?message chat:user ?user}]]></sparql>
+    </subscribe>
+  </subscribes>
+</applicationProfile>

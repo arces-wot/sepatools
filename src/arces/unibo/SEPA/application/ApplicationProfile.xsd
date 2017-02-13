@@ -56,14 +56,11 @@
 
 	<xs:element name="applicationProfile" type="profileType"/>
 
-
-
 	<xs:complexType name="forcedBindingsType">
 		<xs:sequence>
 			<xs:element name="binding" type="bindingType" maxOccurs="unbounded" minOccurs="1"></xs:element>
 		</xs:sequence>
 	</xs:complexType>
-
 
 
 	<xs:complexType name="primitiveType">

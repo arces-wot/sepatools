@@ -1,4 +1,4 @@
-package arces.unibo.benchmark;
+package arces.unibo.examples;
 
 import java.io.IOException;
 import java.util.ArrayList;
