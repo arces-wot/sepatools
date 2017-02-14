@@ -30,8 +30,8 @@ import org.glassfish.grizzly.websockets.WebSocketAddOn;
 import org.glassfish.grizzly.websockets.WebSocketApplication;
 import org.glassfish.grizzly.websockets.WebSocketEngine;
 
-import arces.unibo.SEPA.application.Logger;
-import arces.unibo.SEPA.application.Logger.VERBOSITY;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import arces.unibo.SEPA.commons.ErrorResponse;
 import arces.unibo.SEPA.commons.Notification;
 import arces.unibo.SEPA.commons.PingResponse;
@@ -62,6 +62,9 @@ public class WebSocketGate extends WebSocketApplication {//implements ResponseLi
 	
 	private HashMap<WebSocket,SEPAResponseListener> activeSockets = new HashMap<WebSocket,SEPAResponseListener>();
 	
+	// logging
+	Logger logger = LogManager.getRootLogger();
+	
 	public class SEPAResponseListener implements ResponseListener {
 		private WebSocket socket;	
 		private HashSet<String> spuIds = new HashSet<String>();
@@ -69,12 +72,12 @@ public class WebSocketGate extends WebSocketApplication {//implements ResponseLi
 		@Override
 		public void notifyResponse(Response response) {		
 			if (response.getClass().equals(SubscribeResponse.class)) {
-				Logger.log(VERBOSITY.DEBUG, tag, "SUBSCRIBE response #"+response.getToken());
+				logger.debug("SUBSCRIBE response #"+response.getToken());
 				
 				spuIds.add(((SubscribeResponse)response).getSPUID());
 			
 			}else if(response.getClass().equals(UnsubscribeResponse.class)) {
-				Logger.log(VERBOSITY.DEBUG, tag, "UNSUBSCRIBE response #"+response.getToken()+" ");
+				logger.debug("UNSUBSCRIBE response #"+response.getToken()+" ");
 				
 				spuIds.remove(((UnsubscribeResponse)response).getSPUID());
 				
@@ -100,10 +103,10 @@ public class WebSocketGate extends WebSocketApplication {//implements ResponseLi
 	}
 	
 	public WebSocketGate(Properties properties,Scheduler scheduler){
-		if (scheduler == null) Logger.log(VERBOSITY.ERROR, tag, "Scheduler is null");
+		if (scheduler == null) logger.error("Scheduler is null");
 		this.scheduler = scheduler;
 		
-		if (properties == null) Logger.log(VERBOSITY.ERROR, tag, "Properties are null");
+		if (properties == null) logger.error("Properties are null");
 		else {
 			wsPort = Integer.parseInt(properties.getProperty("wsPort", "9000"));
 			keepAlivePeriod =  Integer.parseInt(properties.getProperty("keepAlivePeriod", "5000"));
@@ -112,14 +115,14 @@ public class WebSocketGate extends WebSocketApplication {//implements ResponseLi
 	
 	@Override
 	public void onClose(WebSocket socket, DataFrame frame) {
-		Logger.log(VERBOSITY.DEBUG, tag, "onClose: "+socket.toString());
+		logger.debug("onClose: "+socket.toString());
 		
 		if (keepAlivePeriod == 0) unsubscribeAllSPUs(socket);
 	}
 
 	@Override
 	public void onConnect(WebSocket socket) {
-		Logger.log(VERBOSITY.DEBUG, tag, "onConnect: "+socket.toString());
+		logger.debug("onConnect: "+socket.toString());
 		SEPAResponseListener listener = new SEPAResponseListener(socket);
 		
 		synchronized(activeSockets) {
@@ -134,7 +137,7 @@ public class WebSocketGate extends WebSocketApplication {//implements ResponseLi
 		Request request = parseRequest(token,text);
 		
 		if(request == null) {
-			Logger.log(VERBOSITY.DEBUG, tag, "Not supported request: "+text);
+			logger.debug("Not supported request: "+text);
 			
 			ErrorResponse response = new ErrorResponse(token,"Not supported request: "+text);
 			
@@ -173,11 +176,11 @@ public class WebSocketGate extends WebSocketApplication {//implements ResponseLi
         try {
 			server.start();
 		} catch (IOException e) {
-			Logger.log(VERBOSITY.INFO, tag, "Failed to start WebSocket gate on port "+wsPort+ " "+e.getMessage());
+			logger.info("Failed to start WebSocket gate on port "+wsPort+ " "+e.getMessage());
 			return false;
 		}
 		
-		Logger.log(VERBOSITY.INFO, tag, "Started on port "+wsPort);
+		logger.info("Started on port "+wsPort);
 
 		if (keepAlivePeriod > 0) {
 			new KeepAlive().start();
@@ -188,7 +191,7 @@ public class WebSocketGate extends WebSocketApplication {//implements ResponseLi
 	private synchronized void unsubscribeAllSPUs(WebSocket socket) {
 		for(String spuid : activeSockets.get(socket).getSPUIDs()) {
 			Integer token = scheduler.getToken();
-			Logger.log(VERBOSITY.DEBUG, tag, "UNSUBSCRIBE request #"+token);
+			logger.debug("UNSUBSCRIBE request #"+token);
 			scheduler.addRequest(new UnsubscribeRequest(token,spuid),activeSockets.get(socket));		
 		}
 	}

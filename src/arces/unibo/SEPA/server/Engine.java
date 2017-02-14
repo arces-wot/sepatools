@@ -21,9 +21,8 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Properties;
-
-import arces.unibo.SEPA.application.Logger;
-import arces.unibo.SEPA.application.Logger.VERBOSITY;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 /**
  * This class represents the SPARQL Subscription (SUB) Engine of the Semantic Event Processing Architecture (SEPA)
@@ -38,6 +37,7 @@ public class Engine extends Thread {
 	private final String defaultPropertiesFile = "defaults.properties";
 	private final String propertiesFile = "engine.properties";
 	private Properties properties = new Properties();
+	final static Logger logger = LogManager.getLogger(Engine.class.getName());
 	
 	//Primitives scheduler/dispatcher
 	private Scheduler scheduler = null;
@@ -63,15 +63,15 @@ public class Engine extends Thread {
 		System.out.println("# GNU GENERAL PUBLIC LICENSE, Version 3, 29 June 2007                                    #");
 		System.out.println("##########################################################################################");
 		
-		Logger.loadSettings();
+		// Logger.loadSettings();
 		
 		Engine engine = new Engine();
 		
-		if (engine.init()) {
-			Logger.log(VERBOSITY.INFO, tag, "SUB Engine initialized and ready to start");	
+		if (engine.init()) {	
+			logger.info("SUB Engine initialized and ready to start");
 		}
-		else {
-			Logger.log(VERBOSITY.INFO, tag, "Failed to initialize the SUB Engine...exit...");
+		else {		
+			logger.info("Failed to initialize the SUB Engine...exit...");
 			return;
 		}
 		
@@ -82,14 +82,14 @@ public class Engine extends Thread {
 	@Override
 	public void start() {
 		this.setName("SEPA Engine");
-		Logger.log(VERBOSITY.INFO, tag, "SUB Engine starting...");	
+		logger.info("SUB Engine started");
 		
 		httpGate.start();
 		websocketGate.start();
 		scheduler.start();
 		
-		super.start();
-		Logger.log(VERBOSITY.INFO, tag, "SUB Engine started");	
+		super.start();	
+		logger.info("SUB Engine started");
 	}
 	
 	public boolean init() {
@@ -114,19 +114,19 @@ public class Engine extends Thread {
 		try {
 			in = new FileInputStream(fname);
 		} catch (FileNotFoundException e) {
-			Logger.log(VERBOSITY.ERROR, tag, "Error on opening properties file: "+fname);
+			logger.error("Error on opening properties file: "+fname);
 			return false;
 		}
 		try {
 			properties.load(in);
 		} catch (IOException e) {
-			Logger.log(VERBOSITY.ERROR, tag, "Error on loading properties file: "+fname);
+			logger.error("Error on loading properties file: "+fname);
 			return false;
 		}
 		try {
 			in.close();
 		} catch (IOException e) {
-			Logger.log(VERBOSITY.ERROR, tag, "Error on closing properties file: "+fname);
+			logger.error("Error on closing properties file: "+fname);
 			return false;
 		}
 		
@@ -138,20 +138,20 @@ public class Engine extends Thread {
 		try {
 			out = new FileOutputStream(defaultPropertiesFile);
 		} catch (FileNotFoundException e) {
-			Logger.log(VERBOSITY.ERROR, tag, "Error on opening properties file: "+defaultPropertiesFile);
+			logger.error("Error on opening properties file: "+defaultPropertiesFile);
 			return false;
 		}
 		try {
 			if (def) properties.store(out, "---SUB Engine DEFAULT properties file ---");
 			else properties.store(out, "---SUB Engine properties file ---");
 		} catch (IOException e) {
-			Logger.log(VERBOSITY.ERROR, tag, "Error on storing properties file: "+defaultPropertiesFile);
+			logger.error("Error on storing properties file: "+defaultPropertiesFile); 
 			return false;
 		}
 		try {
 			out.close();
 		} catch (IOException e) {
-			Logger.log(VERBOSITY.ERROR, tag, "Error on closing properties file: "+defaultPropertiesFile);
+			logger.error("Error on closing properties file: "+defaultPropertiesFile);
 			return false;
 		}
 		

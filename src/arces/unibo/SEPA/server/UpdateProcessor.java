@@ -18,24 +18,27 @@
 package arces.unibo.SEPA.server;
 
 import arces.unibo.SEPA.commons.UpdateRequest;
-import arces.unibo.SEPA.application.Logger;
-import arces.unibo.SEPA.application.Logger.VERBOSITY;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import arces.unibo.SEPA.commons.Response;
 
 public class UpdateProcessor {
 	private Endpoint endpoint;
 	private String tag ="Update Processor";
 
+	// logging
+	Logger logger = LogManager.getRootLogger();
+	
 	public UpdateProcessor(Endpoint endpoint) {
 		this.endpoint = endpoint;
 	}
 	
 	public Response process(UpdateRequest req) {
-		Logger.log(VERBOSITY.DEBUG, tag, "Process "+req.getSPARQL());
+		logger.debug("Process "+req.getSPARQL());
 		
 		Response res = endpoint.update(req);
 		
-		Logger.log(VERBOSITY.DEBUG, tag, "Response "+res.toString());
+		logger.debug("Response "+res.toString());
 		return res;
 	}
 }

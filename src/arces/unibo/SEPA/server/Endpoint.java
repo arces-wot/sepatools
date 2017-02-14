@@ -35,13 +35,14 @@ import org.apache.http.entity.ByteArrayEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
+import org.apache.logging.log4j.LogManager;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
 
-import arces.unibo.SEPA.application.Logger;
-import arces.unibo.SEPA.application.Logger.VERBOSITY;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import arces.unibo.SEPA.commons.ErrorResponse;
 import arces.unibo.SEPA.commons.QueryRequest;
 import arces.unibo.SEPA.commons.QueryResponse;
@@ -63,6 +64,9 @@ public class Endpoint {
 	private enum HTTPMethod {GET,POST,URL_ENCODED_POST};
 	private enum ResultsFormat {JSON,XML,CSV};
 	private enum SPARQLOperation {QUERY,UPDATE};
+	
+	// logging
+	Logger logger = LogManager.getRootLogger();
 	
 	public class SPARQLEndpointProperties {
 		private String scheme;
@@ -123,7 +127,7 @@ public class Endpoint {
 	private static ResponseHandler<String> responseHandler;
 	
 	public Endpoint(Properties properties) {
-		if (properties == null) Logger.log(VERBOSITY.ERROR, tag, "Properties are null");
+		if (properties == null) logger.error("Properties are null");
 		else {
 			endpointProperties.setHttpScheme(properties.getProperty("endpointHttpScheme", "http"));
 			endpointProperties.setHost(properties.getProperty("endpointHost", "localhost"));
@@ -164,14 +168,14 @@ public class Endpoint {
 			}
 		}
 		
-		Logger.log(VERBOSITY.INFO, tag, "SPARQL endpoint service properties");
-		Logger.log(VERBOSITY.INFO, tag, "Host:" + endpointProperties.getHost());
-		Logger.log(VERBOSITY.INFO, tag, "Port:" + endpointProperties.getPort());
-		Logger.log(VERBOSITY.INFO, tag, "Scheme:" + endpointProperties.getHttpScheme());
-		Logger.log(VERBOSITY.INFO, tag, "Path:" + endpointProperties.getPath());
-		Logger.log(VERBOSITY.INFO, tag, "Query method:" + endpointProperties.getQueryMethod());
-		Logger.log(VERBOSITY.INFO, tag, "Update method:" + endpointProperties.getUpdateMethod());
-		Logger.log(VERBOSITY.INFO, tag, "Query results format:" + endpointProperties.getQueryResultsFormat());
+		logger.info("SPARQL endpoint service properties");
+		logger.info("Host:" + endpointProperties.getHost());
+		logger.info("Port:" + endpointProperties.getPort());
+		logger.info("Scheme:" + endpointProperties.getHttpScheme());
+		logger.info("Path:" + endpointProperties.getPath());
+		logger.info("Query method:" + endpointProperties.getQueryMethod());
+		logger.info("Update method:" + endpointProperties.getUpdateMethod());
+		logger.info("Query results format:" + endpointProperties.getQueryResultsFormat());
 			
 		responseHandler = new ResponseHandler<String>() {
 	        @Override
@@ -192,7 +196,7 @@ public class Endpoint {
 	            } 
 	            else 
 	            {
-	            	Logger.log(VERBOSITY.ERROR, tag, "Unexpected response status: " + status);
+	            	logger.error("Unexpected response status: " + status);
 	            	json.add("status", new JsonPrimitive(false));
                 	json.add("body", new JsonPrimitive("Http response entity is null. Response status: "+status));
 	            }
@@ -235,7 +239,7 @@ public class Endpoint {
 			try {
 				body = new ByteArrayEntity(sparql.getBytes("UTF-8"));
 			} catch (UnsupportedEncodingException e) {
-				Logger.log(VERBOSITY.ERROR, tag, e.getMessage());
+				logger.error(e.getMessage());
 				json.add("status",new JsonPrimitive(false));
 				json.add("body", new JsonPrimitive(e.getMessage()));
 				return json.toString();
@@ -265,7 +269,7 @@ public class Endpoint {
 			try {
 				body = new ByteArrayEntity(encodedSparql.getBytes("UTF-8"));
 			} catch (UnsupportedEncodingException e) {
-				Logger.log(VERBOSITY.ERROR, tag, e.getMessage());
+				logger.error(e.getMessage());
 				json.add("status",new JsonPrimitive(false));
 				json.add("body", new JsonPrimitive(e.getMessage()));
 				return json.toString();
@@ -296,7 +300,7 @@ public class Endpoint {
 					   query,
 					   null);
 		} catch (URISyntaxException e) {
-			Logger.log(VERBOSITY.ERROR, tag, "Error on creating request URI "+e.getMessage());
+			logger.error("Error on creating request URI "+e.getMessage());
 			json.add("status",new JsonPrimitive(false));
 			json.add("body", new JsonPrimitive(e.getMessage()));
 			return json.toString();
@@ -333,23 +337,23 @@ public class Endpoint {
 	    	
 			timing = System.nanoTime() - timing;
 	    	
-			if(op.equals(SPARQLOperation.QUERY)) Logger.log(VERBOSITY.INFO, "timing", "QueryTime "+timing+ " ns");
-			else Logger.log(VERBOSITY.INFO, "timing", "UpdateTime "+timing+ " ns");
+			if(op.equals(SPARQLOperation.QUERY)) logger.info("QueryTime "+timing+ " ns");
+			else logger.info("UpdateTime "+timing+ " ns");
 	    }
 	    catch(java.net.ConnectException e) {
-	    	Logger.log(VERBOSITY.ERROR, tag, e.getMessage());
+	    	logger.error(e.getMessage());
 	    	json.add("status",new JsonPrimitive(false));
 			json.add("body", new JsonPrimitive(e.getMessage()));
 			return json.toString();
 	    } 
 		catch (ClientProtocolException e) {
-			Logger.log(VERBOSITY.ERROR, tag, e.getMessage());	
+			logger.error(e.getMessage());	
 			json.add("status",new JsonPrimitive(false));
 			json.add("body", new JsonPrimitive(e.getMessage()));
 			return json.toString();
 		} 
 		catch (IOException e) {
-			Logger.log(VERBOSITY.ERROR, tag, e.getMessage());
+			logger.error(e.getMessage());
 			json.add("status",new JsonPrimitive(false));
 			json.add("body", new JsonPrimitive(e.getMessage()));
 			return json.toString();

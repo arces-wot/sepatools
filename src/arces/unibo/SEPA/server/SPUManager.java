@@ -20,9 +20,8 @@ package arces.unibo.SEPA.server;
 import java.util.HashMap;
 import java.util.Observable;
 import java.util.Observer;
-
-import arces.unibo.SEPA.application.Logger;
-import arces.unibo.SEPA.application.Logger.VERBOSITY;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import arces.unibo.SEPA.commons.SubscribeRequest;
 import arces.unibo.SEPA.commons.SubscriptionProcessingResult;
 import arces.unibo.SEPA.commons.UnsubscribeRequest;
@@ -30,6 +29,9 @@ import arces.unibo.SEPA.commons.UpdateResponse;
 
 public class SPUManager extends Observable implements Observer{
 	private String tag ="SPU Manager";
+	
+	// logging
+	Logger logger = LogManager.getRootLogger();
 	
 	private Endpoint endpoint;
 	private HashMap<String,SPU> spus = new HashMap<String,SPU>();
@@ -42,7 +44,7 @@ public class SPUManager extends Observable implements Observer{
 	}
 	
 	public void processSubscribe(SubscribeRequest req) {
-		Logger.log(VERBOSITY.DEBUG, tag, "Process SUBSCRIBE #"+req.getToken());
+		logger.debug("Process SUBSCRIBE #"+req.getToken());
 		
 		//TODO: choose different kind of SPU based on subscription request
 		SPU spu = new SPUNaive(req,endpoint);
@@ -58,7 +60,7 @@ public class SPUManager extends Observable implements Observer{
 	}
 	
 	public String processUnsubscribe(UnsubscribeRequest req) {
-		Logger.log(VERBOSITY.DEBUG, tag, "Process UNSUBSCRIBE #"+req.getToken());
+		logger.debug("Process UNSUBSCRIBE #"+req.getToken());
 		String spuid = req.getSubscribeUUID();
 		
 		synchronized(spus){
@@ -72,12 +74,12 @@ public class SPUManager extends Observable implements Observer{
 	}
 	
 	public void processUpdate(UpdateResponse res) {
-		Logger.log(VERBOSITY.DEBUG, tag, "*** PROCESSING UPDATE STARTED ***");
+		logger.debug("*** PROCESSING UPDATE STARTED ***");
 		
 		//Sequential update processing
 		waitAllSubscriptionChecks(res);
 		
-		Logger.log(VERBOSITY.DEBUG, tag, "*** PROCESSING UPDATE FINISHED ***");
+		logger.debug("*** PROCESSING UPDATE FINISHED ***");
 	}
 
 	private synchronized void waitAllSubscriptionChecks(UpdateResponse res) {			
@@ -85,15 +87,15 @@ public class SPUManager extends Observable implements Observer{
 		
 		synchronized(spus) {
 			//Wake-up all SPUs
-			Logger.log(VERBOSITY.DEBUG, tag, "Activate SPUs (Total: "+spus.size()+")");
+			logger.debug("Activate SPUs (Total: "+spus.size()+")");
 			for (SPU spu: spus.values()) spu.subscriptionCheck(res);
 			
-			Logger.log(VERBOSITY.DEBUG, tag,  "Waiting all SPUs to complete processing...");		
+			logger.debug( "Waiting all SPUs to complete processing...");		
 			while (subscriptionsChecked != spus.size()) {
 				try {
 					wait();
 				} catch (InterruptedException e) {
-					Logger.log(VERBOSITY.DEBUG, tag,  "SPUs processing ended "+subscriptionsChecked+"/"+spus.size());
+					logger.debug( "SPUs processing ended "+subscriptionsChecked+"/"+spus.size());
 				}
 			}
 		}
@@ -102,7 +104,7 @@ public class SPUManager extends Observable implements Observer{
 	private synchronized void subscriptionProcessingEnded(){
 		subscriptionsChecked++;
 		notifyAll();
-		Logger.log(VERBOSITY.DEBUG, tag,  "SPU processing ended #"+subscriptionsChecked);
+		logger.debug( "SPU processing ended #"+subscriptionsChecked);
 	}
 
 	@Override
@@ -111,19 +113,19 @@ public class SPUManager extends Observable implements Observer{
 			SubscriptionProcessingResult ret = (SubscriptionProcessingResult) arg;
 			
 			//SPU processing ended
-			Logger.log(VERBOSITY.DEBUG, tag, "SPU "+ret.getSPUID()+" proccesing ended");
+			logger.debug("SPU "+ret.getSPUID()+" proccesing ended");
 			subscriptionProcessingEnded();
 						
 			//Send notification if required
 			if (!ret.toBeNotified()) return;
 			else {
-				Logger.log(VERBOSITY.DEBUG, tag, "Notify observers");
+				logger.debug("Notify observers");
 				setChanged();
 				notifyObservers(ret.getNotification());
 			}
 		}
 		else {
-			Logger.log(VERBOSITY.DEBUG, tag, "Notify observers");
+			logger.debug("Notify observers");
 			setChanged();
 			notifyObservers(arg);
 		}

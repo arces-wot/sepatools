@@ -20,9 +20,8 @@ package arces.unibo.SEPA.server;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.Properties;
-
-import arces.unibo.SEPA.application.Logger;
-import arces.unibo.SEPA.application.Logger.VERBOSITY;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import arces.unibo.SEPA.commons.QueryRequest;
 import arces.unibo.SEPA.commons.Response;
 import arces.unibo.SEPA.commons.SubscribeRequest;
@@ -39,7 +38,11 @@ public class Processor extends Observable implements Observer {
 	private SPUManager spuManager;
 	private Endpoint endpoint;
 	
-	public Processor(Properties properties) {	
+	// logging
+	Logger logger = LogManager.getRootLogger();
+	
+	public Processor(Properties properties) {		
+		
 		//Create SPARQL 1.1 interface
 		endpoint = new Endpoint(properties);
 		
@@ -52,49 +55,49 @@ public class Processor extends Observable implements Observer {
 		spuManager.addObserver(this);
 	}
 	
-	public void processQuery(QueryRequest req) {
-		Logger.log(VERBOSITY.DEBUG, tag, "QUERY #"+req.getToken());
+	public void processQuery(QueryRequest req) {		
+		logger.debug("QUERY #"+req.getToken());
 		Response res = queryProcessor.process(req);
 		
 		//Send response back
-		Logger.log(VERBOSITY.DEBUG, tag, "QUERY response #"+res.getToken());
+		logger.debug("QUERY response #"+res.getToken());
 		setChanged();
 		notifyObservers(res);
 	}
 	
 	public void processUpdate(UpdateRequest req) {
-		Logger.log(VERBOSITY.DEBUG, tag, "UPDATE #"+req.getToken());
+		logger.debug("UPDATE #"+req.getToken());
 		Response res = updateProcessor.process(req);
 		
 		//Send response back
-		Logger.log(VERBOSITY.DEBUG, tag, "UPDATE response #"+res.getToken());
+		logger.debug("UPDATE response #"+res.getToken());
 		setChanged();
 		notifyObservers(res);
 				
 		//Subscriptions processing
-		Logger.log(VERBOSITY.DEBUG, tag, "*** PROCESS SUBSCRIPTIONS ***");
+		logger.debug("*** PROCESS SUBSCRIPTIONS ***");
 		if (UpdateResponse.class.equals(res.getClass())) spuManager.processUpdate((UpdateResponse)res);	
 	}
 	
 	public void processSubscribe(SubscribeRequest req){
-		Logger.log(VERBOSITY.DEBUG, tag, "SUBSCRIBE #"+req.getToken());
+		logger.debug("SUBSCRIBE #"+req.getToken());
 		spuManager.processSubscribe(req);
 	}
 	
-	public void processUnsubscribe(UnsubscribeRequest req) {
-		Logger.log(VERBOSITY.DEBUG, tag, "UNSUBSCRIBE #"+req.getToken());
+	public void processUnsubscribe(UnsubscribeRequest req) {		
+		logger.debug("UNSUBSCRIBE #"+req.getToken());
 		String spuid = spuManager.processUnsubscribe(req);
 		UnsubscribeResponse res = new UnsubscribeResponse(req.getToken(),spuid);
 		
 		//Send response back
-		Logger.log(VERBOSITY.DEBUG, tag, "UNSUBSCRIBE response #"+res.getToken());
+		logger.debug("UNSUBSCRIBE response #"+res.getToken());
 		setChanged();
 		notifyObservers(res);
 	}
 
 	@Override
 	public void update(Observable o, Object arg) {
-		Logger.log(VERBOSITY.DEBUG, tag, "<< SPU MANAGER notification ");
+		logger.debug("<< SPU MANAGER notification ");	
 		setChanged();
 		notifyObservers(arg);
 	}

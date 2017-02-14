@@ -17,8 +17,8 @@
 
 package arces.unibo.SEPA.server;
 
-import arces.unibo.SEPA.application.Logger;
-import arces.unibo.SEPA.application.Logger.VERBOSITY;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import arces.unibo.SEPA.commons.QueryRequest;
 import arces.unibo.SEPA.commons.Response;
 
@@ -26,16 +26,19 @@ public class QueryProcessor {
 	private Endpoint endpoint;
 	private String tag ="Query Processor";
 	
+	// logging
+	Logger logger = LogManager.getRootLogger();
+	
 	public QueryProcessor(Endpoint endpoint) {
 		this.endpoint = endpoint;
 	}
 	
 	public Response process(QueryRequest req) {
-		Logger.log(VERBOSITY.DEBUG, tag, "Process "+req.getSPARQL());
+		logger.debug("Process "+req.getSPARQL());
 		
 		Response res = endpoint.query(req);
 		
-		Logger.log(VERBOSITY.DEBUG, tag, "Response "+res.toString());
+		logger.debug("Response "+res.toString());
 		return res;
 	}
 }
