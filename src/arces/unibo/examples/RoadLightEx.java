@@ -1,4 +1,4 @@
-package arces.unibo.benchmark;
+package arces.unibo.examples;
 
 public class RoadLightEx extends RoadExperiment {
 

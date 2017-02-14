@@ -89,13 +89,19 @@ public class BindingsResults {
 
 	public Set<String> getVariables() {
 		Set<String> vars = new HashSet<String>();
-		for (JsonElement var : results.get("head").getAsJsonObject().get("vars").getAsJsonArray()) vars.add(var.getAsString());
+		JsonArray variables = getVariablesArray();
+		if (variables == null) return vars;
+		
+		for (JsonElement var : variables) vars.add(var.getAsString());
 		return vars;
 	}
 	
 	public List<Bindings> getBindings() {
 		List<Bindings> list = new ArrayList<Bindings>();
-		for (JsonElement solution : results.get("results").getAsJsonObject().get("bindings").getAsJsonArray() ) {
+		JsonArray bindings = getBindingsArray();
+		if (bindings == null) return list;
+		
+		for (JsonElement solution : bindings) {
 			list.add(new Bindings(solution.getAsJsonObject()));
 		}
 		return list;
@@ -110,22 +116,57 @@ public class BindingsResults {
 	}
 
 	public boolean isEmpty() {
-		return (results.get("results").getAsJsonObject().get("bindings").getAsJsonArray().size() == 0);
+		JsonArray bindings = getBindingsArray();
+		if (bindings == null) return true;
+		
+		return (bindings.size() == 0);
 	}
 
 	public void add(Bindings binding) {
-		results.get("results").getAsJsonObject().get("bindings").getAsJsonArray().add(binding.toJson());
+		if (binding == null) return;
+		JsonArray bindings = getBindingsArray();
+		if (bindings == null) return;
+		
+		bindings.add(binding.toJson());
 	}
 
 	public boolean contains(Bindings solution) {
-		return results.get("results").getAsJsonObject().get("bindings").getAsJsonArray().contains(solution.toJson());
+		if (solution == null) return false;
+		JsonArray bindings = getBindingsArray();
+		if (bindings == null) return false;
+		
+		return bindings.contains(solution.toJson());
 	}
 
 	public void remove(Bindings solution) {
-		results.get("results").getAsJsonObject().get("bindings").getAsJsonArray().remove(solution.toJson());
+		if (solution == null) return;
+		JsonArray bindings = getBindingsArray();
+		if (bindings == null) return;
+		
+		bindings.remove(solution.toJson());
 	}
 
 	public int size() {
-		return results.get("results").getAsJsonObject().get("bindings").getAsJsonArray().size();
+		JsonArray bindings = getBindingsArray();
+		if (bindings == null) return 0;
+		return bindings.size();
+	}
+	
+	private JsonArray getBindingsArray() {
+		JsonElement varArray;
+		if (results == null) return null;
+		if((varArray=results.get("results")) == null) return null;
+		if((varArray=varArray.getAsJsonObject().get("bindings"))==null) return null;
+		
+		return varArray.getAsJsonArray();	
+	}
+	
+	private JsonArray getVariablesArray() {
+		JsonElement varArray;
+		if (results == null) return null;
+		if ((varArray = results.get("head")) == null) return null;
+		if ((varArray = varArray.getAsJsonObject().get("vars")) == null) return null;
+		
+		return varArray.getAsJsonArray();	
 	}
 }
