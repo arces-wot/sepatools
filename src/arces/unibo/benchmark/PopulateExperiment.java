@@ -1,4 +1,4 @@
-package arces.unibo.examples;
+package arces.unibo.benchmark;
 
 public class PopulateExperiment extends SmartLightingBenchmark {
 	protected String tag ="LampExp";
