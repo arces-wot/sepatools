@@ -1,4 +1,6 @@
-package arces.unibo.examples;
+package arces.unibo.benchmark;
+
+import arces.unibo.examples.SmartLightingBenchmark;
 
 public class RoadExperiment extends SmartLightingBenchmark {
 	
