@@ -20,8 +20,9 @@ package arces.unibo.SEPA.server;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.Properties;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
+
+import arces.unibo.SEPA.application.Logger;
+import arces.unibo.SEPA.application.Logger.VERBOSITY;
 import arces.unibo.SEPA.commons.ErrorResponse;
 import arces.unibo.SEPA.commons.Notification;
 import arces.unibo.SEPA.commons.QueryRequest;
@@ -57,14 +58,11 @@ public class Scheduler extends Thread implements Observer {
 		
 	private boolean running = true;
 	
-	// logging
-	Logger logger = LogManager.getRootLogger();
-	
 	public Scheduler(Properties properties,Processor processor) {
 		requestHandler = new RequestResponseHandler(properties);
 		tokenHandler = new TokenHandler(properties);
 		
-		if (processor == null) logger.error("Processor is null");
+		if (processor == null) Logger.log(VERBOSITY.ERROR, tag, "Processor is null");
 		else {
 			this.processor = processor;
 			this.processor.addObserver(this);
@@ -75,11 +73,11 @@ public class Scheduler extends Thread implements Observer {
 		@Override
 		public void run() {
 			while(running){
-				logger.debug("Waiting for update requests...");
+				Logger.log(VERBOSITY.DEBUG, tag, "Waiting for update requests...");
 				UpdateRequest req = requestHandler.waitUpdateRequest();				
 				
 				//Process UPDATE
-				logger.debug(">> UPDATE request #"+req.getToken());
+				Logger.log(VERBOSITY.DEBUG, tag, ">> UPDATE request #"+req.getToken());
 				processor.processUpdate(req);
 			}
 		}
@@ -95,11 +93,11 @@ public class Scheduler extends Thread implements Observer {
 		@Override
 		public void run() {
 			while(running){
-				logger.debug("Waiting for query requests...");
+				Logger.log(VERBOSITY.DEBUG, tag, "Waiting for query requests...");
 				QueryRequest req = requestHandler.waitQueryRequest();
 				
 				//Process QUERY
-				logger.debug(">> QUERY request #"+req.getToken());
+				Logger.log(VERBOSITY.DEBUG, tag, ">> QUERY request #"+req.getToken());
 				processor.processQuery(req);
 			}
 		}
@@ -115,11 +113,11 @@ public class Scheduler extends Thread implements Observer {
 		@Override
 		public void run() {
 			while(running){
-				logger.debug("Waiting for subscribe requests...");
+				Logger.log(VERBOSITY.DEBUG, tag, "Waiting for subscribe requests...");
 				SubscribeRequest req = requestHandler.waitSubscribeRequest();
 				
 				//Process SUBSCRIBE
-				logger.debug(">> SUBSCRIBE request #"+req.getToken());
+				Logger.log(VERBOSITY.DEBUG, tag, ">> SUBSCRIBE request #"+req.getToken());
 				processor.processSubscribe(req);
 			}
 		}
@@ -135,11 +133,11 @@ public class Scheduler extends Thread implements Observer {
 		@Override
 		public void run() {			
 			while(running){
-				logger.debug("Waiting for unsubscribe requests...");
+				Logger.log(VERBOSITY.DEBUG, tag, "Waiting for unsubscribe requests...");
 				UnsubscribeRequest req = requestHandler.waitUnsubscribeRequest();				
 				
 				//Process UNSUBSCRIBE
-				logger.debug(">> UNSUBSCRIBE request #"+req.getToken());
+				Logger.log(VERBOSITY.DEBUG, tag, ">> UNSUBSCRIBE request #"+req.getToken());
 				processor.processUnsubscribe(req);
 			}
 		}
@@ -166,35 +164,35 @@ public class Scheduler extends Thread implements Observer {
 		if (arg.getClass().equals(Notification.class)) {
 			Notification notify = (Notification) arg;
 			requestHandler.addNotification(notify);
-			logger.debug("<< NOTIFICATION ("+notify.getSequence()+") "+notify.getSPUID());
+			Logger.log(VERBOSITY.DEBUG, tag, "<< NOTIFICATION ("+notify.getSequence()+") "+notify.getSPUID());
 		}
 		else if (arg.getClass().equals(QueryResponse.class)) {
 			QueryResponse response = (QueryResponse) arg;
 			requestHandler.addResponse(response);
-			logger.debug("<< QUERY response #"+response.getToken());
+			Logger.log(VERBOSITY.DEBUG, tag, "<< QUERY response #"+response.getToken());
 		}
 		else if (arg.getClass().equals(UpdateResponse.class)) {
 			UpdateResponse response = (UpdateResponse) arg;
 			requestHandler.addResponse(response);
-			logger.debug("<< UPDATE response #"+response.getToken());
+			Logger.log(VERBOSITY.DEBUG, tag, "<< UPDATE response #"+response.getToken());
 		}
 		else if (arg.getClass().equals(SubscribeResponse.class)) {
 			SubscribeResponse response = (SubscribeResponse) arg;
 			requestHandler.addResponse(response);
-			logger.debug("<< SUBSCRIBE response #"+response.getToken());
+			Logger.log(VERBOSITY.DEBUG, tag, "<< SUBSCRIBE response #"+response.getToken());
 		}
 		else if (arg.getClass().equals(UnsubscribeResponse.class)) {
 			UnsubscribeResponse response = (UnsubscribeResponse) arg;
 			requestHandler.addResponse(response);
-			logger.debug("<< UNSUBSCRIBE response #"+response.getToken());
+			Logger.log(VERBOSITY.DEBUG, tag, "<< UNSUBSCRIBE response #"+response.getToken());
 		}
 		else if (arg.getClass().equals(ErrorResponse.class)) {
 			ErrorResponse response = (ErrorResponse) arg;
 			requestHandler.addResponse(response);
-			logger.warn("<< Error response: #"+response.getToken());
+			Logger.log(VERBOSITY.WARNING, tag, "<< Error response: #"+response.getToken());
 		}
 		else {
-			logger.warn("<< Unsupported response: "+arg.toString());
+			Logger.log(VERBOSITY.WARNING, tag, "<< Unsupported response: "+arg.toString());
 		}
 	}
 

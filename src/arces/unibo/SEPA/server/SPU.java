@@ -20,8 +20,9 @@ package arces.unibo.SEPA.server;
 import java.util.Observable;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+
+import arces.unibo.SEPA.application.Logger;
+import arces.unibo.SEPA.application.Logger.VERBOSITY;
 import arces.unibo.SEPA.commons.SubscribeRequest;
 import arces.unibo.SEPA.commons.SubscribeResponse;
 import arces.unibo.SEPA.commons.SubscriptionProcessingResult;
@@ -38,9 +39,6 @@ import arces.unibo.SEPA.commons.UpdateResponse;
 public abstract class SPU extends Observable implements Runnable {
 	private static String tag ="SPU";
 		
-	// logging
-	Logger logger = LogManager.getRootLogger();
-	
 	private String uuid = null;
 	private ConcurrentLinkedQueue<SubscriptionProcessingInputData> spuData = new ConcurrentLinkedQueue<SubscriptionProcessingInputData>();
 	private boolean running = true;
@@ -81,7 +79,7 @@ public abstract class SPU extends Observable implements Runnable {
 	private synchronized SubscriptionProcessingInputData waitUpdate() {
 		while(spuData.isEmpty()){
 			try {
-				logger.debug(getUUID() + " Waiting new update response...");
+				Logger.log(VERBOSITY.DEBUG, tag, getUUID() + " Waiting new update response...");
 				wait();
 			} catch (InterruptedException e) {}
 			
@@ -101,7 +99,7 @@ public abstract class SPU extends Observable implements Runnable {
 		init();
 		
 		//Main loop
-		logger.debug(getUUID()+" Entering main loop...");
+		Logger.log(VERBOSITY.DEBUG, tag, getUUID()+" Entering main loop...");
 		while(running){			
 			//Wait new update
 			SubscriptionProcessingInputData update = waitUpdate();

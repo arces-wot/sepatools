@@ -1,7 +1,7 @@
 package arces.unibo.SEPA.server;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import arces.unibo.SEPA.application.Logger;
+import arces.unibo.SEPA.application.Logger.VERBOSITY;
 import arces.unibo.SEPA.commons.ARBindingsResults;
 import arces.unibo.SEPA.commons.Bindings;
 import arces.unibo.SEPA.commons.BindingsResults;
@@ -16,9 +16,6 @@ public class SPUNaive extends SPU{
 	private BindingsResults lastBindings;
 	private Integer sequence = 0;
 	private String tag ="SPUNaive";
-	
-	// logging
-	Logger logger = LogManager.getRootLogger();
 	
 	public SPUNaive(SubscribeRequest subscribe, Endpoint endpoint) {
 		super(subscribe, endpoint);
@@ -43,7 +40,7 @@ public class SPUNaive extends SPU{
 
 	@Override
 	public SubscriptionProcessingResult process(SubscriptionProcessingInputData update) {
-		logger.debug(getUUID() + " Start processing");
+		Logger.log(VERBOSITY.DEBUG, tag, getUUID() + " Start processing");
 		Response ret = subscription.queryProcessor.process(subscription.subscribe);
 		
 		Notification notification = null;
@@ -78,7 +75,7 @@ public class SPUNaive extends SPU{
 		
 		SubscriptionProcessingResult res = new SubscriptionProcessingResult(getUUID(),notification);
 		
-		logger.debug(getUUID() + " End processing");
+		Logger.log(VERBOSITY.DEBUG, tag, getUUID() + " End processing");
 		
 		return res;	
 	}
