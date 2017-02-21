@@ -18,15 +18,21 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 package arces.unibo.SEPA.application;
 
 import arces.unibo.SEPA.application.Logger.VERBOSITY;
-import arces.unibo.SEPA.commons.Bindings;
+import arces.unibo.SEPA.commons.SPARQL.Bindings;
 
 public abstract class Aggregator extends Consumer implements IAggregator {
-	private String sparqlUpdate = "INSERT { ?subject ?predicate ?object }";
-	private String updateID = "";
-	private String tag = "SEPA AGGREGATOR";
+	protected String sparqlUpdate = "INSERT { ?subject ?predicate ?object }";
+	protected String updateID = "";
+	protected String tag = "SEPA AGGREGATOR";
+	
+	public Aggregator(String url,int updatePort,int subscribePort,String path,String subscribe,String update) {
+		super(url,updatePort,subscribePort,path,subscribe);
+		sparqlUpdate = update;
+	}
 	
 	public Aggregator(ApplicationProfile appProfile,String subscribeID,String updateID){
 		super(appProfile,subscribeID);
+		
 		if (appProfile == null){
 			Logger.log(VERBOSITY.FATAL,tag,"Cannot be initialized with UPDATE ID " +updateID+" (application profile is null)");
 			return;	
@@ -36,7 +42,7 @@ public abstract class Aggregator extends Consumer implements IAggregator {
 			return;
 		}
 		
-		sparqlUpdate = appProfile.update(updateID).replaceAll("\n", "").replaceAll("\r", "").replaceAll("\t", "").trim();
+		sparqlUpdate = appProfile.update(updateID);
 		this.updateID = updateID;
 	} 
 		

@@ -17,25 +17,17 @@
 
 package arces.unibo.SEPA.server;
 
-import arces.unibo.SEPA.application.Logger;
-import arces.unibo.SEPA.application.Logger.VERBOSITY;
-import arces.unibo.SEPA.commons.QueryRequest;
-import arces.unibo.SEPA.commons.Response;
+import arces.unibo.SEPA.commons.request.QueryRequest;
+import arces.unibo.SEPA.commons.response.Response;
 
 public class QueryProcessor {
 	private Endpoint endpoint;
-	private String tag ="Query Processor";
 	
 	public QueryProcessor(Endpoint endpoint) {
 		this.endpoint = endpoint;
 	}
 	
-	public Response process(QueryRequest req) {
-		Logger.log(VERBOSITY.DEBUG, tag, "Process "+req.getSPARQL());
-		
-		Response res = endpoint.query(req);
-		
-		Logger.log(VERBOSITY.DEBUG, tag, "Response "+res.toString());
-		return res;
+	public Response process(QueryRequest req) {		
+		return endpoint.query(req);
 	}
 }

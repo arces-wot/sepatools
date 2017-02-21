@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<applicationProfile xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="ApplicationProfile.xsd">
+   <parameters path="/sparql" subscribePort="9000" updatePort="8000" url="localhost"/>
+  <namespaces>
+    <namespace prefix="crm" suffix="http://purl.org/NET/cidoc-crm/core#"/>
+  		<namespace prefix="rdf" suffix="http://www.w3.org/1999/02/22-rdf-syntax-ns#"/>
+  		<namespace prefix="rdfs" suffix="http://www.w3.org/2000/01/rdf-schema#"/>
+  		<namespace prefix="owl" suffix="http://www.w3.org/2002/07/owl#"/>
+  		<namespace prefix="rdfs" suffix="http://www.w3.org/2000/01/rdf-schema#"/>
+  		<namespace prefix="xsd" suffix="http://www.w3.org/2001/XMLSchema#"/>
+  		<namespace prefix="skos" suffix="http://www.w3.org/2004/02/skos/core#"/>
+  		<namespace prefix="vann" suffix="http://purl.org/vocab/vann/"/>
+  		<namespace prefix="label" suffix="http://purl.org/net/vocab/2004/03/label#"/>
+  		<namespace prefix="vs" suffix="http://www.w3.org/2003/06/sw-vocab-status/ns#"/>
+  		<namespace prefix="dcterms" suffix="http://purl.org/dc/terms/"/>
+  		<namespace prefix="cc" suffix="http://creativecommons.org/ns#"/>
+  </namespaces>
+  <updates>
+    <update id="NEWCLASS"><sparql><![CDATA[
+    INSERT DATA {?class rdf:type owl:Class . ?class rdfs:subClassOf ?superclass}
+    ]]>
+  	</sparql>
+  	<forcedBindings>
+      		<binding variable="class" type="uri" value=""/>
+      		<binding variable="superclass" type="uri" value=""/>
+  		</forcedBindings>
+  	</update>
+  </updates>
+  <subscribes>
+    <subscribe id="ALL"><sparql><![CDATA[
+    SELECT ?sub ?pred ?obj WHERE { 
+    	?sub ?pred ?obj }]]></sparql>
+  	</subscribe>
+  <subscribe id="CLASSES"><sparql><![CDATA[
+    SELECT ?class ?subclass ?label ?comment WHERE { 
+    	?class rdf:type owl:Class . OPTIONAL {?class rdfs:comment ?comment}. OPTIONAL {?subclass rdfs:subClassOf ?class} . OPTIONAL {?class rdfs:label ?label}}]]></sparql>
+  	</subscribe>
+  	 <subscribe id="PROPERTIES"><sparql><![CDATA[
+    SELECT ?property ?comment ?domain ?range WHERE { ?property rdf:type owl:ObjectProperty . OPTIONAL { ?property rdfs:range ?range} . 
+OPTIONAL { ?property rdfs:domain ?domain } . OPTIONAL {?property rdfs:comment ?comment}}]]></sparql>
+  	</subscribe>
+  </subscribes>
+</applicationProfile>

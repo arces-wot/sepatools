@@ -17,7 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package arces.unibo.SEPA.application;
 
-import arces.unibo.SEPA.commons.Bindings;
+import arces.unibo.SEPA.commons.SPARQL.Bindings;
 
 public interface IProducer extends IClient {
 	 public boolean update(Bindings forcedBindings);

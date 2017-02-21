@@ -19,73 +19,118 @@ package arces.unibo.SEPA.application;
 
 import arces.unibo.SEPA.application.Logger.VERBOSITY;
 import arces.unibo.SEPA.client.SecureEventProtocol.NotificationHandler;
+import arces.unibo.SEPA.commons.SPARQL.ARBindingsResults;
+import arces.unibo.SEPA.commons.SPARQL.Bindings;
+import arces.unibo.SEPA.commons.SPARQL.BindingsResults;
+import arces.unibo.SEPA.commons.SPARQL.RDFTermURI;
+import arces.unibo.SEPA.commons.response.Notification;
 
-import arces.unibo.SEPA.commons.ARBindingsResults;
-import arces.unibo.SEPA.commons.Notification;
-import arces.unibo.SEPA.commons.RDFTermURI;
-import arces.unibo.SEPA.commons.BindingsResults;
-import arces.unibo.SEPA.commons.Bindings;
 
-public abstract class Consumer extends Client implements IConsumer {
-	private String SPARQL_SUBSCRIBE = null;
-	private String subID ="";
-	private boolean onSubscribe = true;
+public abstract class Consumer extends Client implements IConsumer,NotificationHandler {
+	protected String sparqlSubscribe = null;
+	protected String subID ="";
+	protected boolean onSubscribe = true;
+	protected int DEFAULT_SUBSCRIPTION_TIMEOUT = 3000;
+	protected SubcribeConfirmSync subConfirm;
 	
-	private String tag = "SEPA CONSUMER";
-	private ConsumerHandler handler;
-	
-	class ConsumerHandler implements NotificationHandler {
-		private Consumer consumer;
+	protected String tag = "SEPA CONSUMER";
 		
-		public ConsumerHandler(Consumer consumer) {
-			this.consumer = consumer;
-		}
-		
-		@Override
-		public void notify(Notification notify) {
-			String spuid = notify.getSPUID();
-			Integer sequence = notify.getSequence();
-			ARBindingsResults results = notify.getARBindingsResults();
-					
-			BindingsResults added = results.getAddedBindings();
-			BindingsResults removed = results.getRemovedBindings();
+	@Override
+	public void semanticEvent(Notification notify) {
+		String spuid = notify.getSPUID();
+		Integer sequence = notify.getSequence();
+		ARBindingsResults results = notify.getARBindingsResults();
+				
+		BindingsResults added = results.getAddedBindings();
+		BindingsResults removed = results.getRemovedBindings();
 
-			//Replace prefixes
-			for (Bindings bindings : added.getBindings()) {
-				for(String var : bindings.getVariables()) {
-					if (bindings.isURI(var)) {
-						for(String prefix : URI2PrefixMap.keySet())
-							if(bindings.getBindingValue(var).startsWith(prefix)) {
-								bindings.addBinding(var, new RDFTermURI(bindings.getBindingValue(var).replace(prefix, URI2PrefixMap.get(prefix)+":")));
-								break;
-							}
-					}
+		//Replace prefixes
+		for (Bindings bindings : added.getBindings()) {
+			for(String var : bindings.getVariables()) {
+				if (bindings.isURI(var)) {
+					for(String prefix : URI2PrefixMap.keySet())
+						if(bindings.getBindingValue(var).startsWith(prefix)) {
+							bindings.addBinding(var, new RDFTermURI(bindings.getBindingValue(var).replace(prefix, URI2PrefixMap.get(prefix)+":")));
+							break;
+						}
 				}
 			}
-			for (Bindings bindings : removed.getBindings()) {
-				for(String var : bindings.getVariables()) {
-					if (bindings.isURI(var)) {
-						for(String prefix : URI2PrefixMap.keySet())
-							if(bindings.getBindingValue(var).startsWith(prefix)) {
-								bindings.addBinding(var, new RDFTermURI(bindings.getBindingValue(var).replace(prefix, URI2PrefixMap.get(prefix)+":")));
-								break;
-							}
-					}
+		}
+		for (Bindings bindings : removed.getBindings()) {
+			for(String var : bindings.getVariables()) {
+				if (bindings.isURI(var)) {
+					for(String prefix : URI2PrefixMap.keySet())
+						if(bindings.getBindingValue(var).startsWith(prefix)) {
+							bindings.addBinding(var, new RDFTermURI(bindings.getBindingValue(var).replace(prefix, URI2PrefixMap.get(prefix)+":")));
+							break;
+						}
 				}
 			}
-			
-			if (onSubscribe) {
-				onSubscribe = false;
-				consumer.onSubscribe(added, spuid);
-				return;
-			}
-			
-			//Dispatch different notifications based on notify content
-			if (!added.isEmpty()) consumer.notifyAdded(added,spuid,sequence);
-			if (!removed.isEmpty()) consumer.notifyRemoved(removed,spuid,sequence);
-			consumer.notify(results,spuid,sequence);
 		}
 		
+		if (onSubscribe) {
+			onSubscribe = false;
+			onSubscribe(added, spuid);
+			return;
+		}
+		
+		//Dispatch different notifications based on notify content
+		if (!added.isEmpty()) notifyAdded(added,spuid,sequence);
+		if (!removed.isEmpty()) notifyRemoved(removed,spuid,sequence);
+		notify(results,spuid,sequence);
+	}
+
+	@Override
+	public void subscribeConfirmed(String spuid) {
+		Logger.log(VERBOSITY.DEBUG,tag,"Subscribe confirmed "+spuid);
+		subConfirm.notifySubscribeConfirm(spuid);
+	}
+
+	@Override
+	public void unsubscribeConfirmed(String spuid) {
+		Logger.log(VERBOSITY.DEBUG,tag,"Unsubscribe confirmed "+spuid);
+	}
+
+	@Override
+	public void ping() {
+		Logger.log(VERBOSITY.DEBUG,tag,"Ping");
+	}
+
+	@Override
+	public void rawData() {
+		// TODO Auto-generated method stub
+		
+	}
+	
+	protected class SubcribeConfirmSync {
+		private String tag = "SubcribeConfirmSync";
+		
+		private String subID = "";
+		
+		public synchronized String waitSubscribeConfirm(int timeout) {
+			
+			if (!subID.equals("")) return subID;
+			
+			try {
+				Logger.log(VERBOSITY.DEBUG,tag,"Wait for subscribe confirm...");
+				wait(timeout);
+			} catch (InterruptedException e) {
+	
+			}
+			
+			return subID;
+		}
+		
+		public synchronized void notifySubscribeConfirm(String spuid) {
+			Logger.log(VERBOSITY.DEBUG,tag,"Notify confirm!");
+			
+			subID = spuid;
+			notifyAll();
+		}
+	}
+	public Consumer(String url,int updatePort,int subscribePort,String path,String SPARQL) {
+		super(url,updatePort,subscribePort,path);
+		sparqlSubscribe = SPARQL;
 	}
 	
 	public Consumer(ApplicationProfile appProfile,String subscribeID) {
@@ -95,13 +140,11 @@ public abstract class Consumer extends Client implements IConsumer {
 			return;
 		}
 		if (appProfile.subscribe(subscribeID) == null) return;
-		SPARQL_SUBSCRIBE = appProfile.subscribe(subscribeID).replaceAll("\n", "").replaceAll("\r", "").replaceAll("\t", "").trim();
-		
-		handler = new ConsumerHandler(this);
+		sparqlSubscribe = appProfile.subscribe(subscribeID);
 	}
 	
 	public String subscribe(Bindings forcedBindings) {
-		if (SPARQL_SUBSCRIBE == null) {
+		if (sparqlSubscribe == null) {
 			 Logger.log(VERBOSITY.FATAL, tag, "SPARQL SUBSCRIBE not defined");
 			 return null;
 		 }
@@ -111,13 +154,22 @@ public abstract class Consumer extends Client implements IConsumer {
 			 return null;
 		 }
 		
-		String sparql = prefixes() + replaceBindings(SPARQL_SUBSCRIBE,forcedBindings);
+		String sparql = prefixes() + replaceBindings(sparqlSubscribe,forcedBindings);
 		
 		Logger.log(VERBOSITY.DEBUG,tag,"<SUBSCRIBE> ==> "+sparql);
 	
-		 onSubscribe = true;
-		 
-		return protocolClient.subscribe(sparql, handler);
+		onSubscribe = true;
+		
+		subConfirm = new SubcribeConfirmSync();
+		
+		if(!protocolClient.subscribe(sparql, this)) return null;
+		
+		Logger.log(VERBOSITY.DEBUG,tag,"Wait for subscribe confirm...");
+		
+		subID = subConfirm.waitSubscribeConfirm(DEFAULT_SUBSCRIPTION_TIMEOUT);
+		
+		return subID;
+		
 	}
 	 
 	public boolean unsubscribe() {

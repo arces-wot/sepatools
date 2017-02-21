@@ -23,18 +23,18 @@ import java.util.Properties;
 
 import arces.unibo.SEPA.application.Logger;
 import arces.unibo.SEPA.application.Logger.VERBOSITY;
-import arces.unibo.SEPA.commons.ErrorResponse;
-import arces.unibo.SEPA.commons.Notification;
-import arces.unibo.SEPA.commons.QueryRequest;
-import arces.unibo.SEPA.commons.QueryResponse;
-import arces.unibo.SEPA.commons.Request;
-import arces.unibo.SEPA.commons.SubscribeRequest;
-import arces.unibo.SEPA.commons.SubscribeResponse;
-import arces.unibo.SEPA.commons.UnsubscribeRequest;
-import arces.unibo.SEPA.commons.UnsubscribeResponse;
-import arces.unibo.SEPA.commons.UpdateRequest;
-import arces.unibo.SEPA.commons.UpdateResponse;
-import arces.unibo.SEPA.server.RequestResponseHandler.ResponseListener;
+import arces.unibo.SEPA.commons.request.QueryRequest;
+import arces.unibo.SEPA.commons.request.Request;
+import arces.unibo.SEPA.commons.request.SubscribeRequest;
+import arces.unibo.SEPA.commons.request.UnsubscribeRequest;
+import arces.unibo.SEPA.commons.request.UpdateRequest;
+import arces.unibo.SEPA.commons.response.ErrorResponse;
+import arces.unibo.SEPA.commons.response.Notification;
+import arces.unibo.SEPA.commons.response.QueryResponse;
+import arces.unibo.SEPA.commons.response.SubscribeResponse;
+import arces.unibo.SEPA.commons.response.UnsubscribeResponse;
+import arces.unibo.SEPA.commons.response.UpdateResponse;
+import arces.unibo.SEPA.server.RequestResponseHandler.ResponseAndNotificationListener;
 
 /**
  * This class represents the scheduler of the SUB Engine
@@ -73,11 +73,10 @@ public class Scheduler extends Thread implements Observer {
 		@Override
 		public void run() {
 			while(running){
-				Logger.log(VERBOSITY.DEBUG, tag, "Waiting for update requests...");
 				UpdateRequest req = requestHandler.waitUpdateRequest();				
 				
 				//Process UPDATE
-				Logger.log(VERBOSITY.DEBUG, tag, ">> UPDATE request #"+req.getToken());
+				Logger.log(VERBOSITY.DEBUG, tag, ">> "+req.toString());
 				processor.processUpdate(req);
 			}
 		}
@@ -93,11 +92,10 @@ public class Scheduler extends Thread implements Observer {
 		@Override
 		public void run() {
 			while(running){
-				Logger.log(VERBOSITY.DEBUG, tag, "Waiting for query requests...");
 				QueryRequest req = requestHandler.waitQueryRequest();
 				
 				//Process QUERY
-				Logger.log(VERBOSITY.DEBUG, tag, ">> QUERY request #"+req.getToken());
+				Logger.log(VERBOSITY.DEBUG, tag, ">> "+req.toString());
 				processor.processQuery(req);
 			}
 		}
@@ -113,11 +111,10 @@ public class Scheduler extends Thread implements Observer {
 		@Override
 		public void run() {
 			while(running){
-				Logger.log(VERBOSITY.DEBUG, tag, "Waiting for subscribe requests...");
 				SubscribeRequest req = requestHandler.waitSubscribeRequest();
 				
 				//Process SUBSCRIBE
-				Logger.log(VERBOSITY.DEBUG, tag, ">> SUBSCRIBE request #"+req.getToken());
+				Logger.log(VERBOSITY.DEBUG, tag, ">> "+req.toString());
 				processor.processSubscribe(req);
 			}
 		}
@@ -133,11 +130,10 @@ public class Scheduler extends Thread implements Observer {
 		@Override
 		public void run() {			
 			while(running){
-				Logger.log(VERBOSITY.DEBUG, tag, "Waiting for unsubscribe requests...");
 				UnsubscribeRequest req = requestHandler.waitUnsubscribeRequest();				
 				
 				//Process UNSUBSCRIBE
-				Logger.log(VERBOSITY.DEBUG, tag, ">> UNSUBSCRIBE request #"+req.getToken());
+				Logger.log(VERBOSITY.DEBUG, tag, ">> "+req.toString());
 				processor.processUnsubscribe(req);
 			}
 		}
@@ -164,32 +160,32 @@ public class Scheduler extends Thread implements Observer {
 		if (arg.getClass().equals(Notification.class)) {
 			Notification notify = (Notification) arg;
 			requestHandler.addNotification(notify);
-			Logger.log(VERBOSITY.DEBUG, tag, "<< NOTIFICATION ("+notify.getSequence()+") "+notify.getSPUID());
+			Logger.log(VERBOSITY.DEBUG, tag, "<< "+notify.toString());
 		}
 		else if (arg.getClass().equals(QueryResponse.class)) {
 			QueryResponse response = (QueryResponse) arg;
 			requestHandler.addResponse(response);
-			Logger.log(VERBOSITY.DEBUG, tag, "<< QUERY response #"+response.getToken());
+			Logger.log(VERBOSITY.DEBUG, tag, "<< "+response.toString());
 		}
 		else if (arg.getClass().equals(UpdateResponse.class)) {
 			UpdateResponse response = (UpdateResponse) arg;
 			requestHandler.addResponse(response);
-			Logger.log(VERBOSITY.DEBUG, tag, "<< UPDATE response #"+response.getToken());
+			Logger.log(VERBOSITY.DEBUG, tag, "<< "+response.toString());
 		}
 		else if (arg.getClass().equals(SubscribeResponse.class)) {
 			SubscribeResponse response = (SubscribeResponse) arg;
 			requestHandler.addResponse(response);
-			Logger.log(VERBOSITY.DEBUG, tag, "<< SUBSCRIBE response #"+response.getToken());
+			Logger.log(VERBOSITY.DEBUG, tag, "<< "+response.toString());
 		}
 		else if (arg.getClass().equals(UnsubscribeResponse.class)) {
 			UnsubscribeResponse response = (UnsubscribeResponse) arg;
 			requestHandler.addResponse(response);
-			Logger.log(VERBOSITY.DEBUG, tag, "<< UNSUBSCRIBE response #"+response.getToken());
+			Logger.log(VERBOSITY.DEBUG, tag, "<< "+response.toString());
 		}
 		else if (arg.getClass().equals(ErrorResponse.class)) {
 			ErrorResponse response = (ErrorResponse) arg;
 			requestHandler.addResponse(response);
-			Logger.log(VERBOSITY.WARNING, tag, "<< Error response: #"+response.getToken());
+			Logger.log(VERBOSITY.WARNING, tag, "<< "+response.toString());
 		}
 		else {
 			Logger.log(VERBOSITY.WARNING, tag, "<< Unsupported response: "+arg.toString());
@@ -200,7 +196,7 @@ public class Scheduler extends Thread implements Observer {
 		return tokenHandler.getToken();
 	}
 
-	public void addRequest(Request request, ResponseListener listener) {
+	public void addRequest(Request request, ResponseAndNotificationListener listener) {
 		requestHandler.addRequest(request, listener);
 	}
 

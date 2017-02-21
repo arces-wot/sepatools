@@ -17,25 +17,17 @@
 
 package arces.unibo.SEPA.server;
 
-import arces.unibo.SEPA.commons.UpdateRequest;
-import arces.unibo.SEPA.application.Logger;
-import arces.unibo.SEPA.application.Logger.VERBOSITY;
-import arces.unibo.SEPA.commons.Response;
+import arces.unibo.SEPA.commons.request.UpdateRequest;
+import arces.unibo.SEPA.commons.response.Response;
 
 public class UpdateProcessor {
 	private Endpoint endpoint;
-	private String tag ="Update Processor";
 
 	public UpdateProcessor(Endpoint endpoint) {
 		this.endpoint = endpoint;
 	}
 	
-	public Response process(UpdateRequest req) {
-		Logger.log(VERBOSITY.DEBUG, tag, "Process "+req.getSPARQL());
-		
-		Response res = endpoint.update(req);
-		
-		Logger.log(VERBOSITY.DEBUG, tag, "Response "+res.toString());
-		return res;
+	public Response process(UpdateRequest req) {		
+		return endpoint.update(req);
 	}
 }

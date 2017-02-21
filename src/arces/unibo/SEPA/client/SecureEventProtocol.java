@@ -37,7 +37,10 @@ import org.apache.http.util.EntityUtils;
 import org.glassfish.tyrus.client.ClientManager;
 
 import java.net.URI;
+import java.net.URISyntaxException;
+
 import javax.websocket.ClientEndpointConfig;
+import javax.websocket.DeploymentException;
 import javax.websocket.Endpoint;
 import javax.websocket.EndpointConfig;
 import javax.websocket.MessageHandler;
@@ -49,14 +52,17 @@ import com.google.gson.JsonPrimitive;
 
 import arces.unibo.SEPA.application.Logger;
 import arces.unibo.SEPA.application.Logger.VERBOSITY;
-import arces.unibo.SEPA.commons.ARBindingsResults;
-import arces.unibo.SEPA.commons.Notification;
-import arces.unibo.SEPA.commons.BindingsResults;
+import arces.unibo.SEPA.commons.SPARQL.BindingsResults;
+import arces.unibo.SEPA.commons.response.Notification;
 
 public class SecureEventProtocol {
 	
 	public interface NotificationHandler {
-		public void notify(Notification notify);
+		public void semanticEvent(Notification notify);
+		public void subscribeConfirmed(String spuid);
+		public void unsubscribeConfirmed(String spuid);
+		public void ping();
+		public void rawData();
 	}
 	
 	private String tag ="SEProtocol";
@@ -66,10 +72,16 @@ public class SecureEventProtocol {
 	private String postUrl;
 	private String wsUrl;
 	
-	private String syncResponse = null;
 	private NotificationHandler handler = null;
-	private boolean syncRequest = false;
-	private Session wsClientSession = null;
+	private SEPAEndpoint wsClient;
+	
+	public String getUpdateURL() {
+		return postUrl;
+	}
+	
+	public String getSubscribeURL() {
+		return wsUrl;
+	}
 	
 	public SecureEventProtocol(String url, int updatePort,int subscribePort, String path) {				
 		postUrl = "http://"+url+":"+updatePort+path;
@@ -81,6 +93,8 @@ public class SecureEventProtocol {
 		properties.setProperty("url", url);
 		
 		storeProperties(propertiesFile);
+		
+		wsClient = new SEPAEndpoint(wsUrl);
 	}
 
 	public SecureEventProtocol() {
@@ -100,6 +114,8 @@ public class SecureEventProtocol {
 		properties.setProperty("url", url);
 		
 		storeProperties(propertiesFile);
+		
+		wsClient = new SEPAEndpoint(wsUrl);
 	}
 
 	public boolean update(String sparql) {
@@ -113,128 +129,148 @@ public class SecureEventProtocol {
 		
 		return new BindingsResults(new JsonParser().parse(json.get("body").getAsString()).getAsJsonObject());
 	}
-
-	private String sendSync(String string) {
-		syncRequest  = true;
-		syncResponse = "timeout";
+	
+	class SEPAEndpoint extends Endpoint {
+		private Session wsClientSession = null;;
+		private final ClientEndpointConfig cec = ClientEndpointConfig.Builder.create().build();
+		private ClientManager client = ClientManager.createClient();
+		private SEPAMessageHandler messageHandler = new SEPAMessageHandler();
+		private String wsUrl;
+		private String sparql;
 		
-		if(wsClientSession.isOpen()) {
-			try {
-				wsClientSession.getBasicRemote().sendText(string);
-			} catch (IOException e) 
-			{
-				JsonObject res = new JsonObject();
-				
-				if (syncRequest == true) res.add("status", new JsonPrimitive(false));
-				else res.add("status", new JsonPrimitive(true));
-				
-				res.add("body", new JsonPrimitive(e.getMessage()));
-				
-				return res.toString();
-			}
-			waitResponse();
+		@Override
+		public void onOpen(Session session, EndpointConfig arg1) {
+			wsClientSession = session;
+        	wsClientSession.addMessageHandler(messageHandler);	
+        	try {
+				wsClientSession.getBasicRemote().sendText("subscribe="+sparql);
+			} 
+			catch (IOException e) {}
 		}
 		
-		JsonObject res = new JsonObject();
-		res.add("status", new JsonPrimitive(!syncRequest));
-		res.add("body", new JsonPrimitive(syncResponse));
+		public SEPAEndpoint(String wsUrl) {
+			this.wsUrl = wsUrl;
+		}
 		
-		return res.toString();
-	}
-	
-	public synchronized void waitResponse() {
-	    while(syncRequest) {
-	        try {
-	            wait(2000);
-	        } catch (InterruptedException e) {}
-	    }
-	}
-	
-	public synchronized void notifyResponse(String message) {
-		syncResponse = message;
-		syncRequest = false;
-	    notifyAll();
-	}
-	
-	public String subscribe(String sparql, NotificationHandler mHandler) {
-		try {
-			this.handler = mHandler;
-			
-			final ClientEndpointConfig cec = ClientEndpointConfig.Builder.create().build();
-			
-			ClientManager client = ClientManager.createClient();
-	        
-			client.connectToServer(new Endpoint() {
-	            @Override
-	            public void onOpen(Session session, EndpointConfig config) {
-	            	wsClientSession = session;
-	            	wsClientSession.addMessageHandler(new MessageHandler.Whole<String>() {
-                       
-	            		@Override
-                        public void onMessage(String message) {
-                        	Logger.log(VERBOSITY.DEBUG, tag, message);
-                        	
-  			        	  	JsonObject notify = new JsonParser().parse(message).getAsJsonObject();
-  			  				if(notify.get("ping") != null) return;
-  			  			 
-  			  				if (syncRequest) {
-  			  					notifyResponse(message);
-  			  				}
-  			  				else {
-  			  					String spuid = notify.get("spuid").getAsString();
-  			  					
-  			  					Integer sequence = notify.get("sequence").getAsInt();
-  			  					
-  			  					ARBindingsResults results = new ARBindingsResults(notify);
-  			  					
-  			  					Notification n = new Notification(spuid,results,sequence);
-  			  					
-  			  					if(handler != null) handler.notify(n);
-  			  				}	
-                        }
-                    });
-	            }
-	        }, cec, new URI(wsUrl));
-	    } catch (Exception e) {
-	        e.printStackTrace();
-	    }
-		
-		String response = sendSync("subscribe="+sparql);
-		
-		JsonObject json = new JsonParser().parse(response).getAsJsonObject();
-		
-		if(json.get("status").getAsBoolean()) return new JsonParser().parse(json.get("body").getAsString()).getAsJsonObject().get("spuid").getAsString();
-		else return null;
-	}
-
-	public boolean unsubscribe(String subID) {
-		if (wsClientSession == null) return false;
-		if (!wsClientSession.isOpen()) return false;
-		
-		String response = sendSync("unsubscribe="+subID);
-		
-		JsonObject json = new JsonParser().parse(response).getAsJsonObject();
-		
-		if(json.get("status").getAsBoolean()) {
+		private boolean connect() {
 			try {
-				wsClientSession.close();
-				wsClientSession = null;
+				client.connectToServer(this,cec, new URI(wsUrl));
+			} catch (DeploymentException e) {
+				e.printStackTrace();
+				return false;
 			} catch (IOException e) {
+				e.printStackTrace();
+				return false;
+			} catch (URISyntaxException e) {
+				e.printStackTrace();
 				return false;
 			}
 			return true;
 		}
-		return false;
+		
+		private boolean isConnected() {
+			if (wsClientSession == null) return false;
+			return wsClientSession.isOpen();
+		}
+		
+		public boolean subscribe(String sparql) {
+			if (isConnected())
+				try {
+					wsClientSession.getBasicRemote().sendText("subscribe="+sparql);
+				} 
+				catch (IOException e) {
+					return false;
+				}
+			else {
+				this.sparql = sparql;
+				return connect();	
+			}
+		
+			return true;
+		}
+		
+		public boolean unsubscribe(String spuid) {
+			if (isConnected())
+				try {
+					wsClientSession.getBasicRemote().sendText("unsubscribe="+spuid);
+				} 
+				catch (IOException e) {
+					return false;
+				}
+			
+			return true;
+		}
+		
+		public boolean close() {
+			try {
+				wsClientSession.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+				return false;
+			}
+			return true;
+		}
+	}
+	
+	class SEPAMessageHandler implements MessageHandler.Whole<String> {
+
+		@Override
+		public void onMessage(String message) {
+			Logger.log(VERBOSITY.DEBUG, tag, message);
+			if (handler == null) {
+				Logger.log(VERBOSITY.WARNING, tag, "Notification handler is NULL");
+				return;
+			}
+      	  	
+			JsonObject notify = new JsonParser().parse(message).getAsJsonObject();
+				
+      	  	//Ping
+      	  	if(notify.get("ping") != null) {
+      	  		handler.ping();
+      	  		return;
+      	  	}
+			 
+      	  	//Subscribe confirmed
+      	  	if (notify.get("subscribed") != null) {
+      	  		handler.subscribeConfirmed(notify.get("subscribed").getAsString());
+      	  		return;
+      	  	}
+      	  	
+      	  	//Unsubscribe confirmed
+      	  	if (notify.get("unsubscribed") != null) {
+      	  		handler.unsubscribeConfirmed(notify.get("unsubscribed").getAsString());
+      	  		wsClient.close();
+      	  		return;
+      	  	}
+      	  	
+      	  	//Notification
+      	  	if (notify.get("notification") != null) {
+      		  handler.semanticEvent(new Notification(notify));
+      	  }	
+		}
+		
+	}
+	
+	public boolean subscribe(String sparql,NotificationHandler handler) {
+		this.handler = handler;
+		return wsClient.subscribe(sparql);
+	}
+
+	public boolean unsubscribe(String subID) {
+		return wsClient.unsubscribe(subID);
 	}
 	
 	private String SPARQLPrimitive(String sparql,boolean update){
 		CloseableHttpClient httpclient = HttpClients.createDefault();
-		HttpPost postRequest = new HttpPost(postUrl);
-		postRequest.setHeader("Accept", "application/sparql-results+json");
 		
+		//HTTP POST for query and update
+		//POST Headers
+		HttpPost postRequest = new HttpPost(postUrl);
+		postRequest.setHeader("Accept", "application/sparql-results+json");	
 		if(update) postRequest.setHeader("Content-Type", "application/sparql-update");
 		else postRequest.setHeader("Content-Type", "application/sparql-query");
 		
+		//POST body
 		HttpEntity body;
 		try {
 			body = new ByteArrayEntity(sparql.getBytes("UTF-8"));
@@ -283,11 +319,13 @@ public class SecureEventProtocol {
 			responseBody = httpclient.execute(postRequest, responseHandler);
 	    	
 			timing = System.nanoTime() - timing;
-	    	if(update) Logger.log(VERBOSITY.INFO, "timing", "UpdateTime "+timing+ " ns");
+	    	
+			if(update) Logger.log(VERBOSITY.INFO, "timing", "UpdateTime "+timing+ " ns");
 	    	else Logger.log(VERBOSITY.INFO, "timing", "QueryTime "+timing+ " ns");
 	    }
 	    catch(IOException e) {
 	    	Logger.log(VERBOSITY.ERROR, tag, e.getMessage());
+	    	
 	    	JsonObject json = new JsonObject();
 			json.add("status", new JsonPrimitive(false));
         	json.add("body", new JsonPrimitive(e.getMessage()));

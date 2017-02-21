@@ -9,9 +9,9 @@ import org.eclipse.paho.client.mqttv3.MqttMessage;
 
 import arces.unibo.SEPA.application.Logger;
 import arces.unibo.SEPA.application.Producer;
-import arces.unibo.SEPA.commons.Bindings;
-import arces.unibo.SEPA.commons.RDFTermLiteral;
-import arces.unibo.SEPA.commons.RDFTermURI;
+import arces.unibo.SEPA.commons.SPARQL.Bindings;
+import arces.unibo.SEPA.commons.SPARQL.RDFTermLiteral;
+import arces.unibo.SEPA.commons.SPARQL.RDFTermURI;
 import arces.unibo.SEPA.application.ApplicationProfile;
 import arces.unibo.SEPA.application.Logger.VERBOSITY;
 

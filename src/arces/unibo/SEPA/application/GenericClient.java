@@ -18,31 +18,22 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 package arces.unibo.SEPA.application;
 
 import arces.unibo.SEPA.application.Logger.VERBOSITY;
-import arces.unibo.SEPA.client.SecureEventProtocol.NotificationHandler;
-import arces.unibo.SEPA.commons.BindingsResults;
-import arces.unibo.SEPA.commons.Bindings;
+import arces.unibo.SEPA.commons.SPARQL.Bindings;
+import arces.unibo.SEPA.commons.SPARQL.BindingsResults;
 
-public class GenericClient extends Client {
-	private String subID = null;
-	private NotificationHandler handler;
+public abstract class GenericClient extends Aggregator {	
 	private String tag = "Generic client";
 	
-	public GenericClient(String url,int updatePort,int subscribePort,String path,NotificationHandler handler){
-		super(url,updatePort,subscribePort,path);
-		this.handler = handler;
+	public GenericClient(ApplicationProfile appProfile,String subscribeID,String updateID) {
+		super(appProfile,subscribeID,updateID);
+	}
+	public GenericClient(String url,int updatePort,int subscribePort,String path){
+		super(url,updatePort,subscribePort,path,"","");	
 	}
 	
 	public boolean update(String SPARQL_UPDATE,Bindings forced) {
-		 if (protocolClient == null) {
-			 Logger.log(VERBOSITY.FATAL, tag, "Client not initialized");
-			 return false;
-		 }
-		 
-		String sparql = prefixes() + super.replaceBindings(SPARQL_UPDATE,forced).replace("\n", "").replace("\r", "");
-		
-		Logger.log(VERBOSITY.DEBUG,"SEPA","Update "+sparql);
-		
-		return protocolClient.update(sparql);
+		sparqlUpdate = SPARQL_UPDATE;
+		return super.update(forced);
 	 }
 	
 	public BindingsResults query(String SPARQL_QUERY,Bindings forced) {
@@ -51,7 +42,7 @@ public class GenericClient extends Client {
 			 return null;
 		 }
 		
-		String sparql = prefixes() + super.replaceBindings(SPARQL_QUERY,forced).replace("\n", "").replace("\r", "");
+		String sparql = prefixes() + super.replaceBindings(SPARQL_QUERY,forced);
 
 		Logger.log(VERBOSITY.DEBUG,"SEPA","QUERY "+sparql);
 		
@@ -59,42 +50,11 @@ public class GenericClient extends Client {
 	}
 	
 	public String subscribe(String SPARQL_SUBSCRIBE,Bindings forced) {	
-		if (protocolClient == null) {
-			 Logger.log(VERBOSITY.FATAL, tag, "Client not initialized");
-			 return null;
-		 }
-		
-		if (subID != null) {
-			 Logger.log(VERBOSITY.ERROR, tag, "Client is subscribed. First unsubscribe "+subID);
-			 return null;
-		 }
-		
-		String sparql = prefixes() + super.replaceBindings(SPARQL_SUBSCRIBE,forced).replace("\n", "").replace("\r", "");
-		
-		Logger.log(VERBOSITY.DEBUG,"SEPA","Subscribe "+sparql);
-		
-		subID = protocolClient.subscribe(sparql, handler);
-		
-		return subID;
+		sparqlSubscribe = SPARQL_SUBSCRIBE;
+		return super.subscribe(forced);
 	}
 	 
 	public boolean unsubscribe() {
-		if (protocolClient == null) {
-			 Logger.log(VERBOSITY.FATAL, tag, "Client not initialized");
-			 return false;
-		}
-		
-		if (subID == null) {
-			 Logger.log(VERBOSITY.ERROR, tag, "Client is not subscribed");
-			 return false;
-		}
-		
-		Logger.log(VERBOSITY.DEBUG,"SEPA","Unsubscribe "+subID);
-		
-		boolean ret = protocolClient.unsubscribe(subID);
-		
-		if (ret) subID = null;
-		
-		return ret;
+		return super.unsubscribe();
 	}
 }

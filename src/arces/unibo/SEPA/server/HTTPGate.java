@@ -28,11 +28,11 @@ import com.sun.net.httpserver.*;
 
 import arces.unibo.SEPA.application.Logger;
 import arces.unibo.SEPA.application.Logger.VERBOSITY;
-import arces.unibo.SEPA.commons.QueryRequest;
-import arces.unibo.SEPA.commons.Request;
-import arces.unibo.SEPA.commons.Response;
-import arces.unibo.SEPA.commons.UpdateRequest;
-import arces.unibo.SEPA.server.RequestResponseHandler.ResponseListener;
+import arces.unibo.SEPA.commons.request.QueryRequest;
+import arces.unibo.SEPA.commons.request.Request;
+import arces.unibo.SEPA.commons.response.Response;
+import arces.unibo.SEPA.commons.request.UpdateRequest;
+import arces.unibo.SEPA.server.RequestResponseHandler.ResponseAndNotificationListener;
 
 /**
  * This class implements the SPARQL 1.1 Protocol 
@@ -220,7 +220,7 @@ public class HTTPGate extends Thread {
 	}
 	
 	class SPARQLHandler implements HttpHandler  {		
-		class Running extends Thread implements ResponseListener {
+		class Running extends Thread implements ResponseAndNotificationListener {
 			private HttpExchange httpExchange;
 			private Response response = null;
 			
@@ -281,7 +281,7 @@ public class HTTPGate extends Thread {
 			}
 
 			@Override
-			public void notifyResponse(Response response) {
+			public void notify(Response response) {
 				Logger.log(VERBOSITY.INFO, tag, "Response #"+response.getToken());
 				this.response = response;
 				interrupt();

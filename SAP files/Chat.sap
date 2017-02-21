@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<applicationProfile xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../SEPA/application/ApplicationProfile.xsd">
+  <parameters path="/sparql" subscribeport="9000" updateport="8000" url="mml.arces.unibo.it"/>
+  <namespaces>
+    <namespace prefix="chat" suffix="http://www.arces.unibo.it/chat#"/>
+    <namespace prefix="rdf" suffix="http://www.w3.org/1999/02/22-rdf-syntax-ns#"/>
+  </namespaces>
+  <updates>
+    <update id="ADD_MESSAGE">
+      <sparql><![CDATA[
+     insert data {?message rdf:type chat:Message . ?message chat:message ?text . ?message chat:user ?nickname}]]></sparql>
+      <forcedBindings>
+      		<binding variable="text" type="literal" value=""/>
+      		<binding variable="nickname" type="literal" value=""/>
+      		<binding variable="message" type="uri" value=""/>
+  		</forcedBindings>
+    </update>
+  </updates>
+  <subscribes>
+    <subscribe id="MESSAGE">
+      <sparql>
+      <![CDATA[
+      select ?nickname ?text ?message where {?message rdf:type chat:Message . ?message chat:message ?text . ?message chat:user ?nickname} ]]></sparql>
+    </subscribe>
+  </subscribes>
+</applicationProfile>

@@ -5,13 +5,12 @@ import java.util.Vector;
 import arces.unibo.SEPA.application.Consumer;
 import arces.unibo.SEPA.application.Logger;
 import arces.unibo.SEPA.application.Producer;
+import arces.unibo.SEPA.commons.SPARQL.ARBindingsResults;
+import arces.unibo.SEPA.commons.SPARQL.Bindings;
+import arces.unibo.SEPA.commons.SPARQL.BindingsResults;
+import arces.unibo.SEPA.commons.SPARQL.RDFTermLiteral;
+import arces.unibo.SEPA.commons.SPARQL.RDFTermURI;
 import arces.unibo.SEPA.application.ApplicationProfile;
-
-import arces.unibo.SEPA.commons.ARBindingsResults;
-import arces.unibo.SEPA.commons.RDFTermLiteral;
-import arces.unibo.SEPA.commons.RDFTermURI;
-import arces.unibo.SEPA.commons.BindingsResults;
-import arces.unibo.SEPA.commons.Bindings;
 
 import arces.unibo.SEPA.application.Logger.VERBOSITY;
 

@@ -10,9 +10,10 @@ import arces.unibo.SEPA.application.GenericClient;
 import arces.unibo.SEPA.application.Logger;
 import arces.unibo.SEPA.application.Logger.VERBOSITY;
 import arces.unibo.SEPA.application.Producer;
-import arces.unibo.SEPA.client.SecureEventProtocol.NotificationHandler;
-import arces.unibo.SEPA.commons.Bindings;
-import arces.unibo.SEPA.commons.RDFTermURI;
+import arces.unibo.SEPA.commons.SPARQL.ARBindingsResults;
+import arces.unibo.SEPA.commons.SPARQL.Bindings;
+import arces.unibo.SEPA.commons.SPARQL.BindingsResults;
+import arces.unibo.SEPA.commons.SPARQL.RDFTermURI;
 
 //INSERT_LAMP
 public class StressTest {
@@ -54,15 +55,15 @@ public class StressTest {
 	}
 	
 	static class QueryThread extends GenericClient implements Runnable {
-		public QueryThread(String url, int updatePort, int subscribePort, String path, NotificationHandler handler) {
-			super(url, updatePort, subscribePort, path, handler);
+		public QueryThread(String url, int updatePort, int subscribePort, String path) {
+			super(url, updatePort, subscribePort, path);
 		}
 		
 		public QueryThread(ApplicationProfile appProfile) {
 			super(appProfile.getParameters().getUrl(), 
 					appProfile.getParameters().getUpdatePort(), 
 					appProfile.getParameters().getSubscribePort(), 
-					appProfile.getParameters().getPath(), null);
+					appProfile.getParameters().getPath());
 		}
 			
 		private boolean running = true;
@@ -80,6 +81,30 @@ public class StressTest {
 				query("select * where {?x ?y ?z}",null);
 		    
 			}
+		}
+
+		@Override
+		public void notify(ARBindingsResults notify, String spuid, Integer sequence) {
+			// TODO Auto-generated method stub
+			
+		}
+
+		@Override
+		public void notifyAdded(BindingsResults bindingsResults, String spuid, Integer sequence) {
+			// TODO Auto-generated method stub
+			
+		}
+
+		@Override
+		public void notifyRemoved(BindingsResults bindingsResults, String spuid, Integer sequence) {
+			// TODO Auto-generated method stub
+			
+		}
+
+		@Override
+		public void onSubscribe(BindingsResults bindingsResults, String spuid) {
+			// TODO Auto-generated method stub
+			
 		}
 	}
 	

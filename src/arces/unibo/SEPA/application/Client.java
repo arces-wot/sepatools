@@ -23,12 +23,20 @@ import java.util.Set;
 import arces.unibo.SEPA.application.Logger.VERBOSITY;
 import arces.unibo.SEPA.application.ApplicationProfile.Parameters;
 import arces.unibo.SEPA.client.SecureEventProtocol;
-import arces.unibo.SEPA.commons.Bindings;
+import arces.unibo.SEPA.commons.SPARQL.Bindings;
 
 public abstract class Client implements IClient {	
 	protected HashMap<String,String> URI2PrefixMap = new HashMap<String,String>();
 	protected HashMap<String,String> prefix2URIMap = new HashMap<String,String>();
 	protected SecureEventProtocol protocolClient = null;
+	
+	protected String getSubscribeURL() {
+		return protocolClient.getSubscribeURL();
+	}
+	
+	protected String getUpdateURL() {
+		return protocolClient.getUpdateURL();
+	}
 	
 	private static String tag ="SEPA CLIENT";
 	
@@ -58,7 +66,7 @@ public abstract class Client implements IClient {
 	}
 	
 	public Client(String url,int updatePort,int subscribePort,String path){
-		Logger.log(VERBOSITY.DEBUG,tag,"Created Authority:"+url+" Update port:"+updatePort+" Subscribe port:"+subscribePort+ " Path: "+path);
+		Logger.log(VERBOSITY.DEBUG,tag,"Opening connection to SEPA engine:"+url+" Update port:"+updatePort+" Subscribe port:"+subscribePort+ " Path: "+path);
 		protocolClient = new SecureEventProtocol(url, updatePort, subscribePort,path);	
 	}
 	
@@ -99,7 +107,7 @@ public abstract class Client implements IClient {
 		for (String var : bindings.getVariables()) {
 			if (bindings.getBindingValue(var) == null) continue;
 			if (bindings.isLiteral(var)) 
-				replacedSparql = replacedSparql.replace("?"+var,"\""+bindings.getBindingValue(var)+"\"");
+				replacedSparql = replacedSparql.replace("?"+var,"\""+fixLiteralTerms(bindings.getBindingValue(var))+"\"");
 			else	
 				replacedSparql = replacedSparql.replace("?"+var,bindings.getBindingValue(var));
 			
@@ -107,5 +115,9 @@ public abstract class Client implements IClient {
 		}
 		
 		return selectPattern+replacedSparql;
+	}
+	
+	protected String fixLiteralTerms(String s) {
+		return s.replace("\"", "\\\"");
 	}
 }

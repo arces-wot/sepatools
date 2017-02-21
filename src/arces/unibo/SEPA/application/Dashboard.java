@@ -77,13 +77,11 @@ import java.awt.Canvas;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreePath;
 
-import arces.unibo.SEPA.client.SecureEventProtocol.NotificationHandler;
-import arces.unibo.SEPA.commons.ARBindingsResults;
-import arces.unibo.SEPA.commons.Notification;
-import arces.unibo.SEPA.commons.RDFTermLiteral;
-import arces.unibo.SEPA.commons.RDFTermURI;
-import arces.unibo.SEPA.commons.BindingsResults;
-import arces.unibo.SEPA.commons.Bindings;
+import arces.unibo.SEPA.commons.SPARQL.ARBindingsResults;
+import arces.unibo.SEPA.commons.SPARQL.Bindings;
+import arces.unibo.SEPA.commons.SPARQL.BindingsResults;
+import arces.unibo.SEPA.commons.SPARQL.RDFTermLiteral;
+import arces.unibo.SEPA.commons.SPARQL.RDFTermURI;
 
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.border.TitledBorder;
@@ -94,7 +92,7 @@ import java.awt.event.ItemEvent;
 import javax.swing.border.EtchedBorder;
 import javax.swing.JCheckBox;
 
-public class Dashboard implements NotificationHandler {
+public class Dashboard {
 	Properties appProperties = new Properties();
 	
 	private DefaultTableModel namespacesDM;
@@ -106,11 +104,64 @@ public class Dashboard implements NotificationHandler {
 	private ForcedBindingsTableModel updateForcedBindingsDM = new ForcedBindingsTableModel();
 	private ForcedBindingsTableModel subscribeForcedBindingsDM = new ForcedBindingsTableModel();
 	
-	//private DefaultListModel<String> updateListDM = new DefaultListModel<String>();
-	//private DefaultListModel<String> subscribeListDM = new DefaultListModel<String>();
-	
 	private SortedListModel updateListDM = new SortedListModel();
 	private SortedListModel subscribeListDM = new SortedListModel();
+	
+	private DashboardClient kp;
+	
+	class DashboardClient extends GenericClient {
+
+		public DashboardClient(ApplicationProfile appProfile, String subscribeID, String updateID) {
+			super(appProfile, subscribeID, updateID);
+			// TODO Auto-generated constructor stub
+		}
+		public DashboardClient(String url,int updatePort,int subscribePort,String path){
+			super(url,updatePort,subscribePort,path);	
+		}
+		
+		@Override
+		public void notify(ARBindingsResults notify, String spuid, Integer sequence) {
+			int added = 0;
+			int removed = 0;
+			
+			if (notify != null) {
+				if (notify.getAddedBindings() != null ) added = notify.getAddedBindings().size();
+				if (notify.getRemovedBindings() != null ) removed = notify.getRemovedBindings().size();
+				bindingsDM.setResults(notify);
+				
+				lblInfo.setText("Bindings results ("+bindingsDM.getRowCount()+") Added("+added+") + Removed ("+removed+")");
+				
+				Comparator<BindingValue> comparator = new Comparator<BindingValue>() {
+				    public int compare(BindingValue s1, BindingValue s2) {
+				        return s1.get().compareTo(s2.get());
+				    }
+				};
+				
+				TableRowSorter<TableModel>  sorter = new TableRowSorter<TableModel>(bindingsResultsTable.getModel());
+				for (int i=0; i < bindingsDM.getColumnCount(); i++) sorter.setComparator(i, comparator);
+				bindingsResultsTable.setRowSorter(sorter);	
+			}
+			
+		}
+
+		@Override
+		public void notifyAdded(BindingsResults bindingsResults, String spuid, Integer sequence) {
+			// TODO Auto-generated method stub
+			
+		}
+
+		@Override
+		public void notifyRemoved(BindingsResults bindingsResults, String spuid, Integer sequence) {
+			// TODO Auto-generated method stub
+			
+		}
+
+		@Override
+		public void onSubscribe(BindingsResults bindingsResults, String spuid) {
+			notify(new ARBindingsResults(bindingsResults,null),spuid,0);
+		}
+		
+	}
 	
 	class SortedListModel extends AbstractListModel<String> {
 
@@ -178,7 +229,6 @@ public class Dashboard implements NotificationHandler {
 	private DefaultTableModel propertiesDM;
 	private String propertiesHeader[] = new String[] {"Property", "Domain","Range","Comment"};
 	
-	private GenericClient kp;
 	private String response;
 	private JFrame frmSepaDashboard;
 	
@@ -205,11 +255,15 @@ public class Dashboard implements NotificationHandler {
 	private JTree classTree;
 	private JPanel resultsPanel;
 	private static JCheckBox chckbxAutoscroll;
+	private JLabel spuidLabel;
+	
+	private JList<String> updatesList;
+	private JList<String> subscribesList;
 	
 	ApplicationProfile appProfile = new ApplicationProfile();
 	
 	//Explorer
-	private ApplicationProfile explorerAP = new ApplicationProfile();
+	//private ApplicationProfile explorerAP = new ApplicationProfile();
 	private ClassMonitor classMonitor;
 	private PropertyMonitor propertyMonitor;
 	private JTable propertiesTable;
@@ -251,7 +305,7 @@ public class Dashboard implements NotificationHandler {
 
 		@Override
 		public void notifyRemoved(BindingsResults bindingsResults, String spuid, Integer sequence) {
-			// TODO Auto-generated method stub
+			
 			
 		}
 
@@ -339,7 +393,6 @@ public class Dashboard implements NotificationHandler {
 
 		@Override
 		public void notifyRemoved(BindingsResults bindingsResults, String spuid, Integer sequence) {
-			// TODO Auto-generated method stub
 			
 		}
 
@@ -767,9 +820,10 @@ public class Dashboard implements NotificationHandler {
 		
 		initialize();
 		
-		explorerAP.load("explorer.sap");
-		classMonitor = new ClassMonitor(explorerAP,"CLASSES");
-		propertyMonitor = new PropertyMonitor(explorerAP,"PROPERTIES");
+		//TODO: experimental explorer
+		//explorerAP.load("explorer.sap");
+		//classMonitor = new ClassMonitor(explorerAP,"CLASSES");
+		//propertyMonitor = new PropertyMonitor(explorerAP,"PROPERTIES");
 	}
 	
 	private void loadProperties() {
@@ -983,9 +1037,9 @@ public class Dashboard implements NotificationHandler {
 		btnJoin.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				if (btnJoin.getText().equals("Join")) {
-					kp = new GenericClient(textFieldIP.getText(),
+					kp = new DashboardClient(textFieldIP.getText(),
 							Integer.parseInt(textFieldUPort.getText()),
-							Integer.parseInt(textFieldSPort.getText()),txtFieldPath.getText(),window);
+							Integer.parseInt(textFieldSPort.getText()),txtFieldPath.getText());
 					if (kp.join()) {
 						btnJoin.setText("Leave");
 						storeProperties(false);
@@ -1047,9 +1101,13 @@ public class Dashboard implements NotificationHandler {
 					updateForcedBindingsDM.clearBindings();
 					subscribeForcedBindingsDM.clearBindings();
 					
+					updatesList.clearSelection();
+					subscribesList.clearSelection();
+					
 					if(appProfile.load(fileName)) {
 						storeProperties(false);
 						frmSepaDashboard.setTitle("SEPA Dashboard" + " - " + fileName);
+						
 						//Loading namespaces
 						for(String prefix : appProfile.getPrefixes()) {
 							Vector<String> row = new Vector<String>();
@@ -1067,6 +1125,11 @@ public class Dashboard implements NotificationHandler {
 							//subscribeListDM.addElement(subscribe);
 							subscribeListDM.add(subscribe);
 						}
+						
+						textFieldIP.setText(appProfile.getParameters().getUrl());
+						textFieldUPort.setText(String.format("%d", appProfile.getParameters().getUpdatePort()));
+						textFieldSPort.setText(String.format("%d", appProfile.getParameters().getSubscribePort()));
+						txtFieldPath.setText(appProfile.getParameters().getPath());
 					}
 				}
 			}
@@ -1217,7 +1280,7 @@ public class Dashboard implements NotificationHandler {
 		gbc_scrollPane.gridy = 1;
 		panel_4.add(scrollPane, gbc_scrollPane);
 		
-		JList<String> updatesList = new JList<String>(updateListDM);
+		updatesList = new JList<String>(updateListDM);
 		scrollPane.setViewportView(updatesList);
 		updatesList.addListSelectionListener(new ListSelectionListener() {
 			public void valueChanged(ListSelectionEvent e) {
@@ -1303,7 +1366,7 @@ public class Dashboard implements NotificationHandler {
 		gbc_scrollPane_3.gridy = 1;
 		panel_6.add(scrollPane_3, gbc_scrollPane_3);
 		
-		JList<String> subscribesList = new JList<String>(subscribeListDM);
+		subscribesList = new JList<String>(subscribeListDM);
 		subscribesList.addListSelectionListener(new ListSelectionListener() {
 
 			public void valueChanged(ListSelectionEvent e) {
@@ -1423,9 +1486,9 @@ public class Dashboard implements NotificationHandler {
 		gbc_panel.gridy = 2;
 		primitives.add(panel, gbc_panel);
 		GridBagLayout gbl_panel = new GridBagLayout();
-		gbl_panel.columnWidths = new int[]{0, 0, 0};
+		gbl_panel.columnWidths = new int[]{0, 0, 0, 0};
 		gbl_panel.rowHeights = new int[]{0, 0};
-		gbl_panel.columnWeights = new double[]{1.0, 1.0, Double.MIN_VALUE};
+		gbl_panel.columnWeights = new double[]{1.0, 1.0, 1.0, Double.MIN_VALUE};
 		gbl_panel.rowWeights = new double[]{1.0, Double.MIN_VALUE};
 		panel.setLayout(gbl_panel);
 		
@@ -1457,18 +1520,21 @@ public class Dashboard implements NotificationHandler {
 					
 					response = kp.subscribe(prefixes + query, forced);
 					
-					if (response == null) {
+					if (response.equals("")) {
 						lblInfo.setText("Subscription failed");
 						return;
 					}
 					btnSubscribe.setText("UNSUBSCRIBE");
+					spuidLabel.setText(response);
+					lblInfo.setText("Subscribed");	
 				}
 				else {
 					if (kp.unsubscribe()) {
-						lblInfo.setText("Successfully unsubscribed ");	
+						lblInfo.setText("Unsubscribed");	
 					}
 					
 					btnSubscribe.setText("SUBSCRIBE");	
+					spuidLabel.setText("SPUID");
 				}
 			}
 		});
@@ -1512,8 +1578,15 @@ public class Dashboard implements NotificationHandler {
 				
 			}
 		});
+		
+		spuidLabel = new JLabel("SPUID");
+		GridBagConstraints gbc_spuidLabel = new GridBagConstraints();
+		gbc_spuidLabel.insets = new Insets(0, 0, 0, 5);
+		gbc_spuidLabel.gridx = 1;
+		gbc_spuidLabel.gridy = 0;
+		panel.add(spuidLabel, gbc_spuidLabel);
 		GridBagConstraints gbc_btnQuery = new GridBagConstraints();
-		gbc_btnQuery.gridx = 1;
+		gbc_btnQuery.gridx = 2;
 		gbc_btnQuery.gridy = 0;
 		panel.add(btnQuery, gbc_btnQuery);
 		
@@ -1727,31 +1800,5 @@ public class Dashboard implements NotificationHandler {
 		gbc_lblInfoVisualizer.gridy = 1;
 		view3d.add(lblInfoVisualizer, gbc_lblInfoVisualizer);
 		bindingsRender.setNamespaces(namespacesDM);
-	}
-
-	@Override
-	public void notify(Notification notify) {
-		int added = 0;
-		int removed = 0;
-		
-		ARBindingsResults results = notify.getARBindingsResults();
-		
-		if (results != null) {
-			if (results.getAddedBindings() != null ) added = results.getAddedBindings().size();
-			if (results.getRemovedBindings() != null ) removed = results.getRemovedBindings().size();
-			bindingsDM.setResults(results);
-			
-			lblInfo.setText("Bindings results ("+bindingsDM.getRowCount()+") Added("+added+") + Removed ("+removed+")");
-			
-			Comparator<BindingValue> comparator = new Comparator<BindingValue>() {
-			    public int compare(BindingValue s1, BindingValue s2) {
-			        return s1.get().compareTo(s2.get());
-			    }
-			};
-			
-			TableRowSorter<TableModel>  sorter = new TableRowSorter<TableModel>(bindingsResultsTable.getModel());
-			for (int i=0; i < bindingsDM.getColumnCount(); i++) sorter.setComparator(i, comparator);
-			bindingsResultsTable.setRowSorter(sorter);	
-		}
 	}
 }

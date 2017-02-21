@@ -23,17 +23,16 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 import arces.unibo.SEPA.application.Logger;
 import arces.unibo.SEPA.application.Logger.VERBOSITY;
-import arces.unibo.SEPA.commons.Notification;
-import arces.unibo.SEPA.commons.QueryRequest;
-import arces.unibo.SEPA.commons.QueryResponse;
-import arces.unibo.SEPA.commons.Request;
-import arces.unibo.SEPA.commons.Response;
-import arces.unibo.SEPA.commons.SubscribeRequest;
-import arces.unibo.SEPA.commons.SubscribeResponse;
-import arces.unibo.SEPA.commons.UnsubscribeRequest;
-import arces.unibo.SEPA.commons.UnsubscribeResponse;
-import arces.unibo.SEPA.commons.UpdateRequest;
-import arces.unibo.SEPA.commons.UpdateResponse;
+import arces.unibo.SEPA.commons.request.QueryRequest;
+import arces.unibo.SEPA.commons.request.Request;
+import arces.unibo.SEPA.commons.request.SubscribeRequest;
+import arces.unibo.SEPA.commons.request.UnsubscribeRequest;
+import arces.unibo.SEPA.commons.request.UpdateRequest;
+import arces.unibo.SEPA.commons.response.Notification;
+import arces.unibo.SEPA.commons.response.Response;
+import arces.unibo.SEPA.commons.response.SubscribeResponse;
+import arces.unibo.SEPA.commons.response.UnsubscribeResponse;
+import arces.unibo.SEPA.commons.response.UpdateResponse;
 
 /**
  * This class implements the handler of the different requests: QUERY, UPDATE, SUBSCRIBE, UNSUBSCRIBE
@@ -48,57 +47,56 @@ import arces.unibo.SEPA.commons.UpdateResponse;
 public class RequestResponseHandler {
 	private String tag = "RequestResponseHandler";
 	
-	public interface ResponseListener {
-		public void notifyResponse(Response response);
+	public interface ResponseAndNotificationListener {
+		public void notify(Response response);
 	}
 	
 	//Request queues
-	private ConcurrentLinkedQueue<UpdateRequest> updateRequestQueue = new ConcurrentLinkedQueue<UpdateRequest>();
-	private ConcurrentLinkedQueue<SubscribeRequest> subscribeRequestQueue = new ConcurrentLinkedQueue<SubscribeRequest>();
-	private ConcurrentLinkedQueue<QueryRequest> queryRequestQueue = new ConcurrentLinkedQueue<QueryRequest>();
-	private ConcurrentLinkedQueue<UnsubscribeRequest> unsubscribeRequestQueue = new ConcurrentLinkedQueue<UnsubscribeRequest>();
+	private ConcurrentLinkedQueue<UpdateRequest> 		updateRequestQueue = new ConcurrentLinkedQueue<UpdateRequest>();
+	private ConcurrentLinkedQueue<SubscribeRequest> 	subscribeRequestQueue = new ConcurrentLinkedQueue<SubscribeRequest>();
+	private ConcurrentLinkedQueue<QueryRequest> 		queryRequestQueue = new ConcurrentLinkedQueue<QueryRequest>();
+	private ConcurrentLinkedQueue<UnsubscribeRequest> 	unsubscribeRequestQueue = new ConcurrentLinkedQueue<UnsubscribeRequest>();
 	
 	//Update response queue
-	private ConcurrentLinkedQueue<UpdateResponse> updateResponseQueue = new ConcurrentLinkedQueue<UpdateResponse>();
+	private ConcurrentLinkedQueue<UpdateResponse> 		updateResponseQueue = new ConcurrentLinkedQueue<UpdateResponse>();
 	
 	//Response listeners
-	private HashMap<Integer,ResponseListener> responseListeners = new HashMap<Integer,ResponseListener>();
-	private HashMap<String,ResponseListener> subscribers = new HashMap<String,ResponseListener>();
+	private HashMap<Integer,ResponseAndNotificationListener> responseListeners = new HashMap<Integer,ResponseAndNotificationListener>();
+	
+	//Subscribers
+	private HashMap<String,ResponseAndNotificationListener> subscribers = new HashMap<String,ResponseAndNotificationListener>();
 	
 	public RequestResponseHandler(Properties properties){
 		if (properties == null) Logger.log(VERBOSITY.ERROR, tag, "Properties are null");
 	}
 	
 	/**
-	 * This method add the response (e.g, UPDATE, QUERY, SUBSCRIBE, UNSUBSCRIBE)
+	 * This method add a response (e.g, UPDATE, QUERY, SUBSCRIBE, UNSUBSCRIBE)
 	 * 
 	 * @see Response
 	* */
 	public void addResponse(Response response) {
-		Integer token = response.getToken();
+		Logger.log(VERBOSITY.DEBUG, tag, "<< " + response.toString());
 		
-		//Notify listener
-		ResponseListener listener = responseListeners.get(token);
-		if (listener != null) listener.notifyResponse(response);
-		responseListeners.remove(token);
+		//Get listener
+		ResponseAndNotificationListener listener = responseListeners.get(response.getToken());
 		
-		if (response.getClass().equals(SubscribeResponse.class)) {
-			Logger.log(VERBOSITY.DEBUG, tag, "SUBSCRIBE response #"+token);
+		if (response.getClass().equals(SubscribeResponse.class)) {			
 			subscribers.put(((SubscribeResponse) response).getSPUID(),listener);
 		}
 		else if (response.getClass().equals(UpdateResponse.class)) {	
-			Logger.log(VERBOSITY.DEBUG, tag, "UPDATE response #"+token);
 			synchronized(updateResponseQueue) {
 				updateResponseQueue.offer((UpdateResponse)response);
 				updateResponseQueue.notifyAll();
 			}
 		}
-		else if (response.getClass().equals(UnsubscribeResponse.class)) {	
-			Logger.log(VERBOSITY.DEBUG, tag, "UNSUBSCRIBE response #"+token);
+		else if (response.getClass().equals(UnsubscribeResponse.class)) {
+			subscribers.remove(((UnsubscribeResponse) response).getSPUID());
 		}
-		else if (response.getClass().equals(QueryResponse.class)) {	
-			Logger.log(VERBOSITY.DEBUG, tag, "QUERY response #"+token);
-		}
+		
+		//Notify listener
+		if (listener != null) listener.notify(response);
+		responseListeners.remove(response.getToken());
 	}
 	
 	/**
@@ -107,8 +105,10 @@ public class RequestResponseHandler {
 	 * @see Notification
 	* */
 	public void addNotification(Notification notification) {
-		Logger.log(VERBOSITY.DEBUG, tag, "NOTIFICATION ("+notification.getSequence()+") "+notification.getSPUID());
-		subscribers.get(notification.getSPUID()).notifyResponse(notification);
+		Logger.log(VERBOSITY.DEBUG, tag, "<< " + notification.toString());
+
+		ResponseAndNotificationListener listener = subscribers.get(notification.getSPUID());
+		if (listener != null) listener.notify(notification);
 	}
 	
 	/**
@@ -116,7 +116,9 @@ public class RequestResponseHandler {
 	 * 
 	 * @see Request, ResponseListener
 	* */
-	public void addRequest(Request req,ResponseListener listener) {
+	public void addRequest(Request req,ResponseAndNotificationListener listener) {
+		Logger.log(VERBOSITY.DEBUG, tag, ">> "+req.toString());
+		
 		//Register response listener
 		responseListeners.put(req.getToken(), listener);
 		
@@ -124,7 +126,6 @@ public class RequestResponseHandler {
 		if (req.getClass().equals(QueryRequest.class)) {
 			
 			synchronized(queryRequestQueue) {
-				Logger.log(VERBOSITY.DEBUG, tag, "QUERY request #"+req.getToken());
 				queryRequestQueue.offer((QueryRequest)req);
 				queryRequestQueue.notifyAll();
 			}
@@ -132,7 +133,6 @@ public class RequestResponseHandler {
 		else if (req.getClass().equals(UpdateRequest.class)) {
 			
 			synchronized(updateRequestQueue) {
-				Logger.log(VERBOSITY.DEBUG, tag, "UPDATE request #"+req.getToken());
 				updateRequestQueue.offer((UpdateRequest)req);
 				updateRequestQueue.notifyAll();
 			}
@@ -140,7 +140,6 @@ public class RequestResponseHandler {
 		else if (req.getClass().equals(SubscribeRequest.class)) {
 			
 			synchronized(subscribeRequestQueue) {
-				Logger.log(VERBOSITY.DEBUG, tag, "SUBSCRIBE request #"+req.getToken());
 				subscribeRequestQueue.offer((SubscribeRequest)req);
 				subscribeRequestQueue.notifyAll();
 			}
@@ -148,7 +147,6 @@ public class RequestResponseHandler {
 		else {
 			
 			synchronized(unsubscribeRequestQueue) {
-				Logger.log(VERBOSITY.DEBUG, tag, "UNSUBSCRIBE request #"+req.getToken());
 				unsubscribeRequestQueue.offer((UnsubscribeRequest)req);
 				unsubscribeRequestQueue.notifyAll();
 			}

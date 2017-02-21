@@ -18,16 +18,17 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 package arces.unibo.SEPA.application;
 
 import arces.unibo.SEPA.application.Logger.VERBOSITY;
-import arces.unibo.SEPA.commons.Bindings;
+import arces.unibo.SEPA.commons.SPARQL.Bindings;
 
 public class Producer extends Client implements IProducer {
-	private String SPARQL_UPDATE = null;
-	private String SPARQL_ID = "";
-	private String tag = "SEPA PRODUCER";
+	protected String sparqlUpdate = null;
+	protected String SPARQL_ID = "";
+	
+	protected String tag = "SEPA PRODUCER";
 	
 	public Producer(String updateQuery,String url,int updatePort,int subscribePort,String path){
 		super(url,updatePort,subscribePort,path);
-		SPARQL_UPDATE = updateQuery.replaceAll("\n", "").replaceAll("\r", "").replaceAll("\t", "").trim();
+		sparqlUpdate = updateQuery;
 	}
 	
 	public Producer(ApplicationProfile appProfile,String updateID){
@@ -43,11 +44,11 @@ public class Producer extends Client implements IProducer {
 		
 		SPARQL_ID = updateID;
 		
-		SPARQL_UPDATE = appProfile.update(updateID).replaceAll("\n", "").replaceAll("\r", "").replaceAll("\t", "").trim();
+		sparqlUpdate = appProfile.update(updateID);
 	}
 	
 	public boolean update(Bindings forcedBindings){	 
-		 if (SPARQL_UPDATE == null) {
+		 if (sparqlUpdate == null) {
 			 Logger.log(VERBOSITY.FATAL, tag, "SPARQL UPDATE not defined");
 			 return false;
 		 }
@@ -57,7 +58,7 @@ public class Producer extends Client implements IProducer {
 			 return false;
 		 }
 
-		 String sparql = prefixes() + replaceBindings(SPARQL_UPDATE,forcedBindings);
+		 String sparql = prefixes() + replaceBindings(sparqlUpdate,forcedBindings);
 		 
 		 Logger.log(VERBOSITY.DEBUG,tag,"<UPDATE> "+ SPARQL_ID+" ==> "+sparql);
 		 

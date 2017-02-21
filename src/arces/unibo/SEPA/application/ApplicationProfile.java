@@ -31,9 +31,9 @@ import org.jdom2.JDOMException;
 import org.jdom2.input.SAXBuilder;
 
 import arces.unibo.SEPA.application.Logger.VERBOSITY;
-import arces.unibo.SEPA.commons.RDFTermLiteral;
-import arces.unibo.SEPA.commons.RDFTermURI;
-import arces.unibo.SEPA.commons.Bindings;
+import arces.unibo.SEPA.commons.SPARQL.Bindings;
+import arces.unibo.SEPA.commons.SPARQL.RDFTermLiteral;
+import arces.unibo.SEPA.commons.SPARQL.RDFTermURI;
 
 public class ApplicationProfile {	
 	private final String tag ="SPARQL PARSER";

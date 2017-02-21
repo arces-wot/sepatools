@@ -32,16 +32,16 @@ import org.glassfish.grizzly.websockets.WebSocketEngine;
 
 import arces.unibo.SEPA.application.Logger;
 import arces.unibo.SEPA.application.Logger.VERBOSITY;
-import arces.unibo.SEPA.commons.ErrorResponse;
-import arces.unibo.SEPA.commons.Notification;
-import arces.unibo.SEPA.commons.PingResponse;
-import arces.unibo.SEPA.commons.Request;
-import arces.unibo.SEPA.commons.Response;
-import arces.unibo.SEPA.commons.SubscribeRequest;
-import arces.unibo.SEPA.commons.SubscribeResponse;
-import arces.unibo.SEPA.commons.UnsubscribeRequest;
-import arces.unibo.SEPA.commons.UnsubscribeResponse;
-import arces.unibo.SEPA.server.RequestResponseHandler.ResponseListener;
+import arces.unibo.SEPA.commons.request.Request;
+import arces.unibo.SEPA.commons.request.SubscribeRequest;
+import arces.unibo.SEPA.commons.request.UnsubscribeRequest;
+import arces.unibo.SEPA.commons.response.ErrorResponse;
+import arces.unibo.SEPA.commons.response.Notification;
+import arces.unibo.SEPA.commons.response.Ping;
+import arces.unibo.SEPA.commons.response.Response;
+import arces.unibo.SEPA.commons.response.SubscribeResponse;
+import arces.unibo.SEPA.commons.response.UnsubscribeResponse;
+import arces.unibo.SEPA.server.RequestResponseHandler.ResponseAndNotificationListener;
 
 /**
  * This class implements the SPARQL 1.1 Secure Event (SE) Protocol to handle Subscribe and Unsubscribe primitives
@@ -62,19 +62,19 @@ public class WebSocketGate extends WebSocketApplication {//implements ResponseLi
 	
 	private HashMap<WebSocket,SEPAResponseListener> activeSockets = new HashMap<WebSocket,SEPAResponseListener>();
 	
-	public class SEPAResponseListener implements ResponseListener {
+	public class SEPAResponseListener implements ResponseAndNotificationListener {
 		private WebSocket socket;	
 		private HashSet<String> spuIds = new HashSet<String>();
 		
 		@Override
-		public void notifyResponse(Response response) {		
+		public void notify(Response response) {		
 			if (response.getClass().equals(SubscribeResponse.class)) {
-				Logger.log(VERBOSITY.DEBUG, tag, "SUBSCRIBE response #"+response.getToken());
+				Logger.log(VERBOSITY.DEBUG, tag, "<< SUBSCRIBE response #"+response.getToken());
 				
 				spuIds.add(((SubscribeResponse)response).getSPUID());
 			
 			}else if(response.getClass().equals(UnsubscribeResponse.class)) {
-				Logger.log(VERBOSITY.DEBUG, tag, "UNSUBSCRIBE response #"+response.getToken()+" ");
+				Logger.log(VERBOSITY.DEBUG, tag, "<< UNSUBSCRIBE response #"+response.getToken()+" ");
 				
 				spuIds.remove(((UnsubscribeResponse)response).getSPUID());
 				
@@ -146,6 +146,7 @@ public class WebSocketGate extends WebSocketApplication {//implements ResponseLi
 		}
 		
 		synchronized(activeSockets) {
+			Logger.log(VERBOSITY.DEBUG, tag, ">> Scheduling request: "+request.toString());
 			scheduler.addRequest(request,activeSockets.get(socket));	
 		}
 	}
@@ -188,7 +189,7 @@ public class WebSocketGate extends WebSocketApplication {//implements ResponseLi
 	private synchronized void unsubscribeAllSPUs(WebSocket socket) {
 		for(String spuid : activeSockets.get(socket).getSPUIDs()) {
 			Integer token = scheduler.getToken();
-			Logger.log(VERBOSITY.DEBUG, tag, "UNSUBSCRIBE request #"+token);
+			Logger.log(VERBOSITY.DEBUG, tag, ">> Scheduling UNSUBSCRIBE request #"+token);
 			scheduler.addRequest(new UnsubscribeRequest(token,spuid),activeSockets.get(socket));		
 		}
 	}
@@ -209,7 +210,7 @@ public class WebSocketGate extends WebSocketApplication {//implements ResponseLi
 					for(WebSocket socket : activeSockets.keySet()) {	
 						
 						if (socket.isConnected()) {
-							PingResponse ping = new PingResponse();
+							Ping ping = new Ping();
 							socket.send(ping.toString());
 						}
 						else brokenSockets.add(socket);

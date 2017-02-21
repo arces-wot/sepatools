@@ -42,12 +42,12 @@ import com.google.gson.JsonPrimitive;
 
 import arces.unibo.SEPA.application.Logger;
 import arces.unibo.SEPA.application.Logger.VERBOSITY;
-import arces.unibo.SEPA.commons.ErrorResponse;
-import arces.unibo.SEPA.commons.QueryRequest;
-import arces.unibo.SEPA.commons.QueryResponse;
-import arces.unibo.SEPA.commons.Response;
-import arces.unibo.SEPA.commons.UpdateRequest;
-import arces.unibo.SEPA.commons.UpdateResponse;
+import arces.unibo.SEPA.commons.response.ErrorResponse;
+import arces.unibo.SEPA.commons.request.QueryRequest;
+import arces.unibo.SEPA.commons.response.QueryResponse;
+import arces.unibo.SEPA.commons.response.Response;
+import arces.unibo.SEPA.commons.request.UpdateRequest;
+import arces.unibo.SEPA.commons.response.UpdateResponse;
 
 /**
  * This class implements the SPARQL 1.1 protocol interface
@@ -178,6 +178,7 @@ public class Endpoint {
 	        public String handleResponse(final HttpResponse response) throws ClientProtocolException, IOException {
 	            int status = response.getStatusLine().getStatusCode();
 	            JsonObject json = new JsonObject();
+	            
 	            if (status >= 200 && status < 300) 
 	            {
 	                HttpEntity entity = response.getEntity();
@@ -210,11 +211,15 @@ public class Endpoint {
 		switch(endpointProperties.getQueryResultsFormat()) {
 			case JSON:
 				String response = SPARQLProtocolOperation(req.getSPARQL(),SPARQLOperation.QUERY,endpointProperties.getQueryMethod(),endpointProperties.getQueryResultsFormat());
+				
 				JsonParser parser = new JsonParser();
 				JsonObject json = parser.parse(response).getAsJsonObject();
+			
 				if (!json.get("status").getAsBoolean()) return new ErrorResponse(req.getToken(),json.get("body").getAsString());
 				String ret = json.get("body").getAsString();
+				
 				return new QueryResponse(req.getToken(),new JsonParser().parse(ret).getAsJsonObject());
+			
 			default:
 				return new ErrorResponse(req.getToken(),"Usupported query result format");
 		}
@@ -333,8 +338,8 @@ public class Endpoint {
 	    	
 			timing = System.nanoTime() - timing;
 	    	
-			if(op.equals(SPARQLOperation.QUERY)) Logger.log(VERBOSITY.INFO, "timing", "QueryTime "+timing+ " ns");
-			else Logger.log(VERBOSITY.INFO, "timing", "UpdateTime "+timing+ " ns");
+			if(op.equals(SPARQLOperation.QUERY)) Logger.log(VERBOSITY.INFO, "timing", "Query "+timing+ " ns");
+			else Logger.log(VERBOSITY.INFO, "timing", "Update "+timing+ " ns");
 	    }
 	    catch(java.net.ConnectException e) {
 	    	Logger.log(VERBOSITY.ERROR, tag, e.getMessage());

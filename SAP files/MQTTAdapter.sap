@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<applicationProfile xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="ApplicationProfile.xsd">
+  <parameters path="/sparql" subscribePort="7979" updatePort="8000" url="localhost"/>
+  <namespaces>
+    <namespace prefix="iot" suffix="http://www.arces.unibo.it/iot#"/>
+  </namespaces>
+  <updates>
+    <update id="UPDATE">
+      <sparql><![CDATA[DELETE { ?node iot:value ?oldvalue } INSERT {?node iot:value ?value }WHERE { ?node iot:value ?oldvalue }]]></sparql>
+    <forcedBindings>
+      		<binding variable="node" type="uri" value=""/>
+      		<binding variable="value" type="literal" value=""/>
+  		</forcedBindings>
+    </update>
+  </updates>
+  <subscribes>
+    <subscribe id="ALL">
+      <sparql><![CDATA[SELECT ?node ?value WHERE{?node iot:value ?value}]]></sparql>
+    </subscribe>
+  </subscribes>
+</applicationProfile>
