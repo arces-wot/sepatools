@@ -39,6 +39,9 @@ public class SEPALogger {
 	private static ArrayList<String> tags = new ArrayList<String>();
 	private static Properties configuration = new Properties();
 	private static String PROPERTIES_FILE ="logging.properties";
+
+	// Log4J2 logger
+	private static final Logger logger = LogManager.getLogger();
 	
 	public static enum VERBOSITY { 
 		DEBUG, INFO, WARNING, ERROR, FATAL;
@@ -148,6 +151,7 @@ public class SEPALogger {
 	}
 	
 	public static synchronized void log(VERBOSITY level, String tag,String message) {
+
 		long nano = System.nanoTime();
 		
 		int nTab = 20 - tag.length();
@@ -162,21 +166,37 @@ public class SEPALogger {
 		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
 		String timestamp = sdf.format(date);
 		
-		for (int i=0; i < nTab; i++) tag += " ";
-		
-		String messageOut = timestamp+"\t"+nano+"\t"+level.toString()+"\t"+tag+"\t"+message;
-		
-		if (consoleLog || level.compareTo(VERBOSITY.WARNING) > 0) 
-			if (level.compareTo(VERBOSITY.WARNING) > 0) System.err.println(messageOut);
-			else System.out.println(messageOut);
-		if (fileLog)
-			try {
-				file = new FileWriter(filename,true);
-				file.write(messageOut+"\n");
-				file.close();
-			} catch (IOException e) {
-				e.printStackTrace();
-				fileLog = false;
-			}
+		String messageOut = tag+" -- "+message;
+
+		switch(level.toString()){	
+			case "DEBUG":
+				logger.debug(messageOut);
+				break;
+			case "INFO": 
+				logger.info(messageOut);
+				break;
+			case "WARNING": 
+				logger.warn(messageOut);
+				break;
+			case "ERROR": 
+				logger.error(messageOut);
+				break;
+			case "FATAL": 
+				logger.fatal(messageOut);
+				break;	
+		}
+				
+//		if (consoleLog || level.compareTo(VERBOSITY.WARNING) > 0) 
+//			if (level.compareTo(VERBOSITY.WARNING) > 0) System.err.println(messageOut);
+//			else System.out.println(messageOut);
+//		if (fileLog)
+//			try {
+//				file = new FileWriter(filename,true);
+//				file.write(messageOut+"\n");
+//				file.close();
+//			} catch (IOException e) {
+//				e.printStackTrace();
+//				fileLog = false;
+//			}
 	}
 }
