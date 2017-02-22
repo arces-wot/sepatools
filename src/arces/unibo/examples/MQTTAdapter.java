@@ -7,13 +7,13 @@ import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 
-import arces.unibo.SEPA.application.Logger;
+import arces.unibo.SEPA.application.SEPALogger;
 import arces.unibo.SEPA.application.Producer;
 import arces.unibo.SEPA.commons.SPARQL.Bindings;
 import arces.unibo.SEPA.commons.SPARQL.RDFTermLiteral;
 import arces.unibo.SEPA.commons.SPARQL.RDFTermURI;
 import arces.unibo.SEPA.application.ApplicationProfile;
-import arces.unibo.SEPA.application.Logger.VERBOSITY;
+import arces.unibo.SEPA.application.SEPALogger.VERBOSITY;
 
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
@@ -133,7 +133,7 @@ public class MQTTAdapter extends Producer implements MqttCallback {
 	            return context.getSocketFactory();
 
 	        } catch (Exception e) {
-	            Logger.log(VERBOSITY.ERROR, clientID, e.getMessage());
+	            SEPALogger.log(VERBOSITY.ERROR, clientID, e.getMessage());
 	        }
 
 	        return null;
@@ -148,7 +148,7 @@ public class MQTTAdapter extends Producer implements MqttCallback {
 			mqttClient = new MqttClient(serverURI,clientID);
 		} 
 		catch (MqttException e) {
-			Logger.log(VERBOSITY.FATAL,clientID,"Failed to create MQTT client "+e.getMessage());
+			SEPALogger.log(VERBOSITY.FATAL,clientID,"Failed to create MQTT client "+e.getMessage());
 			return ;
 		}
 		
@@ -157,13 +157,13 @@ public class MQTTAdapter extends Producer implements MqttCallback {
 			MqttConnectOptions options = new MqttConnectOptions();
 			SSLSocketFactory ssl = SslUtil.getSocketFactory("/usr/local/mosquitto-certs/ca.crt", "/usr/local/mosquitto-certs/mml.crt", "/usr/local/mosquitto-certs/mml.key", "");
 			if (ssl == null) {
-				Logger.log(VERBOSITY.ERROR, clientID, "SSL security option creation failed");
+				SEPALogger.log(VERBOSITY.ERROR, clientID, "SSL security option creation failed");
 			}
 			else options.setSocketFactory(ssl);
 			mqttClient.connect(options);
 		} 
 		catch (MqttException e) {
-			Logger.log(VERBOSITY.FATAL,clientID,"Failed to connect "+e.getMessage());
+			SEPALogger.log(VERBOSITY.FATAL,clientID,"Failed to connect "+e.getMessage());
 			return ;
 		}
 		
@@ -174,14 +174,14 @@ public class MQTTAdapter extends Producer implements MqttCallback {
 			mqttClient.subscribe(topicsFilter);
 		} 
 		catch (MqttException e) {
-			Logger.log(VERBOSITY.FATAL,clientID,"Failed to subscribe "+e.getMessage());
+			SEPALogger.log(VERBOSITY.FATAL,clientID,"Failed to subscribe "+e.getMessage());
 			return ;
 		}
 		
 		String topics = "";
 		for (int i=0; i < topicsFilter.length;i++) topics += "\""+ topicsFilter[i] + "\" ";
 		
-		Logger.log(VERBOSITY.INFO,clientID,"MQTT client "+clientID+" subscribed to "+serverURI+" Topic filter "+topics);
+		SEPALogger.log(VERBOSITY.INFO,clientID,"MQTT client "+clientID+" subscribed to "+serverURI+" Topic filter "+topics);
 	
 		created = true;
 	}
@@ -200,7 +200,7 @@ public class MQTTAdapter extends Producer implements MqttCallback {
 
 	@Override
 	public void messageArrived(String topic, MqttMessage value) throws Exception {
-		Logger.log(VERBOSITY.DEBUG,clientID,topic+ " "+value.toString());
+		SEPALogger.log(VERBOSITY.DEBUG,clientID,topic+ " "+value.toString());
 		
 		String node = "iot:"+topic.replace('/', '_');
 		String temperature = value.toString();
@@ -211,7 +211,7 @@ public class MQTTAdapter extends Producer implements MqttCallback {
 		
 		if (debugHash.containsKey(node)) {
 			if (!debugHash.get(node).equals(temperature)) {
-				Logger.log(VERBOSITY.DEBUG,clientID,topic+ " "+debugHash.get(node)+"-->"+temperature.toString());	
+				SEPALogger.log(VERBOSITY.DEBUG,clientID,topic+ " "+debugHash.get(node)+"-->"+temperature.toString());	
 			}
 		}
 		
@@ -224,7 +224,7 @@ public class MQTTAdapter extends Producer implements MqttCallback {
 	}
 
 	public static void main(String[] args) {
-		Logger.loadSettings();
+		SEPALogger.loadSettings();
 		
 		ApplicationProfile profile = new ApplicationProfile();
 		if(!profile.load("MQTTAdapter.sap")) return;
@@ -233,7 +233,7 @@ public class MQTTAdapter extends Producer implements MqttCallback {
 		
 		if (!adapter.join()) return;
 		
-		Logger.log(VERBOSITY.INFO,clientID,"Press any key to exit...");
+		SEPALogger.log(VERBOSITY.INFO,clientID,"Press any key to exit...");
 		
 		try {
 			System.in.read();

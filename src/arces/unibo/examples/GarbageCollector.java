@@ -4,8 +4,8 @@ import java.io.IOException;
 
 import arces.unibo.SEPA.application.Aggregator;
 import arces.unibo.SEPA.application.ApplicationProfile;
-import arces.unibo.SEPA.application.Logger;
-import arces.unibo.SEPA.application.Logger.VERBOSITY;
+import arces.unibo.SEPA.application.SEPALogger;
+import arces.unibo.SEPA.application.SEPALogger.VERBOSITY;
 import arces.unibo.SEPA.commons.SPARQL.ARBindingsResults;
 import arces.unibo.SEPA.commons.SPARQL.Bindings;
 import arces.unibo.SEPA.commons.SPARQL.BindingsResults;
@@ -17,10 +17,10 @@ public class GarbageCollector extends Aggregator {
 	
 	public GarbageCollector(ApplicationProfile appProfile, String subscribeID, String updateID) {
 		super(appProfile,subscribeID, updateID);
-		Logger.log(VERBOSITY.INFO, tag, "Update URL: "+getUpdateURL());
-		Logger.log(VERBOSITY.INFO, tag, "SPARQL 1.1 UDPATE: "+appProfile.update(updateID));
-		Logger.log(VERBOSITY.INFO, tag, "Subscribe URL: "+getSubscribeURL());
-		Logger.log(VERBOSITY.INFO, tag, "SPARQL 1.1 QUERY: "+appProfile.subscribe(subscribeID));
+		SEPALogger.log(VERBOSITY.INFO, tag, "Update URL: "+getUpdateURL());
+		SEPALogger.log(VERBOSITY.INFO, tag, "SPARQL 1.1 UDPATE: "+appProfile.update(updateID));
+		SEPALogger.log(VERBOSITY.INFO, tag, "Subscribe URL: "+getSubscribeURL());
+		SEPALogger.log(VERBOSITY.INFO, tag, "SPARQL 1.1 QUERY: "+appProfile.subscribe(subscribeID));
 	}
 
 	@Override
@@ -33,7 +33,7 @@ public class GarbageCollector extends Aggregator {
 	public void notifyAdded(BindingsResults bindingsResults, String spuid, Integer sequence) {
 		for (Bindings bindings : bindingsResults.getBindings()) {
 			processedMessages++;
-			Logger.log(VERBOSITY.INFO, tag, processedMessages+ " "+bindings.toString());
+			SEPALogger.log(VERBOSITY.INFO, tag, processedMessages+ " "+bindings.toString());
 			update(bindings);
 		}
 		
@@ -49,15 +49,15 @@ public class GarbageCollector extends Aggregator {
 	public void onSubscribe(BindingsResults bindingsResults, String spuid) {
 		for (Bindings bindings : bindingsResults.getBindings()) {
 			processedMessages++;
-			Logger.log(VERBOSITY.INFO, tag, processedMessages+ " "+bindings.toString());
+			SEPALogger.log(VERBOSITY.INFO, tag, processedMessages+ " "+bindings.toString());
 			update(bindings);
 		}	
 	}
 	
 	public static void main(String[] args) {
-		Logger.setVerbosityLevel(VERBOSITY.INFO);
-		Logger.registerTag(tag);
-		Logger.enableConsoleLog();
+		SEPALogger.setVerbosityLevel(VERBOSITY.INFO);
+		SEPALogger.registerTag(tag);
+		SEPALogger.enableConsoleLog();
 		
 		ApplicationProfile profile = new ApplicationProfile();
 		if(!profile.load("SAP files/GarbageCollector.sap")) return;
@@ -67,8 +67,8 @@ public class GarbageCollector extends Aggregator {
 		if (!chatServer.join()) return;
 		if (chatServer.subscribe(null) == null) return;
 		
-		Logger.log(VERBOSITY.INFO,tag,"Up and running");
-		Logger.log(VERBOSITY.INFO,tag,"Press any key to exit...");
+		SEPALogger.log(VERBOSITY.INFO,tag,"Up and running");
+		SEPALogger.log(VERBOSITY.INFO,tag,"Press any key to exit...");
 		
 		try {
 			System.in.read();

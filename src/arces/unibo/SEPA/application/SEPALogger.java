@@ -25,8 +25,10 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Properties;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
-public class Logger {
+public class SEPALogger {
 	private static boolean consoleLog = false;
 	private static boolean fileLog = false;
 	private static VERBOSITY verbosity = VERBOSITY.INFO;
@@ -59,19 +61,19 @@ public class Logger {
 		try {
 			in = new FileInputStream(PROPERTIES_FILE);
 		} catch (FileNotFoundException e) {
-			Logger.log(VERBOSITY.ERROR, "LOGGER", "Error on opening properties file: "+PROPERTIES_FILE);
+			SEPALogger.log(VERBOSITY.ERROR, "LOGGER", "Error on opening properties file: "+PROPERTIES_FILE);
 			return ;
 		}
 		try {
 			configuration.load(in);
 		} catch (IOException e) {
-			Logger.log(VERBOSITY.ERROR, "LOGGER", "Error on loading properties file: "+PROPERTIES_FILE);
+			SEPALogger.log(VERBOSITY.ERROR, "LOGGER", "Error on loading properties file: "+PROPERTIES_FILE);
 			return ;
 		}
 		try {
 			in.close();
 		} catch (IOException e) {
-			Logger.log(VERBOSITY.ERROR, "LOGGER", "Error on closing properties file: "+PROPERTIES_FILE);
+			SEPALogger.log(VERBOSITY.ERROR, "LOGGER", "Error on closing properties file: "+PROPERTIES_FILE);
 			return ;
 		}
 
@@ -79,37 +81,37 @@ public class Logger {
 		
 		property = configuration.getProperty("BUNDLETAGS","*"); 
 		String[] enabledBundles = property.split(",");
-		if (enabledBundles != null) for (String tag : enabledBundles) Logger.registerTag(tag);
+		if (enabledBundles != null) for (String tag : enabledBundles) SEPALogger.registerTag(tag);
 		
 		property = configuration.getProperty("VERBOSITY","INFO");
 		switch(property) {
 			case "DEBUG":
-				Logger.setVerbosityLevel(VERBOSITY.DEBUG);
+				SEPALogger.setVerbosityLevel(VERBOSITY.DEBUG);
 				break;
 			case "INFO":
-				Logger.setVerbosityLevel(VERBOSITY.INFO);
+				SEPALogger.setVerbosityLevel(VERBOSITY.INFO);
 				break;
 			case "WARNING":
-				Logger.setVerbosityLevel(VERBOSITY.WARNING);
+				SEPALogger.setVerbosityLevel(VERBOSITY.WARNING);
 				break;
 			case "ERROR":
-				Logger.setVerbosityLevel(VERBOSITY.ERROR);
+				SEPALogger.setVerbosityLevel(VERBOSITY.ERROR);
 				break;
 			case "FATAL":
-				Logger.setVerbosityLevel(VERBOSITY.FATAL);
+				SEPALogger.setVerbosityLevel(VERBOSITY.FATAL);
 				break;
 			default:
-				Logger.setVerbosityLevel(VERBOSITY.INFO);
+				SEPALogger.setVerbosityLevel(VERBOSITY.INFO);
 				break;	
 		}
 		
 		property = configuration.getProperty("CONSOLELOG","false");
-		if (Boolean.parseBoolean(property)) Logger.enableConsoleLog();
-		else Logger.disableConsoleLog();
+		if (Boolean.parseBoolean(property)) SEPALogger.enableConsoleLog();
+		else SEPALogger.disableConsoleLog();
 		
 		property = configuration.getProperty("FILELOG","false");
-		if (Boolean.parseBoolean(property)) Logger.enableFileLog();
-		else Logger.disableFileLog();					
+		if (Boolean.parseBoolean(property)) SEPALogger.enableFileLog();
+		else SEPALogger.disableFileLog();					
 	}
 	
 	public static void registerTag(String tag) {

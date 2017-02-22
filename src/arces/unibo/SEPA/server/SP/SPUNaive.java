@@ -17,8 +17,8 @@
 
 package arces.unibo.SEPA.server.SP;
 
-import arces.unibo.SEPA.application.Logger;
-import arces.unibo.SEPA.application.Logger.VERBOSITY;
+import arces.unibo.SEPA.application.SEPALogger;
+import arces.unibo.SEPA.application.SEPALogger.VERBOSITY;
 import arces.unibo.SEPA.commons.SPARQL.ARBindingsResults;
 import arces.unibo.SEPA.commons.SPARQL.Bindings;
 import arces.unibo.SEPA.commons.SPARQL.BindingsResults;
@@ -60,7 +60,7 @@ public class SPUNaive extends SPU{
 	public SubscriptionProcessingResult process(SubscriptionProcessingInputData update) {
 		Notification notification = null;
 		
-		Logger.log(VERBOSITY.DEBUG, tag, getUUID() + " Start processing");
+		SEPALogger.log(VERBOSITY.DEBUG, tag, getUUID() + " Start processing");
 		
 		//Query the endpoint
 		Response ret = subscription.queryProcessor.process(subscription.subscribe);
@@ -100,7 +100,7 @@ public class SPUNaive extends SPU{
 		
 		SubscriptionProcessingResult res = new SubscriptionProcessingResult(getUUID(),notification);
 		
-		Logger.log(VERBOSITY.DEBUG, tag, getUUID() + " End processing");
+		SEPALogger.log(VERBOSITY.DEBUG, tag, getUUID() + " End processing");
 		
 		return res;	
 	}

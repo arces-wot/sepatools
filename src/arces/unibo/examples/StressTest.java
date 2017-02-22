@@ -7,8 +7,8 @@ import java.util.UUID;
 
 import arces.unibo.SEPA.application.ApplicationProfile;
 import arces.unibo.SEPA.application.GenericClient;
-import arces.unibo.SEPA.application.Logger;
-import arces.unibo.SEPA.application.Logger.VERBOSITY;
+import arces.unibo.SEPA.application.SEPALogger;
+import arces.unibo.SEPA.application.SEPALogger.VERBOSITY;
 import arces.unibo.SEPA.application.Producer;
 import arces.unibo.SEPA.commons.SPARQL.ARBindingsResults;
 import arces.unibo.SEPA.commons.SPARQL.Bindings;
@@ -49,7 +49,7 @@ public class StressTest {
 		    	
 				timing = System.nanoTime() - timing;
 				
-				Logger.log(VERBOSITY.INFO, tag, "Timing(ns) "+timing);
+				SEPALogger.log(VERBOSITY.INFO, tag, "Timing(ns) "+timing);
 			}
 		}
 	}
@@ -112,9 +112,9 @@ public class StressTest {
 		ApplicationProfile appProfile =  new ApplicationProfile();
 		appProfile.load("LightingBenchmark.sap");
 		
-		Logger.setVerbosityLevel(VERBOSITY.INFO);
-		Logger.enableConsoleLog();
-		Logger.registerTag("*");
+		SEPALogger.setVerbosityLevel(VERBOSITY.INFO);
+		SEPALogger.enableConsoleLog();
+		SEPALogger.registerTag("*");
 		
 		for (int i=0; i < NUPDATE ; i++) {
 			updateThreads.add(new UpdateThread(appProfile));

@@ -17,7 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package arces.unibo.SEPA.application;
 
-import arces.unibo.SEPA.application.Logger.VERBOSITY;
+import arces.unibo.SEPA.application.SEPALogger.VERBOSITY;
 import arces.unibo.SEPA.commons.SPARQL.Bindings;
 
 public class Producer extends Client implements IProducer {
@@ -34,11 +34,11 @@ public class Producer extends Client implements IProducer {
 	public Producer(ApplicationProfile appProfile,String updateID){
 		super(appProfile);
 		if (appProfile == null) {
-			Logger.log(VERBOSITY.FATAL, tag, "Cannot be initialized with UPDATE ID: "+updateID+" (application profile is null)");
+			SEPALogger.log(VERBOSITY.FATAL, tag, "Cannot be initialized with UPDATE ID: "+updateID+" (application profile is null)");
 			return;
 		}
 		if (appProfile.update(updateID) == null) {
-			Logger.log(VERBOSITY.FATAL, tag, "Cannot find UPDATE ID: "+updateID);
+			SEPALogger.log(VERBOSITY.FATAL, tag, "Cannot find UPDATE ID: "+updateID);
 			return;
 		}
 		
@@ -49,18 +49,18 @@ public class Producer extends Client implements IProducer {
 	
 	public boolean update(Bindings forcedBindings){	 
 		 if (sparqlUpdate == null) {
-			 Logger.log(VERBOSITY.FATAL, tag, "SPARQL UPDATE not defined");
+			 SEPALogger.log(VERBOSITY.FATAL, tag, "SPARQL UPDATE not defined");
 			 return false;
 		 }
 		 
 		 if (protocolClient == null) {
-			 Logger.log(VERBOSITY.FATAL, tag, "Client not initialized");
+			 SEPALogger.log(VERBOSITY.FATAL, tag, "Client not initialized");
 			 return false;
 		 }
 
 		 String sparql = prefixes() + replaceBindings(sparqlUpdate,forcedBindings);
 		 
-		 Logger.log(VERBOSITY.DEBUG,tag,"<UPDATE> "+ SPARQL_ID+" ==> "+sparql);
+		 SEPALogger.log(VERBOSITY.DEBUG,tag,"<UPDATE> "+ SPARQL_ID+" ==> "+sparql);
 		 
 		 return protocolClient.update(sparql);
 	 }

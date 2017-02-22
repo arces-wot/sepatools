@@ -50,8 +50,8 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
 
-import arces.unibo.SEPA.application.Logger;
-import arces.unibo.SEPA.application.Logger.VERBOSITY;
+import arces.unibo.SEPA.application.SEPALogger;
+import arces.unibo.SEPA.application.SEPALogger.VERBOSITY;
 import arces.unibo.SEPA.commons.SPARQL.BindingsResults;
 import arces.unibo.SEPA.commons.response.Notification;
 
@@ -216,9 +216,9 @@ public class SecureEventProtocol {
 
 		@Override
 		public void onMessage(String message) {
-			Logger.log(VERBOSITY.DEBUG, tag, message);
+			SEPALogger.log(VERBOSITY.DEBUG, tag, message);
 			if (handler == null) {
-				Logger.log(VERBOSITY.WARNING, tag, "Notification handler is NULL");
+				SEPALogger.log(VERBOSITY.WARNING, tag, "Notification handler is NULL");
 				return;
 			}
       	  	
@@ -275,7 +275,7 @@ public class SecureEventProtocol {
 		try {
 			body = new ByteArrayEntity(sparql.getBytes("UTF-8"));
 		} catch (UnsupportedEncodingException e) {
-			Logger.log(VERBOSITY.ERROR, tag, e.getMessage());
+			SEPALogger.log(VERBOSITY.ERROR, tag, e.getMessage());
 			
 			JsonObject json = new JsonObject();
 			json.add("status", new JsonPrimitive(false));
@@ -304,7 +304,7 @@ public class SecureEventProtocol {
 	            } 
 	            else 
 	            {
-	            	Logger.log(VERBOSITY.ERROR, tag, "Unexpected response status: " + status);
+	            	SEPALogger.log(VERBOSITY.ERROR, tag, "Unexpected response status: " + status);
 	            	json.add("status", new JsonPrimitive(false));
                 	json.add("body", new JsonPrimitive("Http response entity is null. Response status: "+status));
 	            }
@@ -320,11 +320,11 @@ public class SecureEventProtocol {
 	    	
 			timing = System.nanoTime() - timing;
 	    	
-			if(update) Logger.log(VERBOSITY.INFO, "timing", "UpdateTime "+timing+ " ns");
-	    	else Logger.log(VERBOSITY.INFO, "timing", "QueryTime "+timing+ " ns");
+			if(update) SEPALogger.log(VERBOSITY.INFO, "timing", "UpdateTime "+timing+ " ns");
+	    	else SEPALogger.log(VERBOSITY.INFO, "timing", "QueryTime "+timing+ " ns");
 	    }
 	    catch(IOException e) {
-	    	Logger.log(VERBOSITY.ERROR, tag, e.getMessage());
+	    	SEPALogger.log(VERBOSITY.ERROR, tag, e.getMessage());
 	    	
 	    	JsonObject json = new JsonObject();
 			json.add("status", new JsonPrimitive(false));
@@ -340,19 +340,19 @@ public class SecureEventProtocol {
 		try {
 			in = new FileInputStream(fname);
 		} catch (FileNotFoundException e) {
-			Logger.log(VERBOSITY.ERROR, tag, "Error on opening properties file: "+fname);
+			SEPALogger.log(VERBOSITY.ERROR, tag, "Error on opening properties file: "+fname);
 			return false;
 		}
 		try {
 			properties.load(in);
 		} catch (IOException e) {
-			Logger.log(VERBOSITY.ERROR, tag, "Error on loading properties file: "+fname);
+			SEPALogger.log(VERBOSITY.ERROR, tag, "Error on loading properties file: "+fname);
 			return false;
 		}
 		try {
 			in.close();
 		} catch (IOException e) {
-			Logger.log(VERBOSITY.ERROR, tag, "Error on closing properties file: "+fname);
+			SEPALogger.log(VERBOSITY.ERROR, tag, "Error on closing properties file: "+fname);
 			return false;
 		}
 		
@@ -364,19 +364,19 @@ public class SecureEventProtocol {
 		try {
 			out = new FileOutputStream(fname);
 		} catch (FileNotFoundException e) {
-			Logger.log(VERBOSITY.ERROR, tag, "Error on opening properties file: "+fname);
+			SEPALogger.log(VERBOSITY.ERROR, tag, "Error on opening properties file: "+fname);
 			return false;
 		}
 		try {
 			properties.store(out, "---SEPA client properties file ---");
 		} catch (IOException e) {
-			Logger.log(VERBOSITY.ERROR, tag, "Error on storing properties file: "+fname);
+			SEPALogger.log(VERBOSITY.ERROR, tag, "Error on storing properties file: "+fname);
 			return false;
 		}
 		try {
 			out.close();
 		} catch (IOException e) {
-			Logger.log(VERBOSITY.ERROR, tag, "Error on closing properties file: "+fname);
+			SEPALogger.log(VERBOSITY.ERROR, tag, "Error on closing properties file: "+fname);
 			return false;
 		}
 		

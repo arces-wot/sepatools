@@ -21,8 +21,8 @@ import java.util.HashMap;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import arces.unibo.SEPA.application.Logger;
-import arces.unibo.SEPA.application.Logger.VERBOSITY;
+import arces.unibo.SEPA.application.SEPALogger;
+import arces.unibo.SEPA.application.SEPALogger.VERBOSITY;
 import arces.unibo.SEPA.commons.request.QueryRequest;
 import arces.unibo.SEPA.commons.request.Request;
 import arces.unibo.SEPA.commons.request.SubscribeRequest;
@@ -67,7 +67,7 @@ public class RequestResponseHandler {
 	private HashMap<String,ResponseAndNotificationListener> subscribers = new HashMap<String,ResponseAndNotificationListener>();
 	
 	public RequestResponseHandler(Properties properties){
-		if (properties == null) Logger.log(VERBOSITY.ERROR, tag, "Properties are null");
+		if (properties == null) SEPALogger.log(VERBOSITY.ERROR, tag, "Properties are null");
 	}
 	
 	/**
@@ -76,7 +76,7 @@ public class RequestResponseHandler {
 	 * @see Response
 	* */
 	public void addResponse(Response response) {
-		Logger.log(VERBOSITY.DEBUG, tag, "<< " + response.toString());
+		SEPALogger.log(VERBOSITY.DEBUG, tag, "<< " + response.toString());
 		
 		//Get listener
 		ResponseAndNotificationListener listener = responseListeners.get(response.getToken());
@@ -105,7 +105,7 @@ public class RequestResponseHandler {
 	 * @see Notification
 	* */
 	public void addNotification(Notification notification) {
-		Logger.log(VERBOSITY.DEBUG, tag, "<< " + notification.toString());
+		SEPALogger.log(VERBOSITY.DEBUG, tag, "<< " + notification.toString());
 
 		ResponseAndNotificationListener listener = subscribers.get(notification.getSPUID());
 		if (listener != null) listener.notify(notification);
@@ -117,7 +117,7 @@ public class RequestResponseHandler {
 	 * @see Request, ResponseListener
 	* */
 	public void addRequest(Request req,ResponseAndNotificationListener listener) {
-		Logger.log(VERBOSITY.DEBUG, tag, ">> "+req.toString());
+		SEPALogger.log(VERBOSITY.DEBUG, tag, ">> "+req.toString());
 		
 		//Register response listener
 		responseListeners.put(req.getToken(), listener);
@@ -164,7 +164,7 @@ public class RequestResponseHandler {
 		synchronized(updateResponseQueue) {
 			while((res = updateResponseQueue.poll()) == null)
 				try {
-					Logger.log(VERBOSITY.DEBUG, tag, "Waiting for UPDATE responses...");
+					SEPALogger.log(VERBOSITY.DEBUG, tag, "Waiting for UPDATE responses...");
 					updateResponseQueue.wait();
 				} catch (InterruptedException e) {}
 		}
@@ -183,7 +183,7 @@ public class RequestResponseHandler {
 		synchronized(queryRequestQueue) {
 			while((req = queryRequestQueue.poll()) == null)
 				try {
-					Logger.log(VERBOSITY.DEBUG, tag, "Waiting for QUERY requests...");
+					SEPALogger.log(VERBOSITY.DEBUG, tag, "Waiting for QUERY requests...");
 					queryRequestQueue.wait();
 				} catch (InterruptedException e) {}
 		}
@@ -202,7 +202,7 @@ public class RequestResponseHandler {
 		synchronized(updateRequestQueue) {
 			while((req = updateRequestQueue.poll()) == null)
 				try {
-					Logger.log(VERBOSITY.DEBUG, tag, "Waiting for UPDATE requests...");
+					SEPALogger.log(VERBOSITY.DEBUG, tag, "Waiting for UPDATE requests...");
 					updateRequestQueue.wait();
 				} catch (InterruptedException e) {}
 		}
@@ -221,7 +221,7 @@ public class RequestResponseHandler {
 		synchronized(subscribeRequestQueue) {
 			while((req = subscribeRequestQueue.poll()) == null)
 				try {
-					Logger.log(VERBOSITY.DEBUG, tag, "Waiting for SUBSCRIBE requests...");
+					SEPALogger.log(VERBOSITY.DEBUG, tag, "Waiting for SUBSCRIBE requests...");
 					subscribeRequestQueue.wait();
 				} catch (InterruptedException e) {}
 		}
@@ -241,7 +241,7 @@ public class RequestResponseHandler {
 		synchronized(unsubscribeRequestQueue) {
 			while((req = unsubscribeRequestQueue.poll()) == null)
 				try {
-					Logger.log(VERBOSITY.DEBUG, tag, "Waiting for UNSUBSCRIBE requests...");
+					SEPALogger.log(VERBOSITY.DEBUG, tag, "Waiting for UNSUBSCRIBE requests...");
 					unsubscribeRequestQueue.wait();
 				} catch (InterruptedException e) {}
 		}

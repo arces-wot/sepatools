@@ -20,7 +20,7 @@ package arces.unibo.SEPA.application;
 import java.util.HashMap;
 import java.util.Set;
 
-import arces.unibo.SEPA.application.Logger.VERBOSITY;
+import arces.unibo.SEPA.application.SEPALogger.VERBOSITY;
 import arces.unibo.SEPA.application.ApplicationProfile.Parameters;
 import arces.unibo.SEPA.client.SecureEventProtocol;
 import arces.unibo.SEPA.commons.SPARQL.Bindings;
@@ -66,7 +66,7 @@ public abstract class Client implements IClient {
 	}
 	
 	public Client(String url,int updatePort,int subscribePort,String path){
-		Logger.log(VERBOSITY.DEBUG,tag,"Opening connection to SEPA engine:"+url+" Update port:"+updatePort+" Subscribe port:"+subscribePort+ " Path: "+path);
+		SEPALogger.log(VERBOSITY.DEBUG,tag,"Opening connection to SEPA engine:"+url+" Update port:"+updatePort+" Subscribe port:"+subscribePort+ " Path: "+path);
 		protocolClient = new SecureEventProtocol(url, updatePort, subscribePort,path);	
 	}
 	
@@ -80,13 +80,13 @@ public abstract class Client implements IClient {
 	
 	public Client(ApplicationProfile appProfile){
 		if (appProfile == null) {
-			Logger.log(VERBOSITY.FATAL,tag,"Application profile is null. Client cannot be initialized");
+			SEPALogger.log(VERBOSITY.FATAL,tag,"Application profile is null. Client cannot be initialized");
 			return;
 		}
-		if (!appProfile.isLoaded()) Logger.log(VERBOSITY.WARNING,tag,"Running with default parameters. No application profile loaded");
+		if (!appProfile.isLoaded()) SEPALogger.log(VERBOSITY.WARNING,tag,"Running with default parameters. No application profile loaded");
 		
 		Parameters args = appProfile.getParameters();
-		Logger.log(VERBOSITY.DEBUG,tag,"Created Authority:"+args.getUrl()+" Update port:"+args.getUpdatePort()+" Subscribe port:"+args.getSubscribePort()+ " Path: "+args.getPath());
+		SEPALogger.log(VERBOSITY.DEBUG,tag,"Created Authority:"+args.getUrl()+" Update port:"+args.getUpdatePort()+" Subscribe port:"+args.getSubscribePort()+ " Path: "+args.getPath());
 		
 		protocolClient = new SecureEventProtocol(args.getUrl(), args.getUpdatePort(),args.getSubscribePort(),args.getPath());
 		

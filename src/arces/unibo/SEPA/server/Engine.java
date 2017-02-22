@@ -22,8 +22,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Properties;
 
-import arces.unibo.SEPA.application.Logger;
-import arces.unibo.SEPA.application.Logger.VERBOSITY;
+import arces.unibo.SEPA.application.SEPALogger;
+import arces.unibo.SEPA.application.SEPALogger.VERBOSITY;
 
 /**
  * This class represents the SPARQL Subscription (SUB) Engine of the Semantic Event Processing Architecture (SEPA)
@@ -63,15 +63,15 @@ public class Engine extends Thread {
 		System.out.println("# GNU GENERAL PUBLIC LICENSE, Version 3, 29 June 2007                                    #");
 		System.out.println("##########################################################################################");
 		
-		Logger.loadSettings();
+		SEPALogger.loadSettings();
 		
 		Engine engine = new Engine();
 		
 		if (engine.init()) {
-			Logger.log(VERBOSITY.INFO, tag, "SUB Engine initialized and ready to start");	
+			SEPALogger.log(VERBOSITY.INFO, tag, "SUB Engine initialized and ready to start");	
 		}
 		else {
-			Logger.log(VERBOSITY.INFO, tag, "Failed to initialize the SUB Engine...exit...");
+			SEPALogger.log(VERBOSITY.INFO, tag, "Failed to initialize the SUB Engine...exit...");
 			return;
 		}
 		
@@ -82,14 +82,14 @@ public class Engine extends Thread {
 	@Override
 	public void start() {
 		this.setName("SEPA Engine");
-		Logger.log(VERBOSITY.INFO, tag, "SUB Engine starting...");	
+		SEPALogger.log(VERBOSITY.INFO, tag, "SUB Engine starting...");	
 		
 		httpGate.start();
 		websocketGate.start();
 		scheduler.start();
 		
 		super.start();
-		Logger.log(VERBOSITY.INFO, tag, "SUB Engine started");	
+		SEPALogger.log(VERBOSITY.INFO, tag, "SUB Engine started");	
 	}
 	
 	public boolean init() {
@@ -114,19 +114,19 @@ public class Engine extends Thread {
 		try {
 			in = new FileInputStream(fname);
 		} catch (FileNotFoundException e) {
-			Logger.log(VERBOSITY.ERROR, tag, "Error on opening properties file: "+fname);
+			SEPALogger.log(VERBOSITY.ERROR, tag, "Error on opening properties file: "+fname);
 			return false;
 		}
 		try {
 			properties.load(in);
 		} catch (IOException e) {
-			Logger.log(VERBOSITY.ERROR, tag, "Error on loading properties file: "+fname);
+			SEPALogger.log(VERBOSITY.ERROR, tag, "Error on loading properties file: "+fname);
 			return false;
 		}
 		try {
 			in.close();
 		} catch (IOException e) {
-			Logger.log(VERBOSITY.ERROR, tag, "Error on closing properties file: "+fname);
+			SEPALogger.log(VERBOSITY.ERROR, tag, "Error on closing properties file: "+fname);
 			return false;
 		}
 		
@@ -138,20 +138,20 @@ public class Engine extends Thread {
 		try {
 			out = new FileOutputStream(defaultPropertiesFile);
 		} catch (FileNotFoundException e) {
-			Logger.log(VERBOSITY.ERROR, tag, "Error on opening properties file: "+defaultPropertiesFile);
+			SEPALogger.log(VERBOSITY.ERROR, tag, "Error on opening properties file: "+defaultPropertiesFile);
 			return false;
 		}
 		try {
 			if (def) properties.store(out, "---SUB Engine DEFAULT properties file ---");
 			else properties.store(out, "---SUB Engine properties file ---");
 		} catch (IOException e) {
-			Logger.log(VERBOSITY.ERROR, tag, "Error on storing properties file: "+defaultPropertiesFile);
+			SEPALogger.log(VERBOSITY.ERROR, tag, "Error on storing properties file: "+defaultPropertiesFile);
 			return false;
 		}
 		try {
 			out.close();
 		} catch (IOException e) {
-			Logger.log(VERBOSITY.ERROR, tag, "Error on closing properties file: "+defaultPropertiesFile);
+			SEPALogger.log(VERBOSITY.ERROR, tag, "Error on closing properties file: "+defaultPropertiesFile);
 			return false;
 		}
 		

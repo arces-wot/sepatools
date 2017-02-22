@@ -3,7 +3,7 @@ package arces.unibo.examples;
 import java.util.Vector;
 
 import arces.unibo.SEPA.application.Consumer;
-import arces.unibo.SEPA.application.Logger;
+import arces.unibo.SEPA.application.SEPALogger;
 import arces.unibo.SEPA.application.Producer;
 import arces.unibo.SEPA.commons.SPARQL.ARBindingsResults;
 import arces.unibo.SEPA.commons.SPARQL.Bindings;
@@ -12,7 +12,7 @@ import arces.unibo.SEPA.commons.SPARQL.RDFTermLiteral;
 import arces.unibo.SEPA.commons.SPARQL.RDFTermURI;
 import arces.unibo.SEPA.application.ApplicationProfile;
 
-import arces.unibo.SEPA.application.Logger.VERBOSITY;
+import arces.unibo.SEPA.application.SEPALogger.VERBOSITY;
 
 public abstract class SmartLightingBenchmark {
 	//Benchmark definition
@@ -97,10 +97,10 @@ public abstract class SmartLightingBenchmark {
 	}
 	
 	public SmartLightingBenchmark() {
-		Logger.registerTag(tag);
-		Logger.enableConsoleLog();
-		Logger.enableFileLog();
-		Logger.setVerbosityLevel(VERBOSITY.INFO);
+		SEPALogger.registerTag(tag);
+		SEPALogger.enableConsoleLog();
+		SEPALogger.enableFileLog();
+		SEPALogger.setVerbosityLevel(VERBOSITY.INFO);
 		
 		appProfile.load("LightingBenchmark.sap");
 		lampUpdater = new Producer(appProfile,"UPDATE_LAMP");
@@ -134,7 +134,7 @@ public abstract class SmartLightingBenchmark {
 			long startTime = System.nanoTime();
 			subID=super.subscribe(bindings);
 			long stopTime = System.nanoTime();
-			Logger.log(VERBOSITY.INFO, tag , "SUBSCRIBE LAMP "+lampURI+ " "+(stopTime-startTime));
+			SEPALogger.log(VERBOSITY.INFO, tag , "SUBSCRIBE LAMP "+lampURI+ " "+(stopTime-startTime));
 			
 			return (subID != null);
 		}
@@ -160,7 +160,7 @@ public abstract class SmartLightingBenchmark {
 
 		@Override
 		public void notify(ARBindingsResults notify, String spuid, Integer sequence) {
-			Logger.log(VERBOSITY.INFO, tag , "LAMP NOTIFY"+lampURI+ " "+spuid+" sequence: "+sequence + " total: "+incrementLampNotifies());
+			SEPALogger.log(VERBOSITY.INFO, tag , "LAMP NOTIFY"+lampURI+ " "+spuid+" sequence: "+sequence + " total: "+incrementLampNotifies());
 			
 		}
 
@@ -195,7 +195,7 @@ public abstract class SmartLightingBenchmark {
 			long startTime = System.nanoTime();
 			subID=super.subscribe(bindings);
 			long stopTime = System.nanoTime();
-			Logger.log(VERBOSITY.INFO, tag , "SUBSCRIBE ROAD "+roadURI+" "+(stopTime-startTime));
+			SEPALogger.log(VERBOSITY.INFO, tag , "SUBSCRIBE ROAD "+roadURI+" "+(stopTime-startTime));
 			
 			return (subID != null);
 		}
@@ -221,7 +221,7 @@ public abstract class SmartLightingBenchmark {
 
 		@Override
 		public void notify(ARBindingsResults notify, String spuid, Integer sequence) {
-			Logger.log(VERBOSITY.INFO, tag , "ROAD NOTIFY"+roadURI+ " "+spuid+" sequence: "+sequence + " total: "+incrementRoadNotifies());
+			SEPALogger.log(VERBOSITY.INFO, tag , "ROAD NOTIFY"+roadURI+ " "+spuid+" sequence: "+sequence + " total: "+incrementRoadNotifies());
 			
 		}
 
@@ -273,7 +273,7 @@ public abstract class SmartLightingBenchmark {
 		if(!addSensor2post.join()) return firstRoadIndex;
 		if(!addLamp2post.join()) return firstRoadIndex;
 		
-		Logger.log(VERBOSITY.DEBUG, tag , "Number of roads: "+nRoad+" Posts/road: "+nPost+" First road index: "+firstRoadIndex);
+		SEPALogger.log(VERBOSITY.DEBUG, tag , "Number of roads: "+nRoad+" Posts/road: "+nPost+" First road index: "+firstRoadIndex);
 		
 		Bindings bindings = new Bindings();
 		
@@ -289,7 +289,7 @@ public abstract class SmartLightingBenchmark {
 			long startTime = System.nanoTime();
 			Boolean ret = road.update(bindings);
 			long stopTime = System.nanoTime();
-			Logger.log(VERBOSITY.INFO, tag, "INSERT ROAD "+roadURI+" "+(stopTime-startTime)+" 1");
+			SEPALogger.log(VERBOSITY.INFO, tag, "INSERT ROAD "+roadURI+" "+(stopTime-startTime)+" 1");
 			
 			if(!ret) return firstRoadIndex;
 			
@@ -310,28 +310,28 @@ public abstract class SmartLightingBenchmark {
 				startTime = System.nanoTime();
 				ret = post.update(bindings);
 				stopTime = System.nanoTime();
-				Logger.log(VERBOSITY.INFO, tag, "INSERT POST "+postURI+" "+(stopTime-startTime) + " 3");				
+				SEPALogger.log(VERBOSITY.INFO, tag, "INSERT POST "+postURI+" "+(stopTime-startTime) + " 3");				
 				if(!ret) return firstRoadIndex;
 				
 				//Add post to road
 				startTime = System.nanoTime();
 				ret = addPost2Road.update(bindings);
 				stopTime = System.nanoTime();
-				Logger.log(VERBOSITY.INFO, tag, "INSERT POST2ROAD "+postURI+" "+(stopTime-startTime)+ " 1");				
+				SEPALogger.log(VERBOSITY.INFO, tag, "INSERT POST2ROAD "+postURI+" "+(stopTime-startTime)+ " 1");				
 				if(!ret) return firstRoadIndex;
 				
 				//New lamp				
 				startTime = System.nanoTime();
 				ret = lamp.update(bindings);
 				stopTime = System.nanoTime();
-				Logger.log(VERBOSITY.INFO, tag, "INSERT LAMP "+lampURI+" "+(stopTime-startTime) + " 4");				
+				SEPALogger.log(VERBOSITY.INFO, tag, "INSERT LAMP "+lampURI+" "+(stopTime-startTime) + " 4");				
 				if(!ret) return firstRoadIndex;
 				
 				//Add lamp to post
 				startTime = System.nanoTime();
 				ret = addLamp2post.update(bindings);
 				stopTime = System.nanoTime();
-				Logger.log(VERBOSITY.INFO, tag, "INSERT LAMP2POST "+lampURI+" "+(stopTime-startTime) + " 1");				
+				SEPALogger.log(VERBOSITY.INFO, tag, "INSERT LAMP2POST "+lampURI+" "+(stopTime-startTime) + " 1");				
 				if(!ret) return firstRoadIndex;
 				
 				//New temperature sensor
@@ -343,13 +343,13 @@ public abstract class SmartLightingBenchmark {
 				startTime = System.nanoTime();
 				ret = sensor.update(bindings);
 				stopTime = System.nanoTime();
-				Logger.log(VERBOSITY.INFO, tag, "INSERT SENSOR "+temparatureURI+" "+(stopTime-startTime)+ " 5");				
+				SEPALogger.log(VERBOSITY.INFO, tag, "INSERT SENSOR "+temparatureURI+" "+(stopTime-startTime)+ " 5");				
 				if(!ret) return firstRoadIndex;
 
 				startTime = System.nanoTime();
 				ret = addSensor2post.update(bindings);
 				stopTime = System.nanoTime();
-				Logger.log(VERBOSITY.INFO, tag, "INSERT SENSOR2POST "+temparatureURI+" "+(stopTime-startTime) + " 1");				
+				SEPALogger.log(VERBOSITY.INFO, tag, "INSERT SENSOR2POST "+temparatureURI+" "+(stopTime-startTime) + " 1");				
 				if(!ret) return firstRoadIndex;
 				
 				//New presence sensor
@@ -361,13 +361,13 @@ public abstract class SmartLightingBenchmark {
 				startTime = System.nanoTime();
 				ret = sensor.update(bindings);
 				stopTime = System.nanoTime();
-				Logger.log(VERBOSITY.INFO, tag, "INSERT SENSOR "+presenceURI+" "+(stopTime-startTime)+ " 5");				
+				SEPALogger.log(VERBOSITY.INFO, tag, "INSERT SENSOR "+presenceURI+" "+(stopTime-startTime)+ " 5");				
 				if(!ret) return firstRoadIndex;
 
 				startTime = System.nanoTime();
 				ret = addSensor2post.update(bindings);
 				stopTime = System.nanoTime();
-				Logger.log(VERBOSITY.INFO, tag, "INSERT SENSOR2POST "+presenceURI+" "+(stopTime-startTime)+ " 1");				
+				SEPALogger.log(VERBOSITY.INFO, tag, "INSERT SENSOR2POST "+presenceURI+" "+(stopTime-startTime)+ " 1");				
 				if(!ret) return firstRoadIndex;
 			}
 		}
@@ -395,7 +395,7 @@ public abstract class SmartLightingBenchmark {
 		Boolean ret = lampUpdater.update(bindings);
 		long stopTime = System.nanoTime();
 		
-		Logger.log(VERBOSITY.INFO, tag, "UPDATE LAMP "+lampURI+" "+(stopTime-startTime));
+		SEPALogger.log(VERBOSITY.INFO, tag, "UPDATE LAMP "+lampURI+" "+(stopTime-startTime));
 		
 		return ret && lampUpdater.leave();
 	}
@@ -412,7 +412,7 @@ public abstract class SmartLightingBenchmark {
 		Boolean ret = roadUpdater.update(bindings);
 		long stopTime = System.nanoTime();
 		
-		Logger.log(VERBOSITY.INFO, tag, "UPDATE ROAD "+roadURI+" "+(stopTime-startTime));
+		SEPALogger.log(VERBOSITY.INFO, tag, "UPDATE ROAD "+roadURI+" "+(stopTime-startTime));
 		
 		return roadUpdater.leave() && ret;
 	}
@@ -421,7 +421,7 @@ public abstract class SmartLightingBenchmark {
 		dataset();
 		
 		for (RoadPool road : roadPoll) {
-			Logger.log(VERBOSITY.DEBUG, tag ,"INSERT "+ road.getNumber()+"x"+road.getSize()+ " roads ("+road.getFirstIndex()+":"+ (road.getFirstIndex()+road.getNumber()-1)+")");
+			SEPALogger.log(VERBOSITY.DEBUG, tag ,"INSERT "+ road.getNumber()+"x"+road.getSize()+ " roads ("+road.getFirstIndex()+":"+ (road.getFirstIndex()+road.getNumber()-1)+")");
 			populate(road.getNumber(),road.getSize(),road.getFirstIndex());
 		}
 	}

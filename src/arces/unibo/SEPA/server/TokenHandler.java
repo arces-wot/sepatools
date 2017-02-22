@@ -20,8 +20,8 @@ package arces.unibo.SEPA.server;
 import java.util.Properties;
 import java.util.Vector;
 
-import arces.unibo.SEPA.application.Logger;
-import arces.unibo.SEPA.application.Logger.VERBOSITY;
+import arces.unibo.SEPA.application.SEPALogger;
+import arces.unibo.SEPA.application.SEPALogger.VERBOSITY;
 
 /**
  * Utility class to handle requests' tokens
@@ -39,7 +39,7 @@ public class TokenHandler {
 	private Vector<Integer> jar=new Vector<Integer>();
 	
 	public TokenHandler(Properties properties) {
-		if (properties == null) Logger.log(VERBOSITY.ERROR, tag, "Properties are null");
+		if (properties == null) SEPALogger.log(VERBOSITY.ERROR, tag, "Properties are null");
 		else {
 			this.timeout = Integer.parseInt(properties.getProperty("tokenTimeout", "0"));
 			this.maxTokens = Integer.parseInt(properties.getProperty("maxTokens", "1000"));
@@ -73,11 +73,11 @@ public class TokenHandler {
 		
 		synchronized (jar){
 			if (jar.size() == 0){
-				Logger.log(VERBOSITY.WARNING, tag,"No token available...wait...");
+				SEPALogger.log(VERBOSITY.WARNING, tag,"No token available...wait...");
 				try {
 					jar.wait(timeout);
 				} catch (InterruptedException e) {
-					Logger.log(VERBOSITY.DEBUG, tag, e.getMessage());
+					SEPALogger.log(VERBOSITY.DEBUG, tag, e.getMessage());
 					e.printStackTrace();
 				}
 			}
@@ -87,7 +87,7 @@ public class TokenHandler {
 			jar.removeElementAt(0);
 		}
 		
-		Logger.log(VERBOSITY.DEBUG, tag, "Get token #"+token+" (Available: " + jar.size()+")");
+		SEPALogger.log(VERBOSITY.DEBUG, tag, "Get token #"+token+" (Available: " + jar.size()+")");
 		
 		return token;	
 	}
@@ -102,13 +102,13 @@ public class TokenHandler {
      	synchronized(jar) {
      		if (jar.contains(token)) {
      			ret = false;
-     			Logger.log(VERBOSITY.WARNING, tag, "Request to release a unused token: "+token+" (Available tokens: " + jar.size()+")");	
+     			SEPALogger.log(VERBOSITY.WARNING, tag, "Request to release a unused token: "+token+" (Available tokens: " + jar.size()+")");	
      		}
      		else
      		{
          		jar.insertElementAt( token , jar.size());
          		jar.notify();
-         		Logger.log(VERBOSITY.DEBUG, tag, "Release token #"+token+" (Available: " + jar.size()+")");
+         		SEPALogger.log(VERBOSITY.DEBUG, tag, "Release token #"+token+" (Available: " + jar.size()+")");
          	}	
      	}
      	

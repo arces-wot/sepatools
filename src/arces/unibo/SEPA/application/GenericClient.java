@@ -17,7 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package arces.unibo.SEPA.application;
 
-import arces.unibo.SEPA.application.Logger.VERBOSITY;
+import arces.unibo.SEPA.application.SEPALogger.VERBOSITY;
 import arces.unibo.SEPA.commons.SPARQL.Bindings;
 import arces.unibo.SEPA.commons.SPARQL.BindingsResults;
 
@@ -38,13 +38,13 @@ public abstract class GenericClient extends Aggregator {
 	
 	public BindingsResults query(String SPARQL_QUERY,Bindings forced) {
 		if (protocolClient == null) {
-			 Logger.log(VERBOSITY.FATAL, tag, "Client not initialized");
+			 SEPALogger.log(VERBOSITY.FATAL, tag, "Client not initialized");
 			 return null;
 		 }
 		
 		String sparql = prefixes() + super.replaceBindings(SPARQL_QUERY,forced);
 
-		Logger.log(VERBOSITY.DEBUG,"SEPA","QUERY "+sparql);
+		SEPALogger.log(VERBOSITY.DEBUG,"SEPA","QUERY "+sparql);
 		
 		return protocolClient.query(sparql);
 	}

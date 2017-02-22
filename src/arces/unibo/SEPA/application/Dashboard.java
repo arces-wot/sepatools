@@ -816,7 +816,7 @@ public class Dashboard {
 	public Dashboard() {
 		loadProperties();
 		
-		Logger.loadSettings();
+		SEPALogger.loadSettings();
 		
 		initialize();
 		

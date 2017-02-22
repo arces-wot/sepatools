@@ -30,7 +30,7 @@ import org.jdom2.Element;
 import org.jdom2.JDOMException;
 import org.jdom2.input.SAXBuilder;
 
-import arces.unibo.SEPA.application.Logger.VERBOSITY;
+import arces.unibo.SEPA.application.SEPALogger.VERBOSITY;
 import arces.unibo.SEPA.commons.SPARQL.Bindings;
 import arces.unibo.SEPA.commons.SPARQL.RDFTermLiteral;
 import arces.unibo.SEPA.commons.SPARQL.RDFTermURI;
@@ -98,7 +98,7 @@ public class ApplicationProfile {
 	
 	public String getNamespaceURI(String prefix) {
 		String ret = namespaceMap.get(prefix);
-		if (ret == null) Logger.log(VERBOSITY.ERROR, tag, "Prefix " + prefix + " NOT FOUND");
+		if (ret == null) SEPALogger.log(VERBOSITY.ERROR, tag, "Prefix " + prefix + " NOT FOUND");
 		return ret;
 	}
 	public Bindings subscribeBindings(String id) {
@@ -111,7 +111,7 @@ public class ApplicationProfile {
 	
 	public String subscribe(String id) {
 		if (!subscribeMap.containsKey(id)) {
-			Logger.log(VERBOSITY.ERROR, tag, "SUBSCRIBE ID <" + id + "> NOT FOUND");
+			SEPALogger.log(VERBOSITY.ERROR, tag, "SUBSCRIBE ID <" + id + "> NOT FOUND");
 			return null;
 		}
 		return subscribeMap.get(id);
@@ -119,7 +119,7 @@ public class ApplicationProfile {
 	
 	public String update(String id) {
 		if (!updateMap.containsKey(id)) {
-			Logger.log(VERBOSITY.ERROR, tag, "UPDATE ID <" + id + "> NOT FOUND");
+			SEPALogger.log(VERBOSITY.ERROR, tag, "UPDATE ID <" + id + "> NOT FOUND");
 			return null;
 		}
 		return updateMap.get(id);
@@ -141,7 +141,7 @@ public class ApplicationProfile {
 		try {
 			doc = builder.build(inputFile);
 		} catch (JDOMException | IOException e) {
-			Logger.log(VERBOSITY.FATAL, tag, e.getMessage());
+			SEPALogger.log(VERBOSITY.FATAL, tag, e.getMessage());
 			return false;
 		}
 		
@@ -176,7 +176,7 @@ public class ApplicationProfile {
 									params.setUpdatePort(attr.getIntValue());
 								} catch (DataConversionException e) {
 									e.printStackTrace();
-									Logger.log(VERBOSITY.ERROR, tag, "Error parsing application profile \"updateport\" parameter (found: " + attr.getValue() + ")");
+									SEPALogger.log(VERBOSITY.ERROR, tag, "Error parsing application profile \"updateport\" parameter (found: " + attr.getValue() + ")");
 								}
 								break;
 							case "subscribeport":
@@ -184,7 +184,7 @@ public class ApplicationProfile {
 									params.setSubscribePort(attr.getIntValue());
 								} catch (DataConversionException e) {
 									e.printStackTrace();
-									Logger.log(VERBOSITY.ERROR, tag, "Error parsing application profile \"subscribeport\" parameter (found: " + attr.getValue() + ")");
+									SEPALogger.log(VERBOSITY.ERROR, tag, "Error parsing application profile \"subscribeport\" parameter (found: " + attr.getValue() + ")");
 								}
 								break;
 							case "url":

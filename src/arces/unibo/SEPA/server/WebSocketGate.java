@@ -30,8 +30,8 @@ import org.glassfish.grizzly.websockets.WebSocketAddOn;
 import org.glassfish.grizzly.websockets.WebSocketApplication;
 import org.glassfish.grizzly.websockets.WebSocketEngine;
 
-import arces.unibo.SEPA.application.Logger;
-import arces.unibo.SEPA.application.Logger.VERBOSITY;
+import arces.unibo.SEPA.application.SEPALogger;
+import arces.unibo.SEPA.application.SEPALogger.VERBOSITY;
 import arces.unibo.SEPA.commons.request.Request;
 import arces.unibo.SEPA.commons.request.SubscribeRequest;
 import arces.unibo.SEPA.commons.request.UnsubscribeRequest;
@@ -69,12 +69,12 @@ public class WebSocketGate extends WebSocketApplication {//implements ResponseLi
 		@Override
 		public void notify(Response response) {		
 			if (response.getClass().equals(SubscribeResponse.class)) {
-				Logger.log(VERBOSITY.DEBUG, tag, "<< SUBSCRIBE response #"+response.getToken());
+				SEPALogger.log(VERBOSITY.DEBUG, tag, "<< SUBSCRIBE response #"+response.getToken());
 				
 				spuIds.add(((SubscribeResponse)response).getSPUID());
 			
 			}else if(response.getClass().equals(UnsubscribeResponse.class)) {
-				Logger.log(VERBOSITY.DEBUG, tag, "<< UNSUBSCRIBE response #"+response.getToken()+" ");
+				SEPALogger.log(VERBOSITY.DEBUG, tag, "<< UNSUBSCRIBE response #"+response.getToken()+" ");
 				
 				spuIds.remove(((UnsubscribeResponse)response).getSPUID());
 				
@@ -100,10 +100,10 @@ public class WebSocketGate extends WebSocketApplication {//implements ResponseLi
 	}
 	
 	public WebSocketGate(Properties properties,Scheduler scheduler){
-		if (scheduler == null) Logger.log(VERBOSITY.ERROR, tag, "Scheduler is null");
+		if (scheduler == null) SEPALogger.log(VERBOSITY.ERROR, tag, "Scheduler is null");
 		this.scheduler = scheduler;
 		
-		if (properties == null) Logger.log(VERBOSITY.ERROR, tag, "Properties are null");
+		if (properties == null) SEPALogger.log(VERBOSITY.ERROR, tag, "Properties are null");
 		else {
 			wsPort = Integer.parseInt(properties.getProperty("wsPort", "9000"));
 			keepAlivePeriod =  Integer.parseInt(properties.getProperty("keepAlivePeriod", "5000"));
@@ -112,14 +112,14 @@ public class WebSocketGate extends WebSocketApplication {//implements ResponseLi
 	
 	@Override
 	public void onClose(WebSocket socket, DataFrame frame) {
-		Logger.log(VERBOSITY.DEBUG, tag, "onClose: "+socket.toString());
+		SEPALogger.log(VERBOSITY.DEBUG, tag, "onClose: "+socket.toString());
 		
 		if (keepAlivePeriod == 0) unsubscribeAllSPUs(socket);
 	}
 
 	@Override
 	public void onConnect(WebSocket socket) {
-		Logger.log(VERBOSITY.DEBUG, tag, "onConnect: "+socket.toString());
+		SEPALogger.log(VERBOSITY.DEBUG, tag, "onConnect: "+socket.toString());
 		SEPAResponseListener listener = new SEPAResponseListener(socket);
 		
 		synchronized(activeSockets) {
@@ -134,7 +134,7 @@ public class WebSocketGate extends WebSocketApplication {//implements ResponseLi
 		Request request = parseRequest(token,text);
 		
 		if(request == null) {
-			Logger.log(VERBOSITY.DEBUG, tag, "Not supported request: "+text);
+			SEPALogger.log(VERBOSITY.DEBUG, tag, "Not supported request: "+text);
 			
 			ErrorResponse response = new ErrorResponse(token,"Not supported request: "+text);
 			
@@ -146,7 +146,7 @@ public class WebSocketGate extends WebSocketApplication {//implements ResponseLi
 		}
 		
 		synchronized(activeSockets) {
-			Logger.log(VERBOSITY.DEBUG, tag, ">> Scheduling request: "+request.toString());
+			SEPALogger.log(VERBOSITY.DEBUG, tag, ">> Scheduling request: "+request.toString());
 			scheduler.addRequest(request,activeSockets.get(socket));	
 		}
 	}
@@ -174,11 +174,11 @@ public class WebSocketGate extends WebSocketApplication {//implements ResponseLi
         try {
 			server.start();
 		} catch (IOException e) {
-			Logger.log(VERBOSITY.INFO, tag, "Failed to start WebSocket gate on port "+wsPort+ " "+e.getMessage());
+			SEPALogger.log(VERBOSITY.INFO, tag, "Failed to start WebSocket gate on port "+wsPort+ " "+e.getMessage());
 			return false;
 		}
 		
-		Logger.log(VERBOSITY.INFO, tag, "Started on port "+wsPort);
+		SEPALogger.log(VERBOSITY.INFO, tag, "Started on port "+wsPort);
 
 		if (keepAlivePeriod > 0) {
 			new KeepAlive().start();
@@ -189,7 +189,7 @@ public class WebSocketGate extends WebSocketApplication {//implements ResponseLi
 	private synchronized void unsubscribeAllSPUs(WebSocket socket) {
 		for(String spuid : activeSockets.get(socket).getSPUIDs()) {
 			Integer token = scheduler.getToken();
-			Logger.log(VERBOSITY.DEBUG, tag, ">> Scheduling UNSUBSCRIBE request #"+token);
+			SEPALogger.log(VERBOSITY.DEBUG, tag, ">> Scheduling UNSUBSCRIBE request #"+token);
 			scheduler.addRequest(new UnsubscribeRequest(token,spuid),activeSockets.get(socket));		
 		}
 	}
