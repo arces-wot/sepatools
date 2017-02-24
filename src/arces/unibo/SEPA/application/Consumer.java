@@ -18,12 +18,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 package arces.unibo.SEPA.application;
 
 import arces.unibo.SEPA.application.SEPALogger.VERBOSITY;
-import arces.unibo.SEPA.client.SecureEventProtocol.NotificationHandler;
 import arces.unibo.SEPA.commons.SPARQL.ARBindingsResults;
 import arces.unibo.SEPA.commons.SPARQL.Bindings;
 import arces.unibo.SEPA.commons.SPARQL.BindingsResults;
 import arces.unibo.SEPA.commons.SPARQL.RDFTermURI;
 import arces.unibo.SEPA.commons.response.Notification;
+import arces.unibo.SEPA.protocol.SecureEventProtocol.NotificationHandler;
 
 
 public abstract class Consumer extends Client implements IConsumer,NotificationHandler {

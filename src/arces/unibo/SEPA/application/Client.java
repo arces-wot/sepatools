@@ -22,8 +22,10 @@ import java.util.Set;
 
 import arces.unibo.SEPA.application.SEPALogger.VERBOSITY;
 import arces.unibo.SEPA.application.ApplicationProfile.Parameters;
-import arces.unibo.SEPA.client.SecureEventProtocol;
+
 import arces.unibo.SEPA.commons.SPARQL.Bindings;
+
+import arces.unibo.SEPA.protocol.SecureEventProtocol;
 
 public abstract class Client implements IClient {	
 	protected HashMap<String,String> URI2PrefixMap = new HashMap<String,String>();
