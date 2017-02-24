@@ -62,8 +62,21 @@ public class Engine extends Thread {
 		System.out.println("# This is free software, and you are welcome to redistribute it under certain conditions #");
 		System.out.println("# GNU GENERAL PUBLIC LICENSE, Version 3, 29 June 2007                                    #");
 		System.out.println("##########################################################################################");
-		
-		SEPALogger.loadSettings();
+		System.out.println("Referenced library         						License");                                                                 
+		System.out.println("commons-io         				http://www.apache.org/licenses/LICENSE-2.0.html");                         
+		System.out.println("commons-logging    				http://www.apache.org/licenses/LICENSE-2.0.html");   
+		System.out.println("httpclient         				http://www.apache.org/licenses/LICENSE-2.0.html");  		
+		System.out.println("httpcore           				http://www.apache.org/licenses/LICENSE-2.0.html"); 
+		System.out.println("log4j              				http://www.apache.org/licenses/LICENSE-2.0.html");  			
+		System.out.println("grizzply-websockets-server			https://grizzly.java.net/nonav/license.html");
+		System.out.println("gson  						http://www.apache.org/licenses/LICENSE-2.0.html");
+		System.out.println("jdom						https://github.com/hunterhacker/jdom/blob/master/LICENSE.txt");
+		System.out.println("tyrus-standalone-client 			https://tyrus.java.net/license.html");	
+		System.out.println("org.eclipse.paho.client.mqttv3			https://projects.eclipse.org/content/eclipse-public-license-1.0");
+		System.out.println("bcprov.jdk15on					https://opensource.org/licenses/MIT");   
+		System.out.println("bcpkix-jdk15on 					https://opensource.org/licenses/MIT");                 
+			
+		//SEPALogger.loadSettings();
 		
 		Engine engine = new Engine();
 		

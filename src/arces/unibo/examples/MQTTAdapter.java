@@ -224,7 +224,7 @@ public class MQTTAdapter extends Producer implements MqttCallback {
 	}
 
 	public static void main(String[] args) {
-		SEPALogger.loadSettings();
+		//SEPALogger.loadSettings();
 		
 		ApplicationProfile profile = new ApplicationProfile();
 		if(!profile.load("MQTTAdapter.sap")) return;

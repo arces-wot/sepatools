@@ -106,15 +106,21 @@ public class StressTest {
 			// TODO Auto-generated method stub
 			
 		}
+
+		@Override
+		public void brokenSubscription() {
+			// TODO Auto-generated method stub
+			
+		}
 	}
 	
 	public static void main(String[] args) {
 		ApplicationProfile appProfile =  new ApplicationProfile();
 		appProfile.load("LightingBenchmark.sap");
 		
-		SEPALogger.setVerbosityLevel(VERBOSITY.INFO);
-		SEPALogger.enableConsoleLog();
-		SEPALogger.registerTag("*");
+		//SEPALogger.setVerbosityLevel(VERBOSITY.INFO);
+		//SEPALogger.enableConsoleLog();
+		//SEPALogger.registerTag("*");
 		
 		for (int i=0; i < NUPDATE ; i++) {
 			updateThreads.add(new UpdateThread(appProfile));

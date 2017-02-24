@@ -20,6 +20,7 @@ package arces.unibo.SEPA.server;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Properties;
 import java.util.Set;
 
@@ -66,20 +67,36 @@ public class WebSocketGate extends WebSocketApplication {//implements ResponseLi
 		private WebSocket socket;	
 		private HashSet<String> spuIds = new HashSet<String>();
 		
+		public void unsubscribeAll() {
+			synchronized(spuIds) {
+				Iterator<String> it = spuIds.iterator();
+				
+				while(it.hasNext()) {
+					Integer token = scheduler.getToken();
+					SEPALogger.log(VERBOSITY.DEBUG, tag, ">> Scheduling UNSUBSCRIBE request #"+token);
+					scheduler.addRequest(new UnsubscribeRequest(token,it.next()),this);		
+				}
+			}
+		}
+		
 		@Override
 		public void notify(Response response) {		
 			if (response.getClass().equals(SubscribeResponse.class)) {
 				SEPALogger.log(VERBOSITY.DEBUG, tag, "<< SUBSCRIBE response #"+response.getToken());
 				
-				spuIds.add(((SubscribeResponse)response).getSPUID());
+				synchronized(spuIds) {
+					spuIds.add(((SubscribeResponse)response).getSPUID());
+				}
 			
 			}else if(response.getClass().equals(UnsubscribeResponse.class)) {
 				SEPALogger.log(VERBOSITY.DEBUG, tag, "<< UNSUBSCRIBE response #"+response.getToken()+" ");
 				
-				spuIds.remove(((UnsubscribeResponse)response).getSPUID());
+				synchronized(spuIds) {
+					spuIds.remove(((UnsubscribeResponse)response).getSPUID());
 				
-				synchronized(activeSockets) {
-					if (spuIds.isEmpty()) activeSockets.remove(socket);
+					synchronized(activeSockets) {
+						if (spuIds.isEmpty()) activeSockets.remove(socket);
+					}
 				}
 			}
 			
@@ -114,7 +131,7 @@ public class WebSocketGate extends WebSocketApplication {//implements ResponseLi
 	public void onClose(WebSocket socket, DataFrame frame) {
 		SEPALogger.log(VERBOSITY.DEBUG, tag, "onClose: "+socket.toString());
 		
-		if (keepAlivePeriod == 0) unsubscribeAllSPUs(socket);
+		if (keepAlivePeriod == 0) activeSockets.get(socket).unsubscribeAll();//unsubscribeAllSPUs(socket);
 	}
 
 	@Override
@@ -185,14 +202,20 @@ public class WebSocketGate extends WebSocketApplication {//implements ResponseLi
 		}
 		return true;
 	}
+
 	
-	private synchronized void unsubscribeAllSPUs(WebSocket socket) {
-		for(String spuid : activeSockets.get(socket).getSPUIDs()) {
-			Integer token = scheduler.getToken();
-			SEPALogger.log(VERBOSITY.DEBUG, tag, ">> Scheduling UNSUBSCRIBE request #"+token);
-			scheduler.addRequest(new UnsubscribeRequest(token,spuid),activeSockets.get(socket));		
+	/*private void unsubscribeAllSPUs(WebSocket socket) {
+		synchronized(activeSockets) {
+			SEPAResponseListener listener = activeSockets.get(socket);
+			Iterator<String> it = listener.getSPUIDs().iterator();
+			
+			while(it.hasNext()) {
+				Integer token = scheduler.getToken();
+				SEPALogger.log(VERBOSITY.DEBUG, tag, ">> Scheduling UNSUBSCRIBE request #"+token);
+				scheduler.addRequest(new UnsubscribeRequest(token,it.next()),listener);		
+			}
 		}
-	}
+	}*/
 	
 	public class KeepAlive extends Thread {//implements ResponseListener{
 		public void run() {
@@ -204,7 +227,7 @@ public class WebSocketGate extends WebSocketApplication {//implements ResponseLi
 				}
 				
 				//Send heart beat on each active socket to detect broken sockets
-				HashSet<WebSocket> brokenSockets = new HashSet<WebSocket>();
+				//HashSet<WebSocket> brokenSockets = new HashSet<WebSocket>();
 				
 				synchronized(activeSockets) {
 					for(WebSocket socket : activeSockets.keySet()) {	
@@ -213,14 +236,17 @@ public class WebSocketGate extends WebSocketApplication {//implements ResponseLi
 							Ping ping = new Ping();
 							socket.send(ping.toString());
 						}
-						else brokenSockets.add(socket);
+						else {
+							activeSockets.get(socket).unsubscribeAll();
+						}//brokenSockets.add(socket);
 					}
 				}
 				
+				/*
 				//Send a UNSUBSCRIBE request to all SPUs belonging to broken sockets
 				for (WebSocket socket : brokenSockets) {
 					unsubscribeAllSPUs(socket);
-				}
+				}*/
 					
 			}
 		}

@@ -55,12 +55,9 @@ public class GarbageCollector extends Aggregator {
 	}
 	
 	public static void main(String[] args) {
-		SEPALogger.setVerbosityLevel(VERBOSITY.INFO);
-		SEPALogger.registerTag(tag);
-		SEPALogger.enableConsoleLog();
 		
 		ApplicationProfile profile = new ApplicationProfile();
-		if(!profile.load("SAP files/GarbageCollector.sap")) return;
+		if(!profile.load("GarbageCollector.sap")) return;
 		
 		chatServer = new GarbageCollector(profile,"GARBAGE","REMOVE");
 		
@@ -76,6 +73,12 @@ public class GarbageCollector extends Aggregator {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
+	}
+
+	@Override
+	public void brokenSubscription() {
+		// TODO Auto-generated method stub
+		
 	}
 
 }

@@ -62,7 +62,7 @@ public class SecureEventProtocol {
 		public void subscribeConfirmed(String spuid);
 		public void unsubscribeConfirmed(String spuid);
 		public void ping();
-		public void rawData();
+		public void brokenSubscription();
 	}
 	
 	private String tag ="SEProtocol";
@@ -71,9 +71,93 @@ public class SecureEventProtocol {
 		
 	private String postUrl;
 	private String wsUrl;
+	private String sparql;
 	
 	private NotificationHandler handler = null;
 	private SEPAEndpoint wsClient;
+	
+	private enum SUBSCRIPTION_STATE {SUBSCRIBED,UNSUBSCRIBED,BROKEN_SOCKET};
+	private SocketWatchdog watchDog = new SocketWatchdog();
+	
+	class SocketWatchdog extends Thread {
+
+		private String tag ="Watchdog";
+		
+		private long pingPeriod = 0;
+		private long firstPing = 0;
+		private long DEFAULT_PING_PERIOD = 5000;
+		private long DEFAULT_SUBSCRIPTION_DELAY = 5000;
+		
+		private boolean pingReceived = false;		
+		private SUBSCRIPTION_STATE state = SUBSCRIPTION_STATE.UNSUBSCRIBED;
+		
+		public synchronized void ping() {
+			SEPALogger.log(VERBOSITY.DEBUG, tag, "Ping!");
+			pingReceived = true;
+			if (firstPing == 0) firstPing = System.currentTimeMillis();
+			else {
+				pingPeriod = System.currentTimeMillis() - firstPing;	
+				firstPing = 0;
+				SEPALogger.log(VERBOSITY.DEBUG, tag, "Ping period: "+pingPeriod);
+			}
+			notifyAll();
+		}
+		
+		public void subscribed() {
+			state = SUBSCRIPTION_STATE.SUBSCRIBED;
+			SEPALogger.log(VERBOSITY.DEBUG, tag, "Subscribed");
+		}
+		
+		public void unsubscribed() {
+			state = SUBSCRIPTION_STATE.UNSUBSCRIBED;
+			SEPALogger.log(VERBOSITY.DEBUG, tag, "Unsubscribed");
+		}
+		
+		private synchronized boolean waitPing() {
+			SEPALogger.log(VERBOSITY.DEBUG, tag, "Wait ping...");
+			pingReceived = false;
+			try {
+				if (pingPeriod != 0) wait(pingPeriod*3/2);
+				else wait(DEFAULT_PING_PERIOD*3/2);
+			} catch (InterruptedException e) {
+
+			}	
+			return pingReceived;
+		}
+		
+		private synchronized boolean subscribing() {
+			SEPALogger.log(VERBOSITY.DEBUG, tag, "Subscribing...");
+			while(state == SUBSCRIPTION_STATE.BROKEN_SOCKET) {
+				if (wsClient.isConnected()) wsClient.close();
+				wsClient.subscribe(sparql);
+				try {
+					wait(DEFAULT_SUBSCRIPTION_DELAY);
+				} catch (InterruptedException e) {
+
+				}
+			}
+			return (state == SUBSCRIPTION_STATE.SUBSCRIBED);
+		}
+		
+		public void run() {
+			try {
+				Thread.sleep(DEFAULT_PING_PERIOD*5/2);
+			} catch (InterruptedException e) {
+				return;
+			}
+			
+			while(true){
+				while (waitPing()) {}
+				
+				if (state == SUBSCRIPTION_STATE.SUBSCRIBED) {
+					if (handler != null) handler.brokenSubscription();
+					state = SUBSCRIPTION_STATE.BROKEN_SOCKET;
+				}
+				
+				if(!subscribing()) return;
+			}
+		}
+	}
 	
 	public String getUpdateURL() {
 		return postUrl;
@@ -94,7 +178,7 @@ public class SecureEventProtocol {
 		
 		storeProperties(propertiesFile);
 		
-		wsClient = new SEPAEndpoint(wsUrl);
+		wsClient = new SEPAEndpoint();
 	}
 
 	public SecureEventProtocol() {
@@ -115,7 +199,7 @@ public class SecureEventProtocol {
 		
 		storeProperties(propertiesFile);
 		
-		wsClient = new SEPAEndpoint(wsUrl);
+		wsClient = new SEPAEndpoint();
 	}
 
 	public boolean update(String sparql) {
@@ -130,13 +214,12 @@ public class SecureEventProtocol {
 		return new BindingsResults(new JsonParser().parse(json.get("body").getAsString()).getAsJsonObject());
 	}
 	
+	
 	class SEPAEndpoint extends Endpoint {
 		private Session wsClientSession = null;;
 		private final ClientEndpointConfig cec = ClientEndpointConfig.Builder.create().build();
 		private ClientManager client = ClientManager.createClient();
 		private SEPAMessageHandler messageHandler = new SEPAMessageHandler();
-		private String wsUrl;
-		private String sparql;
 		
 		@Override
 		public void onOpen(Session session, EndpointConfig arg1) {
@@ -146,10 +229,6 @@ public class SecureEventProtocol {
 				wsClientSession.getBasicRemote().sendText("subscribe="+sparql);
 			} 
 			catch (IOException e) {}
-		}
-		
-		public SEPAEndpoint(String wsUrl) {
-			this.wsUrl = wsUrl;
 		}
 		
 		private boolean connect() {
@@ -182,7 +261,6 @@ public class SecureEventProtocol {
 					return false;
 				}
 			else {
-				this.sparql = sparql;
 				return connect();	
 			}
 		
@@ -227,12 +305,17 @@ public class SecureEventProtocol {
       	  	//Ping
       	  	if(notify.get("ping") != null) {
       	  		handler.ping();
+      	  		
+      	  		watchDog.ping();
       	  		return;
       	  	}
 			 
       	  	//Subscribe confirmed
       	  	if (notify.get("subscribed") != null) {
       	  		handler.subscribeConfirmed(notify.get("subscribed").getAsString());
+      	  		
+      	  		if (!watchDog.isAlive()) watchDog.start();
+      	  		watchDog.subscribed();
       	  		return;
       	  	}
       	  	
@@ -240,6 +323,8 @@ public class SecureEventProtocol {
       	  	if (notify.get("unsubscribed") != null) {
       	  		handler.unsubscribeConfirmed(notify.get("unsubscribed").getAsString());
       	  		wsClient.close();
+      	  		
+      	  		watchDog.unsubscribed();
       	  		return;
       	  	}
       	  	
@@ -253,6 +338,7 @@ public class SecureEventProtocol {
 	
 	public boolean subscribe(String sparql,NotificationHandler handler) {
 		this.handler = handler;
+		this.sparql = sparql;
 		return wsClient.subscribe(sparql);
 	}
 

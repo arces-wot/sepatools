@@ -97,10 +97,10 @@ public abstract class SmartLightingBenchmark {
 	}
 	
 	public SmartLightingBenchmark() {
-		SEPALogger.registerTag(tag);
-		SEPALogger.enableConsoleLog();
-		SEPALogger.enableFileLog();
-		SEPALogger.setVerbosityLevel(VERBOSITY.INFO);
+		//SEPALogger.registerTag(tag);
+		//SEPALogger.enableConsoleLog();
+		//SEPALogger.enableFileLog();
+		//SEPALogger.setVerbosityLevel(VERBOSITY.INFO);
 		
 		appProfile.load("LightingBenchmark.sap");
 		lampUpdater = new Producer(appProfile,"UPDATE_LAMP");
@@ -175,6 +175,12 @@ public abstract class SmartLightingBenchmark {
 		@Override
 		public void onSubscribe(BindingsResults bindingsResults, String spuid) {
 		}
+
+		@Override
+		public void brokenSubscription() {
+			// TODO Auto-generated method stub
+			
+		}
 		
 	}
 	
@@ -235,6 +241,12 @@ public abstract class SmartLightingBenchmark {
 
 		@Override
 		public void onSubscribe(BindingsResults bindingsResults, String spuid) {
+		}
+
+		@Override
+		public void brokenSubscription() {
+			// TODO Auto-generated method stub
+			
 		}
 		
 	}

@@ -17,28 +17,22 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package arces.unibo.SEPA.application;
 
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.Properties;
+//import java.util.ArrayList;
+
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 
 public class SEPALogger {
-	private static boolean consoleLog = false;
-	private static boolean fileLog = false;
-	private static VERBOSITY verbosity = VERBOSITY.INFO;
+	//private static boolean consoleLog = false;
+	//private static boolean fileLog = false;
+	//private static VERBOSITY verbosity = VERBOSITY.INFO;
 	
-	private static FileWriter file = null; 
-	private static String filename = "";
+	//private static FileWriter file = null; 
+	//private static String filename = "";
 	
-	private static ArrayList<String> tags = new ArrayList<String>();
-	private static Properties configuration = new Properties();
-	private static String PROPERTIES_FILE ="logging.properties";
+	//private static ArrayList<String> tags = new ArrayList<String>();
+	//private static Properties configuration = new Properties();
+	//private static String PROPERTIES_FILE ="logging.properties";
 
 	// Log4J2 logger
 	private static final Logger logger = LogManager.getLogger();
@@ -58,7 +52,7 @@ public class SEPALogger {
 			}
 		}
 	};
-	
+/*	
 	public static void loadSettings(){
 		FileInputStream in;
 		try {
@@ -114,7 +108,7 @@ public class SEPALogger {
 		
 		property = configuration.getProperty("FILELOG","false");
 		if (Boolean.parseBoolean(property)) SEPALogger.enableFileLog();
-		else SEPALogger.disableFileLog();					
+		else SEPALogger.disableFileLog();				
 	}
 	
 	public static void registerTag(String tag) {
@@ -128,7 +122,8 @@ public class SEPALogger {
 	public static void disableConsoleLog(){
 		consoleLog = false;
 	}
-	
+*/
+	/*
 	public static void enableFileLog(){
 		fileLog = true;
 		
@@ -145,26 +140,26 @@ public class SEPALogger {
 	public static void disableFileLog(){
 		fileLog = false;
 	}
-	
+
 	public static void setVerbosityLevel(VERBOSITY level) {
 		verbosity = level;
 	}
-	
+*/	
 	public static synchronized void log(VERBOSITY level, String tag,String message) {
 
-		long nano = System.nanoTime();
+		//long nano = System.nanoTime();
 		
-		int nTab = 20 - tag.length();
+		//int nTab = 20 - tag.length();
 		
 		if (level.compareTo(VERBOSITY.WARNING)<=0) {
-			if(!tags.contains(tag) && !tag.equals("LOGGER") && !tags.contains("*")) return;		
-			if (!consoleLog && !fileLog) return;
-			if (level.compareTo(verbosity) < 0) return; 
+			//if(!tags.contains(tag) && !tag.equals("LOGGER") && !tags.contains("*")) return;		
+			//if (!consoleLog && !fileLog) return;
+			//if (level.compareTo(verbosity) < 0) return; 
 		}
 		
-		Date date = new Date();
-		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
-		String timestamp = sdf.format(date);
+		//Date date = new Date();
+		//SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+		//String timestamp = sdf.format(date);
 		
 		String messageOut = tag+" -- "+message;
 

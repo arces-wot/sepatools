@@ -68,7 +68,10 @@ public class HTTPGate extends Thread {
 	public void run() {
 		try {
 			server.wait();
-		} catch (InterruptedException e) {}
+		} catch (InterruptedException e) {
+			SEPALogger.log(VERBOSITY.INFO, tag, e.getMessage());
+		}
+		
 	}
 	
 	@Override
@@ -94,6 +97,7 @@ public class HTTPGate extends Thread {
 	
 	@Override
 	public void interrupt(){
+		SEPALogger.log(VERBOSITY.INFO, tag, "Kill signal received...stopping HTTP server...");
 		if (server != null) server.stop(0);
 		super.interrupt();
 	}

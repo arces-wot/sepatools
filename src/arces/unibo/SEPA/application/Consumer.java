@@ -95,12 +95,6 @@ public abstract class Consumer extends Client implements IConsumer,NotificationH
 	public void ping() {
 		SEPALogger.log(VERBOSITY.DEBUG,tag,"Ping");
 	}
-
-	@Override
-	public void rawData() {
-		// TODO Auto-generated method stub
-		
-	}
 	
 	protected class SubcribeConfirmSync {
 		private String tag = "SubcribeConfirmSync";

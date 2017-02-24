@@ -160,6 +160,11 @@ public class Dashboard {
 		public void onSubscribe(BindingsResults bindingsResults, String spuid) {
 			notify(new ARBindingsResults(bindingsResults,null),spuid,0);
 		}
+		@Override
+		public void brokenSubscription() {
+			lblInfo.setText("Broken subscription! Waiting for automatic subscription recovery...");
+			
+		}
 		
 	}
 	
@@ -329,6 +334,12 @@ public class Dashboard {
 				propertiesDM.addRow(new String[]{propertyURI,domainURI,rangeURI,comment});
 			}
 		}
+
+		@Override
+		public void brokenSubscription() {
+			// TODO Auto-generated method stub
+			
+		}
 		
 	}
 	
@@ -404,6 +415,12 @@ public class Dashboard {
 			treeMap.clear();
 			
 			notifyAdded(bindingsResults,spuid,0);
+		}
+
+		@Override
+		public void brokenSubscription() {
+			// TODO Auto-generated method stub
+			
 		}
 		
 	}
@@ -816,7 +833,7 @@ public class Dashboard {
 	public Dashboard() {
 		loadProperties();
 		
-		SEPALogger.loadSettings();
+		//SEPALogger.loadSettings();
 		
 		initialize();
 		
