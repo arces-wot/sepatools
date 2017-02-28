@@ -18,11 +18,19 @@
 package arces.unibo.SEPA.server;
 
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Properties;
 import java.util.Set;
+
+import javax.management.InstanceAlreadyExistsException;
+import javax.management.MBeanRegistrationException;
+import javax.management.MBeanServer;
+import javax.management.MalformedObjectNameException;
+import javax.management.NotCompliantMBeanException;
+import javax.management.ObjectName;
 
 import org.glassfish.grizzly.http.server.HttpServer;
 import org.glassfish.grizzly.websockets.DataFrame;
@@ -53,7 +61,7 @@ import arces.unibo.SEPA.server.RequestResponseHandler.ResponseAndNotificationLis
 * @version 0.1
 * */
 
-public class WebSocketGate extends WebSocketApplication {//implements ResponseListener {
+public class WebSocketGate extends WebSocketApplication implements WebSocketGateMBean {//implements ResponseListener {
 	private String tag ="WebSocketGate";
 	
 	private Scheduler scheduler;
@@ -62,7 +70,7 @@ public class WebSocketGate extends WebSocketApplication {//implements ResponseLi
 	private int keepAlivePeriod = 5000;
 	
 	private HashMap<WebSocket,SEPAResponseListener> activeSockets = new HashMap<WebSocket,SEPAResponseListener>();
-	
+		
 	public class SEPAResponseListener implements ResponseAndNotificationListener {
 		private WebSocket socket;	
 		private HashSet<String> spuIds = new HashSet<String>();
@@ -116,7 +124,7 @@ public class WebSocketGate extends WebSocketApplication {//implements ResponseLi
 		}
 	}
 	
-	public WebSocketGate(Properties properties,Scheduler scheduler){
+	public WebSocketGate(Properties properties,Scheduler scheduler) throws MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException{
 		if (scheduler == null) SEPALogger.log(VERBOSITY.ERROR, tag, "Scheduler is null");
 		this.scheduler = scheduler;
 		
@@ -125,6 +133,14 @@ public class WebSocketGate extends WebSocketApplication {//implements ResponseLi
 			wsPort = Integer.parseInt(properties.getProperty("wsPort", "9000"));
 			keepAlivePeriod =  Integer.parseInt(properties.getProperty("keepAlivePeriod", "5000"));
 		}
+		
+		//Get the MBean server
+	    MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+	    
+	    //register the MBean
+	    ObjectName name = new ObjectName("arces.unibo.SEPA.server:type=WebSocketGate");
+	    mbs.registerMBean(this, name);
+		
 	}
 	
 	@Override
@@ -251,4 +267,10 @@ public class WebSocketGate extends WebSocketApplication {//implements ResponseLi
 			}
 		}
 	}
+
+	@Override
+	public int getActiveWebSockets() {
+		return this.activeSockets.size();
+	}
+
 }
