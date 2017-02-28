@@ -20,7 +20,15 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
 import java.util.Properties;
+
+import javax.management.InstanceAlreadyExistsException;
+import javax.management.MBeanRegistrationException;
+import javax.management.MBeanServer;
+import javax.management.MalformedObjectNameException;
+import javax.management.NotCompliantMBeanException;
+import javax.management.ObjectName;
 
 import arces.unibo.SEPA.application.SEPALogger;
 import arces.unibo.SEPA.application.SEPALogger.VERBOSITY;
@@ -32,7 +40,7 @@ import arces.unibo.SEPA.application.SEPALogger.VERBOSITY;
 * @version 0.1
 * */
 
-public class Engine extends Thread {
+public class Engine extends Thread implements EngineMBean {
 	//Properties and logging
 	private static String tag ="SUBEngine";
 	private final String defaultPropertiesFile = "defaults.properties";
@@ -53,7 +61,7 @@ public class Engine extends Thread {
 	
 	public Engine() {}
 	
-	public static void main(String[] args) {
+	public static void main(String[] args) throws MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException {
 		System.out.println("##########################################################################################");
 		System.out.println("# SEPA Engine Ver 0.1  Copyright (C) 2016-2017                                           #");
 		System.out.println("# University of Bologna (Italy)                                                          #");
@@ -78,6 +86,14 @@ public class Engine extends Thread {
 			
 		//SEPALogger.loadSettings();
 		
+		//Get the MBean server
+        MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+        
+        //register the MBean
+        Engine mBean = new Engine();
+        ObjectName name = new ObjectName("arces.unibo.SEPA.server:type=Engine");
+        mbs.registerMBean(mBean, name);
+        
 		Engine engine = new Engine();
 		
 		if (engine.init()) {
@@ -170,5 +186,11 @@ public class Engine extends Thread {
 		
 		return true;
 
+	}
+
+	@Override
+	public Properties getProperties() {
+		// TODO Auto-generated method stub
+		return this.properties;
 	}
 }
