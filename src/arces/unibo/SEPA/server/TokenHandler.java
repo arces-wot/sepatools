@@ -17,8 +17,16 @@
 
 package arces.unibo.SEPA.server;
 
+import java.lang.management.ManagementFactory;
 import java.util.Properties;
 import java.util.Vector;
+
+import javax.management.InstanceAlreadyExistsException;
+import javax.management.MBeanRegistrationException;
+import javax.management.MBeanServer;
+import javax.management.MalformedObjectNameException;
+import javax.management.NotCompliantMBeanException;
+import javax.management.ObjectName;
 
 import arces.unibo.SEPA.application.SEPALogger;
 import arces.unibo.SEPA.application.SEPALogger.VERBOSITY;
@@ -31,26 +39,35 @@ import arces.unibo.SEPA.application.SEPALogger.VERBOSITY;
 * @version 0.1
 * */
 
-public class TokenHandler {
+public class TokenHandler implements TokenHandlerMBean {
 	private String tag="TokenHandler";   
 	
 	private long timeout;	
 	private long maxTokens;
 	private Vector<Integer> jar=new Vector<Integer>();
 	
-	public TokenHandler(Properties properties) {
+	public TokenHandler(Properties properties) throws MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException {
 		if (properties == null) SEPALogger.log(VERBOSITY.ERROR, tag, "Properties are null");
 		else {
 			this.timeout = Integer.parseInt(properties.getProperty("tokenTimeout", "0"));
 			this.maxTokens = Integer.parseInt(properties.getProperty("maxTokens", "1000"));
 		}
 		for (int i=0; i < maxTokens; i++) jar.addElement(i);
+		
+		//Get the MBean server
+        MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+        
+        //register the MBean        
+        ObjectName name = new ObjectName("arces.unibo.SEPA.server:type=TokenHandler");
+        mbs.registerMBean(this, name);
 	}
 	
+	@Override
 	public void setTimeout(long timeout) {
 		this.timeout = timeout;
 	}
 	
+	@Override
 	public long getTimeout() {
 		return timeout;
 	}
@@ -113,5 +130,16 @@ public class TokenHandler {
      	}
      	
      	return ret;
-	}	
+	}
+
+	@Override
+	public int getAvailableTokens() {
+		return this.availableTokens();
+	}
+
+	@Override
+	public long getMaxTokens() {
+		return this.maxTokens;
+	}
+
 }

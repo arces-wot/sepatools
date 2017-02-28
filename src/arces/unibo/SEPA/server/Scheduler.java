@@ -21,6 +21,11 @@ import java.util.Observable;
 import java.util.Observer;
 import java.util.Properties;
 
+import javax.management.InstanceAlreadyExistsException;
+import javax.management.MBeanRegistrationException;
+import javax.management.MalformedObjectNameException;
+import javax.management.NotCompliantMBeanException;
+
 import arces.unibo.SEPA.application.SEPALogger;
 import arces.unibo.SEPA.application.SEPALogger.VERBOSITY;
 import arces.unibo.SEPA.commons.request.QueryRequest;
@@ -58,7 +63,7 @@ public class Scheduler extends Thread implements Observer {
 		
 	private boolean running = true;
 	
-	public Scheduler(Properties properties,Processor processor) {
+	public Scheduler(Properties properties,Processor processor) throws MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException {
 		requestHandler = new RequestResponseHandler(properties);
 		tokenHandler = new TokenHandler(properties);
 		
