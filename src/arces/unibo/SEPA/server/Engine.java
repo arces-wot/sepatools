@@ -21,6 +21,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
+import java.util.Date;
 import java.util.Properties;
 
 import javax.management.InstanceAlreadyExistsException;
@@ -46,6 +47,7 @@ public class Engine extends Thread implements EngineMBean {
 	private final String defaultPropertiesFile = "defaults.properties";
 	private final String propertiesFile = "engine.properties";
 	private Properties properties = new Properties();
+	private final Date startDate = new Date(); 
 	
 	//Primitives scheduler/dispatcher
 	private Scheduler scheduler = null;
@@ -121,7 +123,7 @@ public class Engine extends Thread implements EngineMBean {
 		SEPALogger.log(VERBOSITY.INFO, tag, "SUB Engine started");	
 	}
 	
-	public boolean init() {
+	public boolean init() throws MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException {
 		boolean defaultProperties = false;
 		if (!loadProperties(propertiesFile)) {
 			if (!loadProperties(defaultPropertiesFile)) defaultProperties = true;
@@ -190,7 +192,11 @@ public class Engine extends Thread implements EngineMBean {
 
 	@Override
 	public Properties getProperties() {
-		// TODO Auto-generated method stub
 		return this.properties;
+	}
+
+	@Override
+	public Date getStartDate() {
+		return this.startDate;
 	}
 }

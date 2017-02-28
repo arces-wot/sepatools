@@ -19,8 +19,16 @@ package arces.unibo.SEPA.server;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
 import java.util.Properties;
+
+import javax.management.InstanceAlreadyExistsException;
+import javax.management.MBeanRegistrationException;
+import javax.management.MBeanServer;
+import javax.management.MalformedObjectNameException;
+import javax.management.NotCompliantMBeanException;
+import javax.management.ObjectName;
 
 import org.apache.commons.io.IOUtils;
 
@@ -41,9 +49,9 @@ import arces.unibo.SEPA.server.RequestResponseHandler.ResponseAndNotificationLis
 * @version 0.1
 * */
 
-public class HTTPGate extends Thread {
+public class HTTPGate extends Thread implements HTTPGateMBean {
 	
-	private String tag ="HTTPGate";
+	private String tag ="HTTPGarequestte";
 
 	private static HttpServer server = null;
 	
@@ -51,8 +59,12 @@ public class HTTPGate extends Thread {
 	private static int httpTimeout = 2000;
 
 	private Scheduler scheduler;
+	private long transactions  = 0; 
+	private long updateTransactions  = 0;
+	private long queryTransactions  = 0;
 	
-	public HTTPGate(Properties properties,Scheduler scheduler){
+
+	public HTTPGate(Properties properties,Scheduler scheduler) throws MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException{
 		if (properties == null) SEPALogger.log(VERBOSITY.ERROR, tag, "Properties are null");
 		else {
 			httpTimeout = Integer.parseInt(properties.getProperty("httpTimeout", "2000"));
@@ -60,8 +72,15 @@ public class HTTPGate extends Thread {
 		}
 			
 		this.scheduler = scheduler;
-		if (scheduler == null) SEPALogger.log(VERBOSITY.ERROR, tag, "Scheduler is null");
-	
+		if (scheduler == null) SEPALogger.log(VERBOSITY.ERROR, tag, "Scheduler is null");		
+		
+		//Get the MBean server
+	    MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+	    
+	    //register the MBean
+	    ObjectName name = new ObjectName("arces.unibo.SEPA.server:type=HTTPGate");
+	    mbs.registerMBean(this, name);
+		
 	}
 
 	@Override
@@ -182,7 +201,10 @@ public class HTTPGate extends Thread {
 				String[] query = httpExchange.getRequestURI().getQuery().split("&");
 				for (String param : query) {
 					String[] value = param.split("=");
-					if (value[0].equals("query")) return new QueryRequest(scheduler.getToken(),value[1]);
+					if (value[0].equals("query")) {
+						this.queryTransactions++;
+						return new QueryRequest(scheduler.getToken(),value[1]);
+					}
 				}
 				failureResponse(httpExchange,400,"Query must be in the form: \"query=<SPARQL 1.1 Query>\"");
 				return null;	
@@ -197,13 +219,22 @@ public class HTTPGate extends Thread {
 					failureResponse(httpExchange,400,"Exception on reading SPARQL from POST body");
 					return null;
 				}
-				if(httpExchange.getRequestHeaders().get("Content-Type").contains("application/sparql-query")) return new QueryRequest(scheduler.getToken(),sparql);
-				if(httpExchange.getRequestHeaders().get("Content-Type").contains("application/sparql-update")) return new UpdateRequest(scheduler.getToken(),sparql);
+				if(httpExchange.getRequestHeaders().get("Content-Type").contains("application/sparql-query")) {
+					this.queryTransactions++;
+					return new QueryRequest(scheduler.getToken(),sparql);
+				}
+				if(httpExchange.getRequestHeaders().get("Content-Type").contains("application/sparql-update")) {
+					this.updateTransactions++;
+					return new UpdateRequest(scheduler.getToken(),sparql);
+				}
 
 				if(httpExchange.getRequestHeaders().get("Content-Type").contains("application/x-www-form-urlencoded")) {
-					if (sparql.contains("query="))
+					if (sparql.contains("query=")){
+						this.queryTransactions++;
 						return new QueryRequest(scheduler.getToken(),sparql);
+					}
 					if (sparql.contains("update="))
+						this.updateTransactions++;
 						return new UpdateRequest(scheduler.getToken(),sparql);
 				}
 									
@@ -295,7 +326,23 @@ public class HTTPGate extends Thread {
 		@Override
 		public void handle(HttpExchange httpExchange) throws IOException {
 			SEPALogger.log(VERBOSITY.INFO, tag, ">> HTTP request");
+			transactions += 1;
 			new Running(httpExchange).start();
 		}
+	}
+
+	@Override
+	public long getTransactions() {
+		return this.transactions;
+	}
+
+	@Override
+	public long getQueryTransactions() {
+		return this.queryTransactions;
+	}
+
+	@Override
+	public long getUpdateTransactions() {
+		return this.updateTransactions;
 	}
 }
