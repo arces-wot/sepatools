@@ -20,14 +20,11 @@ package arces.unibo.SEPA.server;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.Properties;
-
 import javax.management.InstanceAlreadyExistsException;
 import javax.management.MBeanRegistrationException;
 import javax.management.MalformedObjectNameException;
 import javax.management.NotCompliantMBeanException;
-
 import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import arces.unibo.SEPA.commons.request.QueryRequest;
 import arces.unibo.SEPA.commons.request.SubscribeRequest;
@@ -39,7 +36,6 @@ import arces.unibo.SEPA.commons.response.UpdateResponse;
 import arces.unibo.SEPA.server.SP.SPUManager;
 
 public class Processor extends Observable implements Observer {
-	private static String tag = "Processor";
 	
 	private QueryProcessor queryProcessor;
 	private UpdateProcessor updateProcessor;	

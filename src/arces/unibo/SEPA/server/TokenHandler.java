@@ -27,10 +27,7 @@ import javax.management.MalformedObjectNameException;
 import javax.management.NotCompliantMBeanException;
 import javax.management.ObjectName;
 import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
-import arces.unibo.SEPA.application.SEPALogger;
-import arces.unibo.SEPA.application.SEPALogger.VERBOSITY;
 
 /**
  * Utility class to handle requests' tokens
@@ -41,7 +38,6 @@ import arces.unibo.SEPA.application.SEPALogger.VERBOSITY;
 * */
 
 public class TokenHandler implements TokenHandlerMBean {
-	private String tag="TokenHandler";   
 	private static final Logger logger = LogManager.getLogger("TokenHandler");
 
 	private long timeout;	

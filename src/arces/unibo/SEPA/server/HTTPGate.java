@@ -31,7 +31,6 @@ import javax.management.ObjectName;
 import org.apache.commons.io.IOUtils;
 import com.sun.net.httpserver.*;
 import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import arces.unibo.SEPA.commons.request.QueryRequest;
 import arces.unibo.SEPA.commons.request.Request;
@@ -48,8 +47,6 @@ import arces.unibo.SEPA.server.RequestResponseHandler.ResponseAndNotificationLis
 
 public class HTTPGate extends Thread implements HTTPGateMBean {
 	
-	private String tag ="HTTPGarequestte";
-
 	private static HttpServer server = null;
 	
 	private static int httpPort = 8000; 

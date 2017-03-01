@@ -37,7 +37,6 @@ import org.glassfish.grizzly.websockets.WebSocketAddOn;
 import org.glassfish.grizzly.websockets.WebSocketApplication;
 import org.glassfish.grizzly.websockets.WebSocketEngine;
 import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import arces.unibo.SEPA.commons.request.Request;
 import arces.unibo.SEPA.commons.request.SubscribeRequest;
@@ -60,7 +59,6 @@ import arces.unibo.SEPA.server.RequestResponseHandler.ResponseAndNotificationLis
 * */
 
 public class WebSocketGate extends WebSocketApplication implements WebSocketGateMBean {//implements ResponseListener {
-	private String tag ="WebSocketGate";
 	
 	private Scheduler scheduler;
 	

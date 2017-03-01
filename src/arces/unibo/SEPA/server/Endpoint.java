@@ -24,14 +24,12 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.util.Properties;
-
 import javax.management.InstanceAlreadyExistsException;
 import javax.management.MBeanRegistrationException;
 import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.management.NotCompliantMBeanException;
 import javax.management.ObjectName;
-
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
@@ -47,7 +45,6 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
 import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import arces.unibo.SEPA.commons.response.ErrorResponse;
 import arces.unibo.SEPA.commons.request.QueryRequest;
@@ -65,7 +62,6 @@ import arces.unibo.SEPA.commons.response.UpdateResponse;
 * */
 
 public class Endpoint implements EndpointMBean {
-	private static String tag ="Endpoint";
 	
 	private enum HTTPMethod {GET,POST,URL_ENCODED_POST};
 	private enum ResultsFormat {JSON,XML,CSV};
