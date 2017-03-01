@@ -31,6 +31,8 @@ import javax.management.NotCompliantMBeanException;
 import javax.management.ObjectName;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Level;
+
 /**
  * This class represents the SPARQL Subscription (SUB) Engine of the Semantic Event Processing Architecture (SEPA)
  * 
@@ -39,15 +41,15 @@ import org.apache.logging.log4j.LogManager;
 * */
 
 public class Engine extends Thread implements EngineMBean {
+
 	//Properties and logging
 	private static String tag ="SUBEngine";
 	private final String defaultPropertiesFile = "defaults.properties";
 	private final String propertiesFile = "engine.properties";
 	private Properties properties = new Properties();
 	private final Date startDate = new Date(); 
-	
-	// Create an instance of the logger
 	private static final Logger logger = LogManager.getLogger("Engine");
+
 	
 	//Primitives scheduler/dispatcher
 	private Scheduler scheduler = null;
