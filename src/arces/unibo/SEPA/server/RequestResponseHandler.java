@@ -20,9 +20,9 @@ package arces.unibo.SEPA.server;
 import java.util.HashMap;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentLinkedQueue;
-
-import arces.unibo.SEPA.application.SEPALogger;
-import arces.unibo.SEPA.application.SEPALogger.VERBOSITY;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
 import arces.unibo.SEPA.commons.request.QueryRequest;
 import arces.unibo.SEPA.commons.request.Request;
 import arces.unibo.SEPA.commons.request.SubscribeRequest;
@@ -46,7 +46,8 @@ import arces.unibo.SEPA.commons.response.UpdateResponse;
 
 public class RequestResponseHandler {
 	private String tag = "RequestResponseHandler";
-	
+	private static final Logger logger = LogManager.getLogger("RequestResponseHandler");
+
 	public interface ResponseAndNotificationListener {
 		public void notify(Response response);
 	}
@@ -67,7 +68,7 @@ public class RequestResponseHandler {
 	private HashMap<String,ResponseAndNotificationListener> subscribers = new HashMap<String,ResponseAndNotificationListener>();
 	
 	public RequestResponseHandler(Properties properties){
-		if (properties == null) SEPALogger.log(VERBOSITY.ERROR, tag, "Properties are null");
+		if (properties == null) logger.error("Properties are null");
 	}
 	
 	/**
@@ -76,7 +77,7 @@ public class RequestResponseHandler {
 	 * @see Response
 	* */
 	public void addResponse(Response response) {
-		SEPALogger.log(VERBOSITY.DEBUG, tag, "<< " + response.toString());
+		logger.debug("<< " + response.toString());
 		
 		//Get listener
 		ResponseAndNotificationListener listener = responseListeners.get(response.getToken());
@@ -105,7 +106,7 @@ public class RequestResponseHandler {
 	 * @see Notification
 	* */
 	public void addNotification(Notification notification) {
-		SEPALogger.log(VERBOSITY.DEBUG, tag, "<< " + notification.toString());
+		logger.debug("<< " + notification.toString());
 
 		ResponseAndNotificationListener listener = subscribers.get(notification.getSPUID());
 		if (listener != null) listener.notify(notification);
@@ -117,7 +118,7 @@ public class RequestResponseHandler {
 	 * @see Request, ResponseListener
 	* */
 	public void addRequest(Request req,ResponseAndNotificationListener listener) {
-		SEPALogger.log(VERBOSITY.DEBUG, tag, ">> "+req.toString());
+		logger.debug(">> "+req.toString());
 		
 		//Register response listener
 		responseListeners.put(req.getToken(), listener);
@@ -164,7 +165,7 @@ public class RequestResponseHandler {
 		synchronized(updateResponseQueue) {
 			while((res = updateResponseQueue.poll()) == null)
 				try {
-					SEPALogger.log(VERBOSITY.DEBUG, tag, "Waiting for UPDATE responses...");
+					logger.debug("Waiting for UPDATE responses...");
 					updateResponseQueue.wait();
 				} catch (InterruptedException e) {}
 		}
@@ -183,7 +184,7 @@ public class RequestResponseHandler {
 		synchronized(queryRequestQueue) {
 			while((req = queryRequestQueue.poll()) == null)
 				try {
-					SEPALogger.log(VERBOSITY.DEBUG, tag, "Waiting for QUERY requests...");
+					logger.debug("Waiting for QUERY requests...");
 					queryRequestQueue.wait();
 				} catch (InterruptedException e) {}
 		}
@@ -202,7 +203,7 @@ public class RequestResponseHandler {
 		synchronized(updateRequestQueue) {
 			while((req = updateRequestQueue.poll()) == null)
 				try {
-					SEPALogger.log(VERBOSITY.DEBUG, tag, "Waiting for UPDATE requests...");
+					logger.debug("Waiting for UPDATE requests...");
 					updateRequestQueue.wait();
 				} catch (InterruptedException e) {}
 		}
@@ -221,7 +222,7 @@ public class RequestResponseHandler {
 		synchronized(subscribeRequestQueue) {
 			while((req = subscribeRequestQueue.poll()) == null)
 				try {
-					SEPALogger.log(VERBOSITY.DEBUG, tag, "Waiting for SUBSCRIBE requests...");
+					logger.debug("Waiting for SUBSCRIBE requests...");
 					subscribeRequestQueue.wait();
 				} catch (InterruptedException e) {}
 		}
@@ -241,7 +242,7 @@ public class RequestResponseHandler {
 		synchronized(unsubscribeRequestQueue) {
 			while((req = unsubscribeRequestQueue.poll()) == null)
 				try {
-					SEPALogger.log(VERBOSITY.DEBUG, tag, "Waiting for UNSUBSCRIBE requests...");
+					logger.debug("Waiting for UNSUBSCRIBE requests...");
 					unsubscribeRequestQueue.wait();
 				} catch (InterruptedException e) {}
 		}

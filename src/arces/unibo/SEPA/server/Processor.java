@@ -20,9 +20,9 @@ package arces.unibo.SEPA.server;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.Properties;
-
-import arces.unibo.SEPA.application.SEPALogger;
-import arces.unibo.SEPA.application.SEPALogger.VERBOSITY;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
 import arces.unibo.SEPA.commons.request.QueryRequest;
 import arces.unibo.SEPA.commons.request.SubscribeRequest;
 import arces.unibo.SEPA.commons.request.UnsubscribeRequest;
@@ -39,6 +39,7 @@ public class Processor extends Observable implements Observer {
 	private UpdateProcessor updateProcessor;	
 	private SPUManager spuManager;
 	private Endpoint endpoint;
+	private static final Logger logger = LogManager.getLogger("Processor");
 	
 	public Processor(Properties properties) {	
 		//Create SPARQL 1.1 interface
@@ -54,48 +55,48 @@ public class Processor extends Observable implements Observer {
 	}
 	
 	public void processQuery(QueryRequest req) {
-		SEPALogger.log(VERBOSITY.DEBUG, tag, "*Process* "+req.toString());
+		logger.debug("*Process* "+req.toString());
 		Response res = queryProcessor.process(req);
 		
 		//Send response back
-		SEPALogger.log(VERBOSITY.DEBUG, tag, "<< "+res.toString());
+		logger.debug("<< "+res.toString());
 		setChanged();
 		notifyObservers(res);
 	}
 	
 	public void processUpdate(UpdateRequest req) {
-		SEPALogger.log(VERBOSITY.DEBUG, tag, "*Process* "+req.toString());
+		logger.debug("*Process* "+req.toString());
 		Response res = updateProcessor.process(req);
 		
 		//Send response back
-		SEPALogger.log(VERBOSITY.DEBUG, tag, "<< "+res.toString());
+		logger.debug("<< "+res.toString());
 		setChanged();
 		notifyObservers(res);
 				
 		//Subscriptions processing
-		SEPALogger.log(VERBOSITY.DEBUG, tag, "*** Process subscriptions ***");
+		logger.debug("*** Process subscriptions ***");
 		if (UpdateResponse.class.equals(res.getClass())) spuManager.processUpdate((UpdateResponse)res);	
 	}
 	
 	public void processSubscribe(SubscribeRequest req){
-		SEPALogger.log(VERBOSITY.DEBUG, tag, "*Process* "+req.toString());
+		logger.debug("*Process* "+req.toString());
 		spuManager.processSubscribe(req);
 	}
 	
 	public void processUnsubscribe(UnsubscribeRequest req) {
-		SEPALogger.log(VERBOSITY.DEBUG, tag, "*Process* "+req.toString());
+		logger.debug("*Process* "+req.toString());
 		String spuid = spuManager.processUnsubscribe(req);
 		UnsubscribeResponse res = new UnsubscribeResponse(req.getToken(),spuid);
 		
 		//Send response back
-		SEPALogger.log(VERBOSITY.DEBUG, tag, "<< "+res.toString());
+		logger.debug("<< "+res.toString());
 		setChanged();
 		notifyObservers(res);
 	}
 
 	@Override
 	public void update(Observable o, Object arg) {
-		SEPALogger.log(VERBOSITY.DEBUG, tag, "<< SPU MANAGER notification ");
+		logger.debug("<< SPU MANAGER notification ");
 		setChanged();
 		notifyObservers(arg);
 	}

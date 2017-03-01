@@ -20,14 +20,13 @@ package arces.unibo.SEPA.server;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.Properties;
-
 import javax.management.InstanceAlreadyExistsException;
 import javax.management.MBeanRegistrationException;
 import javax.management.MalformedObjectNameException;
 import javax.management.NotCompliantMBeanException;
-
-import arces.unibo.SEPA.application.SEPALogger;
-import arces.unibo.SEPA.application.SEPALogger.VERBOSITY;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
 import arces.unibo.SEPA.commons.request.QueryRequest;
 import arces.unibo.SEPA.commons.request.Request;
 import arces.unibo.SEPA.commons.request.SubscribeRequest;
@@ -51,7 +50,8 @@ import arces.unibo.SEPA.server.RequestResponseHandler.ResponseAndNotificationLis
 
 public class Scheduler extends Thread implements Observer {
 	private static String tag = "Scheduler";
-	
+	private static final Logger logger = LogManager.getLogger("Scheduler");
+
 	private RequestResponseHandler requestHandler;
 	private TokenHandler tokenHandler;
 	private Processor processor;
@@ -67,7 +67,7 @@ public class Scheduler extends Thread implements Observer {
 		requestHandler = new RequestResponseHandler(properties);
 		tokenHandler = new TokenHandler(properties);
 		
-		if (processor == null) SEPALogger.log(VERBOSITY.ERROR, tag, "Processor is null");
+		if (processor == null) logger.error("Processor is null");
 		else {
 			this.processor = processor;
 			this.processor.addObserver(this);
@@ -81,7 +81,7 @@ public class Scheduler extends Thread implements Observer {
 				UpdateRequest req = requestHandler.waitUpdateRequest();				
 				
 				//Process UPDATE
-				SEPALogger.log(VERBOSITY.DEBUG, tag, ">> "+req.toString());
+				logger.debug(">> "+req.toString());
 				processor.processUpdate(req);
 			}
 		}
@@ -100,7 +100,7 @@ public class Scheduler extends Thread implements Observer {
 				QueryRequest req = requestHandler.waitQueryRequest();
 				
 				//Process QUERY
-				SEPALogger.log(VERBOSITY.DEBUG, tag, ">> "+req.toString());
+				logger.debug(">> "+req.toString());
 				processor.processQuery(req);
 			}
 		}
@@ -119,7 +119,7 @@ public class Scheduler extends Thread implements Observer {
 				SubscribeRequest req = requestHandler.waitSubscribeRequest();
 				
 				//Process SUBSCRIBE
-				SEPALogger.log(VERBOSITY.DEBUG, tag, ">> "+req.toString());
+				logger.debug(">> "+req.toString());
 				processor.processSubscribe(req);
 			}
 		}
@@ -138,7 +138,7 @@ public class Scheduler extends Thread implements Observer {
 				UnsubscribeRequest req = requestHandler.waitUnsubscribeRequest();				
 				
 				//Process UNSUBSCRIBE
-				SEPALogger.log(VERBOSITY.DEBUG, tag, ">> "+req.toString());
+				logger.debug(">> "+req.toString());
 				processor.processUnsubscribe(req);
 			}
 		}
@@ -165,35 +165,35 @@ public class Scheduler extends Thread implements Observer {
 		if (arg.getClass().equals(Notification.class)) {
 			Notification notify = (Notification) arg;
 			requestHandler.addNotification(notify);
-			SEPALogger.log(VERBOSITY.DEBUG, tag, "<< "+notify.toString());
+			logger.debug("<< "+notify.toString());
 		}
 		else if (arg.getClass().equals(QueryResponse.class)) {
 			QueryResponse response = (QueryResponse) arg;
 			requestHandler.addResponse(response);
-			SEPALogger.log(VERBOSITY.DEBUG, tag, "<< "+response.toString());
+			logger.debug("<< "+response.toString());
 		}
 		else if (arg.getClass().equals(UpdateResponse.class)) {
 			UpdateResponse response = (UpdateResponse) arg;
 			requestHandler.addResponse(response);
-			SEPALogger.log(VERBOSITY.DEBUG, tag, "<< "+response.toString());
+			logger.debug("<< "+response.toString());
 		}
 		else if (arg.getClass().equals(SubscribeResponse.class)) {
 			SubscribeResponse response = (SubscribeResponse) arg;
 			requestHandler.addResponse(response);
-			SEPALogger.log(VERBOSITY.DEBUG, tag, "<< "+response.toString());
+			logger.debug("<< "+response.toString());
 		}
 		else if (arg.getClass().equals(UnsubscribeResponse.class)) {
 			UnsubscribeResponse response = (UnsubscribeResponse) arg;
 			requestHandler.addResponse(response);
-			SEPALogger.log(VERBOSITY.DEBUG, tag, "<< "+response.toString());
+			logger.debug("<< "+response.toString());
 		}
 		else if (arg.getClass().equals(ErrorResponse.class)) {
 			ErrorResponse response = (ErrorResponse) arg;
 			requestHandler.addResponse(response);
-			SEPALogger.log(VERBOSITY.WARNING, tag, "<< "+response.toString());
+			logger.warn("<< "+response.toString());
 		}
 		else {
-			SEPALogger.log(VERBOSITY.WARNING, tag, "<< Unsupported response: "+arg.toString());
+			logger.warn("<< Unsupported response: "+arg.toString());
 		}
 	}
 

@@ -28,7 +28,7 @@ package arces.unibo.SEPA.commons.request;
 public abstract class Request {
 	protected Integer token;
 	protected String sparql;
-	
+
 	public Request(Integer token,String sparql) {
 		this.token = token;
 		this.sparql = sparql;

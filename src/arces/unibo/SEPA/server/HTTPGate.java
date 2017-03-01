@@ -22,20 +22,17 @@ import java.io.OutputStream;
 import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
 import java.util.Properties;
-
 import javax.management.InstanceAlreadyExistsException;
 import javax.management.MBeanRegistrationException;
 import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.management.NotCompliantMBeanException;
 import javax.management.ObjectName;
-
 import org.apache.commons.io.IOUtils;
-
 import com.sun.net.httpserver.*;
-
-import arces.unibo.SEPA.application.SEPALogger;
-import arces.unibo.SEPA.application.SEPALogger.VERBOSITY;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
 import arces.unibo.SEPA.commons.request.QueryRequest;
 import arces.unibo.SEPA.commons.request.Request;
 import arces.unibo.SEPA.commons.response.Response;
@@ -63,16 +60,17 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 	private long updateTransactions  = 0;
 	private long queryTransactions  = 0;
 	
+	private Logger logger = LogManager.getLogger("HttpGate");	
 
 	public HTTPGate(Properties properties,Scheduler scheduler) throws MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException{
-		if (properties == null) SEPALogger.log(VERBOSITY.ERROR, tag, "Properties are null");
+		if (properties == null) logger.error("Properties are null");
 		else {
 			httpTimeout = Integer.parseInt(properties.getProperty("httpTimeout", "2000"));
 			httpPort = Integer.parseInt(properties.getProperty("httpPort", "8000"));
 		}
 			
 		this.scheduler = scheduler;
-		if (scheduler == null) SEPALogger.log(VERBOSITY.ERROR, tag, "Scheduler is null");		
+		if (scheduler == null) logger.error("Scheduler is null");		
 		
 		//Get the MBean server
 	    MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
@@ -88,7 +86,7 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 		try {
 			server.wait();
 		} catch (InterruptedException e) {
-			SEPALogger.log(VERBOSITY.INFO, tag, e.getMessage());
+			logger.info(e.getMessage());
 		}
 		
 	}
@@ -102,7 +100,7 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 		} 
 		catch (IOException e) {
 			e.printStackTrace();
-			SEPALogger.log(VERBOSITY.FATAL,tag ,e.getMessage());
+			logger.fatal(e.getMessage());
 			return;
 		}
 		
@@ -111,12 +109,12 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 	    server.setExecutor(null);
 	    server.start();
 	    
-	    SEPALogger.log(VERBOSITY.INFO, tag, "Started on port "+httpPort);
+	    logger.info("Started on port "+httpPort);
 	}
 	
 	@Override
 	public void interrupt(){
-		SEPALogger.log(VERBOSITY.INFO, tag, "Kill signal received...stopping HTTP server...");
+		logger.info("Kill signal received...stopping HTTP server...");
 		if (server != null) server.stop(0);
 		super.interrupt();
 	}
@@ -132,7 +130,7 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 		try {
 			response +=       	"BODY:\n" + IOUtils.toString(exchange.getRequestBody(),"UTF-8") +"\n";
 		} catch (IOException e) {
-			SEPALogger.log(VERBOSITY.ERROR, tag, "Error on UTF-8 decoding "+e.getMessage());
+			logger.error("Error on UTF-8 decoding "+e.getMessage());
 		}
 		response += 		"CONTEXT PATH: " + exchange.getHttpContext().getPath() + "\n";
 		response += 		"QUERY: " + exchange.getRequestURI().getQuery();
@@ -143,7 +141,7 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 			os.write(response.getBytes());
 			os.close();
 		} catch (IOException e) {
-			SEPALogger.log(VERBOSITY.ERROR, tag, "Error on sending HTTP response "+e.getMessage());
+			logger.error("Error on sending HTTP response "+e.getMessage());
 		}
 			
 	}
@@ -159,7 +157,7 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 		try {
 			response +=       	"BODY:\n" + IOUtils.toString(exchange.getRequestBody(),"UTF-8") +"\n";
 		} catch (IOException e) {
-			SEPALogger.log(VERBOSITY.ERROR, tag, "Error on UTF-8 decoding "+e.getMessage());
+			logger.error("Error on UTF-8 decoding "+e.getMessage());
 		}
 		response += 		"CONTEXT PATH: " + exchange.getHttpContext().getPath() + "\n";
 		response += 		"QUERY: " + exchange.getRequestURI().getQuery();
@@ -170,7 +168,7 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 			os.write(response.getBytes());
 			os.close();
 		} catch (IOException e) {
-			SEPALogger.log(VERBOSITY.ERROR, tag, "Error on sending HTTP response "+e.getMessage());
+			logger.error("Error on sending HTTP response "+e.getMessage());
 		}
 	}
 	
@@ -193,7 +191,7 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 		
 		switch(httpExchange.getRequestMethod().toUpperCase()) {
 			case "GET":
-				SEPALogger.log(VERBOSITY.DEBUG,tag,"HTTP GET");
+				logger.debug("HTTP GET");
 				if (httpExchange.getRequestURI().getQuery()== null) {
 					failureResponse(httpExchange,500,"query is null");
 					return null;	
@@ -210,12 +208,12 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 				return null;	
 			
 			case "POST":
-				SEPALogger.log(VERBOSITY.DEBUG,tag,"HTTP POST");
+				logger.debug("HTTP POST");
 				String sparql = null;
 				try {
 					sparql = IOUtils.toString(httpExchange.getRequestBody(),"UTF-8");
 				} catch (IOException e) {
-					SEPALogger.log(VERBOSITY.ERROR, tag, "Exception on reading SPARQL from POST body: "+e.getMessage());
+					logger.error("Exception on reading SPARQL from POST body: "+e.getMessage());
 					failureResponse(httpExchange,400,"Exception on reading SPARQL from POST body");
 					return null;
 				}
@@ -238,12 +236,12 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 						return new UpdateRequest(scheduler.getToken(),sparql);
 				}
 									
-				SEPALogger.log(VERBOSITY.ERROR, tag,"Request MUST conform to SPARQL 1.1 Protocol (https://www.w3.org/TR/sparql11-protocol/)");
+				logger.error("Request MUST conform to SPARQL 1.1 Protocol (https://www.w3.org/TR/sparql11-protocol/)");
 				failureResponse(httpExchange,400,"Request MUST conform to SPARQL 1.1 Protocol (https://www.w3.org/TR/sparql11-protocol/)");
 				return null;
 		}
 		
-		SEPALogger.log(VERBOSITY.ERROR,tag,"UNSUPPORTED METHOD: "+httpExchange.getRequestMethod().toUpperCase());		
+		logger.error("UNSUPPORTED METHOD: "+httpExchange.getRequestMethod().toUpperCase());		
 		failureResponse(httpExchange,400,"Unsupported method: "+httpExchange.getRequestMethod());
 			
 		return null;
@@ -264,25 +262,38 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 			}
 			
 			public void run() {
+				
 				//Parsing SPARQL 1.1 request
 				Request request = parseSPARQL11(httpExchange);
+
+				//Timestamp
+				long startTime = System.nanoTime();
 				
 				//Validate
 				if (!validate(request)) {
-					SEPALogger.log(VERBOSITY.ERROR,tag,"SPARQL 1.1 validation failed "+request.getSPARQL());		
+					logger.error("SPARQL 1.1 validation failed "+request.getSPARQL());		
 					failureResponse(httpExchange,400,"SPARQL 1.1 validation failed "+request.getSPARQL());
 					return;
 				}
+				
+				//Timestamp
+				long validatedTime = System.nanoTime();
 				
 				//Add request
 				if (request != null) scheduler.addRequest(request,this);
 				else return;
 								
 				//Waiting response
-				SEPALogger.log(VERBOSITY.DEBUG, tag,"Waiting response in "+httpTimeout+" ms...");
+				logger.debug("Waiting response in "+httpTimeout+" ms...");
 				
 				try { Thread.sleep(httpTimeout);} 
 				catch (InterruptedException e) {}
+				
+				//Timestamp
+				long processedTime = System.nanoTime();
+				
+				//Logging
+				logger.trace("Request validated in " + (startTime-validatedTime) + " and processed in " + (validatedTime-processedTime) + " ns");
 				
 				//Send HTTP response
 				sendResponse(request.getToken());
@@ -302,22 +313,22 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 					}
 					else {
 						byte[] responseBody = response.toString().getBytes();
-						SEPALogger.log(VERBOSITY.DEBUG, tag, "Send HTTP response of "+responseBody.length+ " bytes");
+						logger.debug("Send HTTP response of "+responseBody.length+ " bytes");
 						httpExchange.sendResponseHeaders(200, responseBody.length);
 						OutputStream os = httpExchange.getResponseBody();
 						os.write(responseBody);
 						os.close();
 					}
-					SEPALogger.log(VERBOSITY.INFO, tag, "<< HTTP response");
+					logger.info("<< HTTP response");
 				} 
 				catch (IOException e) {
-					SEPALogger.log(VERBOSITY.FATAL,tag,"Send HTTP Response failed ");
+					logger.fatal("Send HTTP Response failed ");
 				}	
 			}
 
 			@Override
 			public void notify(Response response) {
-				SEPALogger.log(VERBOSITY.INFO, tag, "Response #"+response.getToken());
+				logger.info("Response #"+response.getToken());
 				this.response = response;
 				interrupt();
 			}
@@ -325,7 +336,7 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 		
 		@Override
 		public void handle(HttpExchange httpExchange) throws IOException {
-			SEPALogger.log(VERBOSITY.INFO, tag, ">> HTTP request");
+			logger.info(">> HTTP request");
 			transactions += 1;
 			new Running(httpExchange).start();
 		}

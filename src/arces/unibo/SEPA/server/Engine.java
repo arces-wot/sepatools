@@ -31,9 +31,9 @@ import javax.management.MalformedObjectNameException;
 import javax.management.NotCompliantMBeanException;
 import javax.management.ObjectName;
 
-import arces.unibo.SEPA.application.SEPALogger;
-import arces.unibo.SEPA.application.SEPALogger.VERBOSITY;
-
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
 /**
  * This class represents the SPARQL Subscription (SUB) Engine of the Semantic Event Processing Architecture (SEPA)
  * 
@@ -48,6 +48,9 @@ public class Engine extends Thread implements EngineMBean {
 	private final String propertiesFile = "engine.properties";
 	private Properties properties = new Properties();
 	private final Date startDate = new Date(); 
+	
+	// Create an instance of the logger
+	private static final Logger logger = LogManager.getLogger("Engine");
 	
 	//Primitives scheduler/dispatcher
 	private Scheduler scheduler = null;
@@ -84,9 +87,7 @@ public class Engine extends Thread implements EngineMBean {
 		System.out.println("tyrus-standalone-client 			https://tyrus.java.net/license.html");	
 		System.out.println("org.eclipse.paho.client.mqttv3			https://projects.eclipse.org/content/eclipse-public-license-1.0");
 		System.out.println("bcprov.jdk15on					https://opensource.org/licenses/MIT");   
-		System.out.println("bcpkix-jdk15on 					https://opensource.org/licenses/MIT");                 
-			
-		//SEPALogger.loadSettings();
+		System.out.println("bcpkix-jdk15on 					https://opensource.org/licenses/MIT");   
 		
 		//Get the MBean server
         MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
@@ -99,10 +100,10 @@ public class Engine extends Thread implements EngineMBean {
 		Engine engine = new Engine();
 		
 		if (engine.init()) {
-			SEPALogger.log(VERBOSITY.INFO, tag, "SUB Engine initialized and ready to start");	
+			logger.info("SUB Engine initialized and ready to start");	
 		}
 		else {
-			SEPALogger.log(VERBOSITY.INFO, tag, "Failed to initialize the SUB Engine...exit...");
+			logger.info("Failed to initialize the SUB Engine...exit...");
 			return;
 		}
 		
@@ -113,14 +114,14 @@ public class Engine extends Thread implements EngineMBean {
 	@Override
 	public void start() {
 		this.setName("SEPA Engine");
-		SEPALogger.log(VERBOSITY.INFO, tag, "SUB Engine starting...");	
+		logger.info("SUB Engine starting...");	
 		
 		httpGate.start();
 		websocketGate.start();
 		scheduler.start();
 		
 		super.start();
-		SEPALogger.log(VERBOSITY.INFO, tag, "SUB Engine started");	
+		logger.info("SUB Engine started");	
 	}
 	
 	public boolean init() throws MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException {
@@ -145,19 +146,19 @@ public class Engine extends Thread implements EngineMBean {
 		try {
 			in = new FileInputStream(fname);
 		} catch (FileNotFoundException e) {
-			SEPALogger.log(VERBOSITY.ERROR, tag, "Error on opening properties file: "+fname);
+			logger.error("Error on opening properties file: "+fname);
 			return false;
 		}
 		try {
 			properties.load(in);
 		} catch (IOException e) {
-			SEPALogger.log(VERBOSITY.ERROR, tag, "Error on loading properties file: "+fname);
+			logger.error("Error on loading properties file: "+fname);
 			return false;
 		}
 		try {
 			in.close();
 		} catch (IOException e) {
-			SEPALogger.log(VERBOSITY.ERROR, tag, "Error on closing properties file: "+fname);
+			logger.error("Error on closing properties file: "+fname);
 			return false;
 		}
 		
@@ -169,20 +170,20 @@ public class Engine extends Thread implements EngineMBean {
 		try {
 			out = new FileOutputStream(defaultPropertiesFile);
 		} catch (FileNotFoundException e) {
-			SEPALogger.log(VERBOSITY.ERROR, tag, "Error on opening properties file: "+defaultPropertiesFile);
+			logger.error("Error on opening properties file: "+defaultPropertiesFile);
 			return false;
 		}
 		try {
 			if (def) properties.store(out, "---SUB Engine DEFAULT properties file ---");
 			else properties.store(out, "---SUB Engine properties file ---");
 		} catch (IOException e) {
-			SEPALogger.log(VERBOSITY.ERROR, tag, "Error on storing properties file: "+defaultPropertiesFile);
+			logger.error("Error on storing properties file: "+defaultPropertiesFile);
 			return false;
 		}
 		try {
 			out.close();
 		} catch (IOException e) {
-			SEPALogger.log(VERBOSITY.ERROR, tag, "Error on closing properties file: "+defaultPropertiesFile);
+			logger.error("Error on closing properties file: "+defaultPropertiesFile);
 			return false;
 		}
 		

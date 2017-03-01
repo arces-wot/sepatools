@@ -20,14 +20,15 @@ package arces.unibo.SEPA.server;
 import java.lang.management.ManagementFactory;
 import java.util.Properties;
 import java.util.Vector;
-
 import javax.management.InstanceAlreadyExistsException;
 import javax.management.MBeanRegistrationException;
 import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.management.NotCompliantMBeanException;
 import javax.management.ObjectName;
-
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
 import arces.unibo.SEPA.application.SEPALogger;
 import arces.unibo.SEPA.application.SEPALogger.VERBOSITY;
 
@@ -41,13 +42,14 @@ import arces.unibo.SEPA.application.SEPALogger.VERBOSITY;
 
 public class TokenHandler implements TokenHandlerMBean {
 	private String tag="TokenHandler";   
-	
+	private static final Logger logger = LogManager.getLogger("TokenHandler");
+
 	private long timeout;	
 	private long maxTokens;
 	private Vector<Integer> jar=new Vector<Integer>();
 	
 	public TokenHandler(Properties properties) throws MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException {
-		if (properties == null) SEPALogger.log(VERBOSITY.ERROR, tag, "Properties are null");
+		if (properties == null) logger.error("Properties are null");
 		else {
 			this.timeout = Integer.parseInt(properties.getProperty("tokenTimeout", "0"));
 			this.maxTokens = Integer.parseInt(properties.getProperty("maxTokens", "1000"));
@@ -90,11 +92,11 @@ public class TokenHandler implements TokenHandlerMBean {
 		
 		synchronized (jar){
 			if (jar.size() == 0){
-				SEPALogger.log(VERBOSITY.WARNING, tag,"No token available...wait...");
+				logger.warn("No token available...wait...");
 				try {
 					jar.wait(timeout);
 				} catch (InterruptedException e) {
-					SEPALogger.log(VERBOSITY.DEBUG, tag, e.getMessage());
+					logger.debug(e.getMessage());
 					e.printStackTrace();
 				}
 			}
@@ -104,7 +106,7 @@ public class TokenHandler implements TokenHandlerMBean {
 			jar.removeElementAt(0);
 		}
 		
-		SEPALogger.log(VERBOSITY.DEBUG, tag, "Get token #"+token+" (Available: " + jar.size()+")");
+		logger.debug("Get token #"+token+" (Available: " + jar.size()+")");
 		
 		return token;	
 	}
@@ -119,13 +121,13 @@ public class TokenHandler implements TokenHandlerMBean {
      	synchronized(jar) {
      		if (jar.contains(token)) {
      			ret = false;
-     			SEPALogger.log(VERBOSITY.WARNING, tag, "Request to release a unused token: "+token+" (Available tokens: " + jar.size()+")");	
+     			logger.warn("Request to release a unused token: "+token+" (Available tokens: " + jar.size()+")");	
      		}
      		else
      		{
          		jar.insertElementAt( token , jar.size());
          		jar.notify();
-         		SEPALogger.log(VERBOSITY.DEBUG, tag, "Release token #"+token+" (Available: " + jar.size()+")");
+         		logger.debug("Release token #"+token+" (Available: " + jar.size()+")");
          	}	
      	}
      	
