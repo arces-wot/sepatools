@@ -19,10 +19,19 @@ package arces.unibo.SEPA.server;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.lang.management.ManagementFactory;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.util.Properties;
+
+import javax.management.InstanceAlreadyExistsException;
+import javax.management.MBeanRegistrationException;
+import javax.management.MBeanServer;
+import javax.management.MalformedObjectNameException;
+import javax.management.NotCompliantMBeanException;
+import javax.management.ObjectName;
+
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
@@ -55,7 +64,7 @@ import arces.unibo.SEPA.commons.response.UpdateResponse;
 * @version 0.1
 * */
 
-public class Endpoint {
+public class Endpoint implements EndpointMBean {
 	private static String tag ="Endpoint";
 	
 	private enum HTTPMethod {GET,POST,URL_ENCODED_POST};
@@ -71,28 +80,32 @@ public class Endpoint {
 		private HTTPMethod queryMethod;
 		private HTTPMethod updateMethod;
 		private ResultsFormat resultsFormat;
-		
+			
 		public String getHttpScheme() {
 			return scheme;
 		}
 		public void setHttpScheme(String endpointHttpScheme) {
 			this.scheme = endpointHttpScheme;
 		}
+		
 		public String getHost() {
 			return host;
 		}
 		public void setHost(String endpointHost) {
 			this.host = endpointHost;
 		}
+		
 		public int getPort() {
 			return port;
 		}
 		public void setPort(int endpointPort) {
 			this.port = endpointPort;
 		}
+		
 		public String getPath() {
 			return path;
 		}
+		
 		public void setPath(String endpointPath) {
 			this.path = endpointPath;
 		}
@@ -121,7 +134,15 @@ public class Endpoint {
 	private static CloseableHttpClient httpclient = HttpClients.createDefault();
 	private static ResponseHandler<String> responseHandler;
 	
-	public Endpoint(Properties properties) {
+	public Endpoint(Properties properties) throws MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException {
+				
+		//Get the MBean server
+	    MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+	    
+	    //register the MBean
+	    ObjectName name = new ObjectName("arces.unibo.SEPA.server:type=Endpoint");
+	    mbs.registerMBean(this, name);
+		
 		if (properties == null) logger.error("Properties are null");
 		else {
 			endpointProperties.setHttpScheme(properties.getProperty("endpointHttpScheme", "http"));
@@ -359,5 +380,20 @@ public class Endpoint {
 			return json.toString();
 		}
 		return responseBody;
+	}
+
+	@Override
+	public String getHost() {
+		return this.endpointProperties.getHost();
+	}
+
+	@Override
+	public int getPort() {
+		return this.endpointProperties.getPort();
+	}
+
+	@Override
+	public String getPath() {
+		return this.endpointProperties.getPath();
 	}
 }
