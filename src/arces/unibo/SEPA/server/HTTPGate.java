@@ -181,6 +181,7 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 	 * This method parse the HTTP request according to SPARQL 1.1 Protocol (https://www.w3.org/TR/sparql11-protocol/)
 	 * 
 	 * @return  the corresponding request (update or query), otherwise null
+	 * @throws IOException 
 	 * 
 	 * @see QueryRequest, UpdateRequest
 	* */
@@ -236,7 +237,45 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 				logger.error("Request MUST conform to SPARQL 1.1 Protocol (https://www.w3.org/TR/sparql11-protocol/)");
 				failureResponse(httpExchange,400,"Request MUST conform to SPARQL 1.1 Protocol (https://www.w3.org/TR/sparql11-protocol/)");
 				return null;
-		}
+				
+			case "OPTIONS":
+				
+				// Debug print
+				logger.debug("HTTP OPTIONS");
+				
+				// read request headers and build response headers
+				Headers out_headers = httpExchange.getResponseHeaders();
+				Headers in_headers = httpExchange.getRequestHeaders();
+			    
+				if (in_headers.containsKey("origin")){
+					logger.info("Received origin: " + in_headers.get("origin"));
+					String origin = in_headers.get("origin").get(0).toString();
+					out_headers.add("Access-Control-Allow-Origin", origin);								
+				}
+				if (in_headers.containsKey("Access-Control-Request-Method")){
+					logger.info("Received origin: " + in_headers.get("Access-Control-Request-Method"));
+					String acrm = in_headers.get("Access-Control-Request-Method").get(0).toString();					
+					out_headers.add("Access-Control-Allow-Methods", acrm);								
+				}
+				if (in_headers.containsKey("Access-Control-Request-Headers")){
+					logger.info("Received origin: " + in_headers.get("Access-Control-Request-Headers"));   
+					String acrh = in_headers.get("Access-Control-Request-Headers").get(0).toString();
+					out_headers.add("Access-Control-Allow-Headers", acrh);								
+				}	
+			    
+			    // ok, we are ready to send the response.
+			    try {
+			    	httpExchange.sendResponseHeaders(200, 0);
+			    	OutputStream os = httpExchange.getResponseBody();			    
+				    os.write(0);
+				    os.close();
+			    } catch (IOException e) {
+			    	// TODO Auto-generated catch block
+			    	e.printStackTrace();
+			    }			    
+
+				return null;
+		}		
 		
 		logger.error("UNSUPPORTED METHOD: "+httpExchange.getRequestMethod().toUpperCase());		
 		failureResponse(httpExchange,400,"Unsupported method: "+httpExchange.getRequestMethod());
