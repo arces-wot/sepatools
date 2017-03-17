@@ -19,19 +19,27 @@ package arces.unibo.SEPA.server;
 
 import java.io.IOException;
 import java.io.OutputStream;
+
 import java.lang.management.ManagementFactory;
+
 import java.net.InetSocketAddress;
+
 import java.util.Properties;
+
 import javax.management.InstanceAlreadyExistsException;
 import javax.management.MBeanRegistrationException;
 import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.management.NotCompliantMBeanException;
 import javax.management.ObjectName;
+
 import org.apache.commons.io.IOUtils;
+
 import com.sun.net.httpserver.*;
+
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+
 import arces.unibo.SEPA.commons.request.QueryRequest;
 import arces.unibo.SEPA.commons.request.Request;
 import arces.unibo.SEPA.commons.response.Response;
@@ -47,17 +55,17 @@ import arces.unibo.SEPA.server.RequestResponseHandler.ResponseAndNotificationLis
 
 public class HTTPGate extends Thread implements HTTPGateMBean {
 	
-	private static HttpServer server = null;
+	protected static HttpServer server = null;
 	
 	private static int httpPort = 8000; 
-	private static int httpTimeout = 2000;
+	protected static int httpTimeout = 2000;
 
 	private Scheduler scheduler;
 	private long transactions  = 0; 
 	private long updateTransactions  = 0;
 	private long queryTransactions  = 0;
 	
-	private Logger logger = LogManager.getLogger("HttpGate");	
+	protected Logger logger = LogManager.getLogger("HttpGate");	
 
 	public HTTPGate(Properties properties,Scheduler scheduler) throws MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException{
 		if (properties == null) logger.error("Properties are null");

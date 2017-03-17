@@ -15,9 +15,9 @@
 	<xs:complexType name="networkSettingsType">
     	<xs:attribute name="url" type="xs:string" use="optional" default="mml.arces.unibo.it">
     	</xs:attribute>
-    	<xs:attribute name="updateport" type="xs:positiveInteger" use="optional" default="8000">
+    	<xs:attribute name="updatePort" type="xs:positiveInteger" use="optional" default="8000">
     	</xs:attribute>
-    	<xs:attribute name="subscribeport" type="xs:positiveInteger" use="optional" default="7980">
+    	<xs:attribute name="subscribePort" type="xs:positiveInteger" use="optional" default="7980">
     	</xs:attribute>
     	<xs:attribute name="path" type="xs:string" use="optional" default="/sparql"></xs:attribute>
     </xs:complexType>
