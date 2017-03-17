@@ -56,34 +56,27 @@ import arces.unibo.SEPA.server.RequestResponseHandler.ResponseAndNotificationLis
 public class HTTPGate extends Thread implements HTTPGateMBean {
 	
 	protected static HttpServer server = null;
+	protected Logger logger = LogManager.getLogger("HttpGate");	
+	protected String mBeanObjectName = "arces.unibo.SEPA.server:type=HTTPGate";
 	
-	private static int httpPort = 8000; 
-	protected static int httpTimeout = 2000;
+	private static int port = 8000; 
+	private static int timeout = 2000;
 
 	private Scheduler scheduler;
 	private long transactions  = 0; 
 	private long updateTransactions  = 0;
 	private long queryTransactions  = 0;
 	
-	protected Logger logger = LogManager.getLogger("HttpGate");	
-
-	public HTTPGate(Properties properties,Scheduler scheduler) throws MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException{
+	
+	public HTTPGate(Properties properties,Scheduler scheduler) {
 		if (properties == null) logger.error("Properties are null");
 		else {
-			httpTimeout = Integer.parseInt(properties.getProperty("httpTimeout", "2000"));
-			httpPort = Integer.parseInt(properties.getProperty("httpPort", "8000"));
+			timeout = Integer.parseInt(properties.getProperty("httpTimeout", "2000"));
+			port = Integer.parseInt(properties.getProperty("httpPort", "8000"));
 		}
 			
 		this.scheduler = scheduler;
 		if (scheduler == null) logger.error("Scheduler is null");		
-		
-		//Get the MBean server
-	    MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-	    
-	    //register the MBean
-	    ObjectName name = new ObjectName("arces.unibo.SEPA.server:type=HTTPGate");
-	    mbs.registerMBean(this, name);
-		
 	}
 
 	@Override
@@ -99,9 +92,22 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 	@Override
 	public void start(){	
 		this.setName("SEPA HTTP Gate");
+		
+		//Get the MBean server
+	    MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+	    
+	    //register the MBean
+	    ObjectName name;
+		try {
+			name = new ObjectName(mBeanObjectName);
+			 mbs.registerMBean(this, name);
+		} catch (MalformedObjectNameException | InstanceAlreadyExistsException | MBeanRegistrationException | NotCompliantMBeanException e1) {
+			logger.error(e1.getMessage());
+		}
+	   
 		try 
 		{
-			server = HttpServer.create(new InetSocketAddress(httpPort), 0);
+			server = HttpServer.create(new InetSocketAddress(port), 0);
 		} 
 		catch (IOException e) {
 			e.printStackTrace();
@@ -114,7 +120,7 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 	    server.setExecutor(null);
 	    server.start();
 	    
-	    logger.info("Started on port "+httpPort);
+	    logger.info("Started on port "+port);
 	}
 	
 	@Override
@@ -215,6 +221,14 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 			
 			case "POST":
 				logger.debug("HTTP POST");
+				
+				//TODO: to be checked
+				Headers out_headers = httpExchange.getResponseHeaders();
+				out_headers.add("Access-Control-Allow-Origin", "*");
+				out_headers.add("Access-Control-Allow-Methods", "GET,POST,DELETE,PUT");
+				out_headers.add("Access-Control-Allow-Headers", "X-Requested-With,Content-Type,Origin,Accept");
+				//out_headers.add("Content-Type", "application/json");
+				
 				String sparql = null;
 				try {
 					sparql = IOUtils.toString(httpExchange.getRequestBody(),"UTF-8");
@@ -251,6 +265,13 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 				// Debug print
 				logger.debug("HTTP OPTIONS");
 				
+				//TODO: to be checked
+				out_headers = httpExchange.getResponseHeaders();
+				out_headers.add("Access-Control-Allow-Origin", "*");
+				out_headers.add("Access-Control-Allow-Methods", "GET,POST,DELETE,PUT");
+				out_headers.add("Access-Control-Allow-Headers", "X-Requested-With,Content-Type,Origin,Accept");
+							
+				/*
 				// read request headers and build response headers
 				Headers out_headers = httpExchange.getResponseHeaders();
 				Headers in_headers = httpExchange.getRequestHeaders();
@@ -261,16 +282,17 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 					out_headers.add("Access-Control-Allow-Origin", origin);								
 				}
 				if (in_headers.containsKey("Access-Control-Request-Method")){
-					logger.info("Received origin: " + in_headers.get("Access-Control-Request-Method"));
+					logger.info("Access-Control-Request-Method: " + in_headers.get("Access-Control-Request-Method"));
 					String acrm = in_headers.get("Access-Control-Request-Method").get(0).toString();					
 					out_headers.add("Access-Control-Allow-Methods", acrm);								
 				}
 				if (in_headers.containsKey("Access-Control-Request-Headers")){
-					logger.info("Received origin: " + in_headers.get("Access-Control-Request-Headers"));   
+					logger.info("Access-Control-Request-Headers: " + in_headers.get("Access-Control-Request-Headers"));   
 					String acrh = in_headers.get("Access-Control-Request-Headers").get(0).toString();
 					out_headers.add("Access-Control-Allow-Headers", acrh);								
 				}	
-			    
+			    */
+				
 			    // ok, we are ready to send the response.
 			    try {
 			    	httpExchange.sendResponseHeaders(200, 0);
@@ -328,9 +350,9 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 				else return;
 								
 				//Waiting response
-				logger.debug("Waiting response in "+httpTimeout+" ms...");
+				logger.debug("Waiting response in "+timeout+" ms...");
 				
-				try { Thread.sleep(httpTimeout);} 
+				try { Thread.sleep(timeout);} 
 				catch (InterruptedException e) {}
 				
 				//Timestamp

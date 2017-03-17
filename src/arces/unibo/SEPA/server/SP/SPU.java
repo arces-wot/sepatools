@@ -20,8 +20,9 @@ package arces.unibo.SEPA.server.SP;
 import java.util.Observable;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import org.apache.logging.log4j.Logger;
+
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import arces.unibo.SEPA.commons.request.SubscribeRequest;
 import arces.unibo.SEPA.commons.response.SubscribeResponse;
 import arces.unibo.SEPA.commons.response.SubscriptionProcessingResult;

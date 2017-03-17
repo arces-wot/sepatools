@@ -57,7 +57,8 @@ public class Engine extends Thread implements EngineMBean {
 	
 	//SPARQL 1.1 Protocol handler
 	private HTTPGate httpGate = null;
-
+	private HTTPSGate httpsGate = null;
+	
 	//SPARQL 1.1 SE Protocol handler
 	private WebSocketGate websocketGate = null;
 	
@@ -113,9 +114,13 @@ public class Engine extends Thread implements EngineMBean {
 		this.setName("SEPA Engine");
 		logger.info("SUB Engine starting...");	
 		
+		//Protocol handlers
 		httpGate.start();
 		websocketGate.start();
 		scheduler.start();
+		
+		//Secure protocol handlers
+		httpsGate.start();
 		
 		super.start();
 		logger.info("SUB Engine started");	
@@ -132,6 +137,9 @@ public class Engine extends Thread implements EngineMBean {
 		
 		httpGate = new HTTPGate(properties,scheduler);
 		websocketGate = new WebSocketGate(properties,scheduler);
+		
+		//Secure protocols
+		httpsGate = new HTTPSGate(properties,scheduler);
 		
 		storeProperties(defaultProperties);
 		
