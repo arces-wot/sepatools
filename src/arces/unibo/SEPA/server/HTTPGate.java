@@ -279,7 +279,7 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 				if (in_headers.containsKey("origin")){
 					logger.info("Received origin: " + in_headers.get("origin"));
 					String origin = in_headers.get("origin").get(0).toString();
-					out_headers.add("Access-Control-Allow-Origin", origin);								
+					out_headers.add("Access-Control-Allow-Origin", "*");								
 				}
 				if (in_headers.containsKey("Access-Control-Request-Method")){
 					logger.info("Access-Control-Request-Method: " + in_headers.get("Access-Control-Request-Method"));
@@ -380,6 +380,7 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 					else {
 						byte[] responseBody = response.toString().getBytes();
 						logger.debug("Send HTTP response of "+responseBody.length+ " bytes");
+						httpExchange.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
 						httpExchange.sendResponseHeaders(200, responseBody.length);
 						OutputStream os = httpExchange.getResponseBody();
 						os.write(responseBody);
