@@ -27,11 +27,12 @@
     </plugins>
   </build>
   <dependencies>
-  <dependency>
-  <groupId>com.nimbusds</groupId>
+<!-- https://mvnrepository.com/artifact/com.nimbusds/nimbus-jose-jwt -->
+<dependency>
+    <groupId>com.nimbusds</groupId>
     <artifactId>nimbus-jose-jwt</artifactId>
-    <version>4.34.3-SNAPSHOT</version>
-   </dependency>
+    <version>4.34.2</version>
+</dependency>
   <!-- https://mvnrepository.com/artifact/org.apache.httpcomponents/httpclient -->
 <dependency>
     <groupId>org.apache.httpcomponents</groupId>
