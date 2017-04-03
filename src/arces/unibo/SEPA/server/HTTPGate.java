@@ -63,7 +63,7 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 	private static int timeout = 2000;
 
 	private Scheduler scheduler;
-	private long transactions  = 0; 
+	protected long transactions  = 0; 
 	private long updateTransactions  = 0;
 	private long queryTransactions  = 0;
 	
@@ -157,7 +157,7 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 			
 	}
 	
-	private void failureResponse(HttpExchange exchange,int httpResponseCode,String responseBody) {
+	protected void failureResponse(HttpExchange exchange,int httpResponseCode,String responseBody) {
 		String response = 	"Response\n"+responseBody + "\n\nRequest\nMETHOD: " + exchange.getRequestMethod().toUpperCase() + "\n";
 		response += 	  	"PROTOCOL: " + exchange.getProtocol() + "\n";
 		String headerString = "";
