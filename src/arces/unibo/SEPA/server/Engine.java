@@ -20,16 +20,22 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.lang.management.ManagementFactory;
+
 import java.util.Date;
 import java.util.Properties;
+
 import javax.management.InstanceAlreadyExistsException;
 import javax.management.MBeanRegistrationException;
-import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.management.NotCompliantMBeanException;
-import javax.management.ObjectName;
+
 import org.apache.logging.log4j.Logger;
+
+import arces.unibo.SEPA.beans.EngineMBean;
+import arces.unibo.SEPA.beans.SEPABeans;
+import arces.unibo.SEPA.security.HTTPSGate;
+import arces.unibo.SEPA.security.WSSGate;
+
 import org.apache.logging.log4j.LogManager;
 
 /**
@@ -47,7 +53,7 @@ public class Engine extends Thread implements EngineMBean {
 	private Properties properties = new Properties();
 	private final Date startDate = new Date(); 
 	private static final Logger logger = LogManager.getLogger("Engine");
-
+	protected static String mBeanName = "arces.unibo.SEPA.server:type=Engine";
 	
 	//Primitives scheduler/dispatcher
 	private Scheduler scheduler = null;
@@ -60,9 +66,8 @@ public class Engine extends Thread implements EngineMBean {
 	private HTTPSGate httpsGate = null;
 	
 	//SPARQL 1.1 SE Protocol handler
-	private WebSocketGate websocketGate = null;
-	
-	public Engine() {}
+	private WSGate websocketGate = null;
+	private WSSGate wssGate = null;
 	
 	public static void main(String[] args) throws MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException {
 		System.out.println("##########################################################################################");
@@ -87,15 +92,9 @@ public class Engine extends Thread implements EngineMBean {
 		System.out.println("bcprov.jdk15on					https://opensource.org/licenses/MIT");   
 		System.out.println("bcpkix-jdk15on 					https://opensource.org/licenses/MIT");   
 		
-		//Get the MBean server
-        MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-        
-        //register the MBean
-        Engine mBean = new Engine();
-        ObjectName name = new ObjectName("arces.unibo.SEPA.server:type=Engine");
-        mbs.registerMBean(mBean, name);
-        
 		Engine engine = new Engine();
+		
+		SEPABeans.registerMBean(engine,mBeanName);
 		
 		if (engine.init()) {
 			logger.info("SUB Engine initialized and ready to start");	
@@ -121,6 +120,7 @@ public class Engine extends Thread implements EngineMBean {
 		
 		//Secure protocol handlers
 		httpsGate.start();
+		wssGate.start();
 		
 		super.start();
 		logger.info("SUB Engine started");	
@@ -136,10 +136,11 @@ public class Engine extends Thread implements EngineMBean {
 		scheduler = new Scheduler(properties,processor);
 		
 		httpGate = new HTTPGate(properties,scheduler);
-		websocketGate = new WebSocketGate(properties,scheduler);
+		websocketGate = new WSGate(properties,scheduler);
 		
 		//Secure protocols
 		httpsGate = new HTTPSGate(properties,scheduler);
+		wssGate = new WSSGate(properties,scheduler);
 		
 		storeProperties(defaultProperties);
 		

@@ -1,19 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-	<classpathentry kind="src" path="src"/>
-	<classpathentry kind="lib" path="httpclient-4.5.1.jar"/>
-	<classpathentry kind="lib" path="httpcore-4.4.3.jar"/>
-	<classpathentry kind="lib" path="commons-io-2.5.jar"/>
-	<classpathentry kind="lib" path="grizzly-websockets-server-2.3.28.jar"/>
-	<classpathentry kind="lib" path="commons-logging-1.2.jar"/>
-	<classpathentry kind="lib" path="gson-2.8.0.jar"/>
-	<classpathentry kind="lib" path="jdom-2.0.6.jar"/>
-	<classpathentry kind="lib" path="tyrus-standalone-client-1.13.jar"/>
-	<classpathentry kind="lib" path="org.eclipse.paho.client.mqttv3-1.0.2.jar"/>
-	<classpathentry kind="lib" path="bcprov-jdk15on-156.jar"/>
-	<classpathentry kind="lib" path="bcpkix-jdk15on-156.jar"/>
+	<classpathentry including="**/*.java" kind="src" output="target/classes" path="src">
+		<attributes>
+			<attribute name="optional" value="true"/>
+			<attribute name="maven.pomderived" value="true"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="con" path="org.eclipse.m2e.MAVEN2_CLASSPATH_CONTAINER">
+		<attributes>
+			<attribute name="maven.pomderived" value="true"/>
+		</attributes>
+	</classpathentry>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry kind="lib" path="log4j-api-2.8.jar"/>
-	<classpathentry kind="lib" path="log4j-core-2.8.jar"/>
-	<classpathentry kind="output" path="bin"/>
+	<classpathentry kind="output" path="target/classes"/>
 </classpath>

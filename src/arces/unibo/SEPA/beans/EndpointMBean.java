@@ -1,4 +1,4 @@
-package arces.unibo.SEPA.server;
+package arces.unibo.SEPA.beans;
 
 public interface EndpointMBean {
 

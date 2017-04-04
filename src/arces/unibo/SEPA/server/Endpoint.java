@@ -19,17 +19,13 @@ package arces.unibo.SEPA.server;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.lang.management.ManagementFactory;
+
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
+
 import java.util.Properties;
-import javax.management.InstanceAlreadyExistsException;
-import javax.management.MBeanRegistrationException;
-import javax.management.MBeanServer;
-import javax.management.MalformedObjectNameException;
-import javax.management.NotCompliantMBeanException;
-import javax.management.ObjectName;
+
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
@@ -41,12 +37,17 @@ import org.apache.http.entity.ByteArrayEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
+
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
+
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+
 import arces.unibo.SEPA.commons.response.ErrorResponse;
+import arces.unibo.SEPA.beans.EndpointMBean;
+import arces.unibo.SEPA.beans.SEPABeans;
 import arces.unibo.SEPA.commons.request.QueryRequest;
 import arces.unibo.SEPA.commons.response.QueryResponse;
 import arces.unibo.SEPA.commons.response.Response;
@@ -66,7 +67,9 @@ public class Endpoint implements EndpointMBean {
 	private enum HTTPMethod {GET,POST,URL_ENCODED_POST};
 	private enum ResultsFormat {JSON,XML,CSV};
 	private enum SPARQLOperation {QUERY,UPDATE};
+	
 	private static final Logger logger = LogManager.getLogger("Endpoint");
+	protected static String mBeanName = "arces.unibo.SEPA.server:type=Endpoint";
 	
 	public class SPARQLEndpointProperties {
 		private String scheme;
@@ -130,14 +133,9 @@ public class Endpoint implements EndpointMBean {
 	private static CloseableHttpClient httpclient = HttpClients.createDefault();
 	private static ResponseHandler<String> responseHandler;
 	
-	public Endpoint(Properties properties) throws MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException {
+	public Endpoint(Properties properties) {
 				
-		//Get the MBean server
-	    MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-	    
-	    //register the MBean
-	    ObjectName name = new ObjectName("arces.unibo.SEPA.server:type=Endpoint");
-	    mbs.registerMBean(this, name);
+		SEPABeans.registerMBean(this,mBeanName);
 		
 		if (properties == null) logger.error("Properties are null");
 		else {

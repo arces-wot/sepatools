@@ -1,4 +1,4 @@
-package arces.unibo.SEPA.server;
+package arces.unibo.SEPA.beans;
 
 import java.util.Date;
 import java.util.Properties;

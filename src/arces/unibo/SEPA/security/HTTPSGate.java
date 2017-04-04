@@ -15,26 +15,14 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package arces.unibo.SEPA.server;
+package arces.unibo.SEPA.security;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
-
-import java.security.NoSuchAlgorithmException;
 
 import java.util.List;
 import java.util.Properties;
-
-import javax.management.InstanceAlreadyExistsException;
-import javax.management.MBeanRegistrationException;
-import javax.management.MBeanServer;
-import javax.management.MalformedObjectNameException;
-import javax.management.NotCompliantMBeanException;
-import javax.management.ObjectName;
-
-import javax.net.ssl.SSLContext;
 
 import org.apache.commons.io.IOUtils;
 
@@ -50,20 +38,18 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpsServer;
 
-import arces.unibo.SEPA.security.AuthorizationManager;
-import arces.unibo.SEPA.security.HttpsSecurityManager;
+import arces.unibo.SEPA.server.HTTPGate;
+import arces.unibo.SEPA.server.Scheduler;
 
 public class HTTPSGate extends HTTPGate {
 	protected Logger logger = LogManager.getLogger("HttpsGate");	
-	protected String mBeanObjectName = "arces.unibo.SEPA.server:type=HTTPSGate";
+	protected static String mBeanName = "arces.unibo.SEPA.server:type=HTTPSGate";
 	
 	private static int httpsPort = 8443;
 	
-	//Security context and manager
-	private SSLContext sslContext;
-	private HttpsSecurityManager sManager;
-	private String protocol ="TLSv1";
-	
+	//Security manager
+	private SecurityManager sManager = new SecurityManager();
+		
 	//Authorization manager
 	private static AuthorizationManager am;
 
@@ -387,18 +373,6 @@ public class HTTPSGate extends HTTPGate {
 	public void start(){	
 		this.setName("SEPA HTTPS Gate");
 		
-		//Get the MBean server
-	    MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-	    
-	    //register the MBean
-	    ObjectName name;
-		try {
-			name = new ObjectName(mBeanObjectName);
-			 mbs.registerMBean(this, name);
-		} catch (MalformedObjectNameException | InstanceAlreadyExistsException | MBeanRegistrationException | NotCompliantMBeanException e1) {
-			logger.error(e1.getMessage());
-		}
-		
 		// create HTTPS server
 		try {
 			server = HttpsServer.create(new InetSocketAddress(httpsPort), 0);
@@ -407,17 +381,8 @@ public class HTTPSGate extends HTTPGate {
 			return;
 		}
 		
-		// create SSL context and security manager
-		try {
-			sslContext = SSLContext.getInstance(protocol);
-		} catch (NoSuchAlgorithmException e) {
-			 logger.error(e.getMessage());
-			return;
-		}		
-		sManager = new HttpsSecurityManager(sslContext);
-		
 		// set security configuration
-		((HttpsServer)server).setHttpsConfigurator(sManager);
+		((HttpsServer)server).setHttpsConfigurator(sManager.getHttpsConfigurator());
 		
 	    server.createContext("/sparql", new SecureSPARQLHandler());
 	    server.createContext("/echo", new EchoHandler());

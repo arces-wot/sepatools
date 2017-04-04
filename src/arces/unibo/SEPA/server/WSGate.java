@@ -18,26 +18,24 @@
 package arces.unibo.SEPA.server;
 
 import java.io.IOException;
-import java.lang.management.ManagementFactory;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Properties;
 import java.util.Set;
-import javax.management.InstanceAlreadyExistsException;
-import javax.management.MBeanRegistrationException;
-import javax.management.MBeanServer;
-import javax.management.MalformedObjectNameException;
-import javax.management.NotCompliantMBeanException;
-import javax.management.ObjectName;
+
 import org.glassfish.grizzly.http.server.HttpServer;
 import org.glassfish.grizzly.websockets.DataFrame;
 import org.glassfish.grizzly.websockets.WebSocket;
 import org.glassfish.grizzly.websockets.WebSocketAddOn;
 import org.glassfish.grizzly.websockets.WebSocketApplication;
 import org.glassfish.grizzly.websockets.WebSocketEngine;
+
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+
+import arces.unibo.SEPA.beans.SEPABeans;
+import arces.unibo.SEPA.beans.WebSocketGateMBean;
 import arces.unibo.SEPA.commons.request.Request;
 import arces.unibo.SEPA.commons.request.SubscribeRequest;
 import arces.unibo.SEPA.commons.request.UnsubscribeRequest;
@@ -58,16 +56,17 @@ import arces.unibo.SEPA.server.RequestResponseHandler.ResponseAndNotificationLis
 * @version 0.1
 * */
 
-public class WebSocketGate extends WebSocketApplication implements WebSocketGateMBean {//implements ResponseListener {
+public class WSGate extends WebSocketApplication implements WebSocketGateMBean {//implements ResponseListener {
 	
-	private Scheduler scheduler;
+	protected Scheduler scheduler;
 	
 	private int wsPort = 9000;
-	private int keepAlivePeriod = 5000;
+	protected int keepAlivePeriod = 5000;
 	
-	private Logger logger = LogManager.getLogger("WebSocketGate");	
-
-	private HashMap<WebSocket,SEPAResponseListener> activeSockets = new HashMap<WebSocket,SEPAResponseListener>();
+	private Logger logger = LogManager.getLogger("WSGate");	
+	protected static String mBeanName = "arces.unibo.SEPA.server:type=WSGate";
+	
+	protected HashMap<WebSocket,SEPAResponseListener> activeSockets = new HashMap<WebSocket,SEPAResponseListener>();
 		
 	public class SEPAResponseListener implements ResponseAndNotificationListener {
 		private WebSocket socket;	
@@ -121,8 +120,8 @@ public class WebSocketGate extends WebSocketApplication implements WebSocketGate
 			this.socket = socket;
 		}
 	}
-	
-	public WebSocketGate(Properties properties,Scheduler scheduler) throws MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException{
+		
+	public WSGate(Properties properties,Scheduler scheduler) {
 		if (scheduler == null) logger.error("Scheduler is null");
 		this.scheduler = scheduler;
 		
@@ -132,12 +131,7 @@ public class WebSocketGate extends WebSocketApplication implements WebSocketGate
 			keepAlivePeriod =  Integer.parseInt(properties.getProperty("keepAlivePeriod", "5000"));
 		}
 		
-		//Get the MBean server
-	    MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-	    
-	    //register the MBean
-	    ObjectName name = new ObjectName("arces.unibo.SEPA.server:type=WebSocketGate");
-	    mbs.registerMBean(this, name);
+		SEPABeans.registerMBean(this,mBeanName);
 		
 	}
 	

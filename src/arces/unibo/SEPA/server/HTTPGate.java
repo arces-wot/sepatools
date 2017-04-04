@@ -20,18 +20,9 @@ package arces.unibo.SEPA.server;
 import java.io.IOException;
 import java.io.OutputStream;
 
-import java.lang.management.ManagementFactory;
-
 import java.net.InetSocketAddress;
 
 import java.util.Properties;
-
-import javax.management.InstanceAlreadyExistsException;
-import javax.management.MBeanRegistrationException;
-import javax.management.MBeanServer;
-import javax.management.MalformedObjectNameException;
-import javax.management.NotCompliantMBeanException;
-import javax.management.ObjectName;
 
 import org.apache.commons.io.IOUtils;
 
@@ -40,6 +31,8 @@ import com.sun.net.httpserver.*;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 
+import arces.unibo.SEPA.beans.HTTPGateMBean;
+import arces.unibo.SEPA.beans.SEPABeans;
 import arces.unibo.SEPA.commons.request.QueryRequest;
 import arces.unibo.SEPA.commons.request.Request;
 import arces.unibo.SEPA.commons.response.Response;
@@ -57,7 +50,7 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 	
 	protected static HttpServer server = null;
 	protected Logger logger = LogManager.getLogger("HttpGate");	
-	protected String mBeanObjectName = "arces.unibo.SEPA.server:type=HTTPGate";
+	protected static String mBeanName = "arces.unibo.SEPA.server:type=HTTPGate";
 	
 	private static int port = 8000; 
 	private static int timeout = 2000;
@@ -67,7 +60,6 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 	private long updateTransactions  = 0;
 	private long queryTransactions  = 0;
 	
-	
 	public HTTPGate(Properties properties,Scheduler scheduler) {
 		if (properties == null) logger.error("Properties are null");
 		else {
@@ -76,7 +68,9 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 		}
 			
 		this.scheduler = scheduler;
-		if (scheduler == null) logger.error("Scheduler is null");		
+		if (scheduler == null) logger.error("Scheduler is null");	
+		
+		SEPABeans.registerMBean(this,mBeanName);
 	}
 
 	@Override
@@ -92,18 +86,6 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 	@Override
 	public void start(){	
 		this.setName("SEPA HTTP Gate");
-		
-		//Get the MBean server
-	    MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-	    
-	    //register the MBean
-	    ObjectName name;
-		try {
-			name = new ObjectName(mBeanObjectName);
-			 mbs.registerMBean(this, name);
-		} catch (MalformedObjectNameException | InstanceAlreadyExistsException | MBeanRegistrationException | NotCompliantMBeanException e1) {
-			logger.error(e1.getMessage());
-		}
 	   
 		try 
 		{
@@ -183,7 +165,7 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 		}
 	}
 	
-	class EchoHandler implements HttpHandler {
+	public class EchoHandler implements HttpHandler {
 
 		@Override
 		public void handle(HttpExchange exchange) throws IOException {
@@ -318,7 +300,7 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 		return true;
 	}
 	
-	class SPARQLHandler implements HttpHandler  {		
+	public class SPARQLHandler implements HttpHandler  {		
 		class Running extends Thread implements ResponseAndNotificationListener {
 			private HttpExchange httpExchange;
 			private Response response = null;

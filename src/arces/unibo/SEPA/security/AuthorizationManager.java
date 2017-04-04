@@ -81,7 +81,7 @@ public class AuthorizationManager {
 	private ConfigurableJWTProcessor<SEPASecurityContext> jwtProcessor;
 	private SEPASecurityContext context = new SEPASecurityContext();
 
-	private long expiring = 60; //Expiring period (sec) 						//TODO: JMX
+	private long expiring = 60; 												//TODO: JMX
 	private String issuer = "https://wot.arces.unibo.it:8443/oauth/token"; 		//TODO: JMX
 	private String httpsAudience = "https://wot.arces.unibo.it:8443/sparql"; 	//TODO: JMX
 	private String wssAudience ="wss://wot.arces.unibo.it:9443/sparql";  		//TODO: JMX

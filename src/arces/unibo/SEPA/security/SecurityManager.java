@@ -1,4 +1,4 @@
-/* This class implements the TLS 1.0 security mechanism used by the HTTPS gate
+/* This class implements the TLS 1.0 security mechanism used by the HTTPS and WSS gates
     
     Copyright (C) 2016-2017 Luca Roffia (luca.roffia@unibo.it)
 
@@ -22,73 +22,90 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+
 import java.security.Key;
 import java.security.KeyManagementException;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.UnrecoverableKeyException;
-import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLEngine;
-import javax.net.ssl.SSLParameters;
 import javax.net.ssl.TrustManagerFactory;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import org.glassfish.grizzly.ssl.SSLEngineConfigurator;
+
 import com.sun.net.httpserver.HttpsConfigurator;
-import com.sun.net.httpserver.HttpsParameters;
 
 import sun.security.tools.keytool.CertAndKeyGen;
 import sun.security.x509.X500Name;
 
-public class HttpsSecurityManager extends HttpsConfigurator {
+public class SecurityManager { //extends HttpsConfigurator {
 	private KeyManagerFactory kmf;
 	private TrustManagerFactory tmf;
+	private SSLContext sslContext;
+	private String protocol =  "TLSv1";
+		
+	//HTTPS
+	private SEPAHttpsConfigurator httpsConfig;
+	
+	//WSS
+	private SEPAWssConfigurator wssConfig;
 	
 	private Logger logger = LogManager.getLogger("HttpsSecurityManager");
 	
-	public HttpsSecurityManager(SSLContext sslContext)  {
-		super(sslContext);
-		
-		// load certificate
+	public class SEPAWssConfigurator extends SSLEngineConfigurator {
+		public SEPAWssConfigurator(SSLContext sslContext) {
+			super(sslContext,false,false,false);
+		}
+	}
+	
+	public class SEPAHttpsConfigurator extends HttpsConfigurator {
+
+		public SEPAHttpsConfigurator(SSLContext sslContext) {
+			super(sslContext);
+		}
+	}
+	
+	public SecurityManager()  {	
+		// Load certificate
 		if (!loadCertificate("sepa.jks","SepaKeystore2017","SepaKey2017","SepaKey","SepaCertificate")) {
 			logger.error("Failed to load HTTPS certificate");
 			return;
 		}
 		
-		// setup the HTTPS context and parameters
+		// Create SSL context 
+		try {
+			sslContext = SSLContext.getInstance(protocol);
+		} catch (NoSuchAlgorithmException e) {
+			 logger.error(e.getMessage());
+			return;
+		}	
 		try {
 			sslContext.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
 		} catch (KeyManagementException e) {
 			 logger.error(e.getMessage());
 			return;
 		}
+		
+		httpsConfig = new SEPAHttpsConfigurator(sslContext);
+		
+		wssConfig =  new SEPAWssConfigurator(sslContext);
 	}
 	
-	@Override
-	public void configure(HttpsParameters params) {
-        try {
-             // Initialize the SSL context
-             SSLContext c = getSSLContext();
-             SSLEngine engine = c.createSSLEngine();
-             params.setNeedClientAuth(false);
-             params.setCipherSuites(engine.getEnabledCipherSuites());
-             params.setProtocols(engine.getEnabledProtocols());
-             
-             // get the default parameters
-             SSLParameters defaultSSLParameters = c.getDefaultSSLParameters();
-             params.setSSLParameters(defaultSSLParameters);             
-        } catch (Exception ex) {
-       	 logger.error(ex.getMessage());
-       	 logger.error("Failed to configure SSL connection");
-        }
-    }
+	public SEPAHttpsConfigurator getHttpsConfigurator(){
+		return httpsConfig;
+	}
+	
+	public SEPAWssConfigurator getWssConfigurator() {
+		return wssConfig;
+	}
 	
 	private boolean createStore(String keystoreFilename,String storePassword) {
 		//Create keystore
@@ -151,41 +168,13 @@ public class HttpsSecurityManager extends HttpsConfigurator {
 		
 		return true;
 	}
-
-	/*
-	private Certificate[] loadCertificateChain(String keystoreFilename,String storePassword,String alias) {
-		try{
-		    KeyStore keyStore = KeyStore.getInstance("JKS");
-		    keyStore.load(new FileInputStream(keystoreFilename),storePassword.toCharArray());   
-		    return keyStore.getCertificateChain(alias);
-
-		}catch(Exception ex){
-		    logger.error(ex.getMessage());
-		}
-		
-		return null;
-	}
-	
-	private Certificate loadCertificate(String keystoreFilename,String storePassword,String alias) { 
-		try{
-		    KeyStore keyStore = KeyStore.getInstance("JKS");
-		    keyStore.load(new FileInputStream(keystoreFilename),storePassword.toCharArray());
-		    return keyStore.getCertificate(alias);
-		     
-		}catch(Exception ex){
-		    logger.error(ex.getMessage());
-		}
-		
-		return null;
-	}
-	*/
 	
 	private boolean loadCertificate(String keystoreFilename,String storePassword,String keyPassword,String key,String certificate) {
 		FileInputStream fIn = null;
-		Certificate cert;
+		
 		KeyStore keystore;
 		
-		//Open or create a new JKS keystore+private key+certificate
+		//Open or create a new JKS key store
 		try {
 			fIn = new FileInputStream(keystoreFilename);
 		} catch (FileNotFoundException e) {
@@ -220,16 +209,7 @@ public class HttpsSecurityManager extends HttpsConfigurator {
 			return false;
 		}
 		
-		// display certificate
-		try {
-			cert = keystore.getCertificate(certificate);
-		} catch (KeyStoreException e) {
-			logger.error(e.getMessage());
-			return false;
-		}
-		logger.debug(cert);
-		
-		// setup the key manager factory
+		// Setup the key manager factory
 		try {
 			kmf = KeyManagerFactory.getInstance("SunX509");
 		} catch (NoSuchAlgorithmException e) {
@@ -243,7 +223,7 @@ public class HttpsSecurityManager extends HttpsConfigurator {
 			return false;
 		}
 		
-		// setup the trust manager factory
+		// Setup the trust manager factory
 		try {
 			tmf = TrustManagerFactory.getInstance("SunX509");
 		} catch (NoSuchAlgorithmException e) {
