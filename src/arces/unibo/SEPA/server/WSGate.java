@@ -31,11 +31,16 @@ import org.glassfish.grizzly.websockets.WebSocketAddOn;
 import org.glassfish.grizzly.websockets.WebSocketApplication;
 import org.glassfish.grizzly.websockets.WebSocketEngine;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
+import com.google.gson.JsonParser;
+
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 
 import arces.unibo.SEPA.beans.SEPABeans;
 import arces.unibo.SEPA.beans.WebSocketGateMBean;
+
 import arces.unibo.SEPA.commons.request.Request;
 import arces.unibo.SEPA.commons.request.SubscribeRequest;
 import arces.unibo.SEPA.commons.request.UnsubscribeRequest;
@@ -45,6 +50,7 @@ import arces.unibo.SEPA.commons.response.Ping;
 import arces.unibo.SEPA.commons.response.Response;
 import arces.unibo.SEPA.commons.response.SubscribeResponse;
 import arces.unibo.SEPA.commons.response.UnsubscribeResponse;
+
 import arces.unibo.SEPA.server.RequestResponseHandler.ResponseAndNotificationListener;
 
 /**
@@ -56,7 +62,7 @@ import arces.unibo.SEPA.server.RequestResponseHandler.ResponseAndNotificationLis
 * @version 0.1
 * */
 
-public class WSGate extends WebSocketApplication implements WebSocketGateMBean {//implements ResponseListener {
+public class WSGate extends WebSocketApplication implements WebSocketGateMBean {
 	
 	protected Scheduler scheduler;
 	
@@ -71,6 +77,10 @@ public class WSGate extends WebSocketApplication implements WebSocketGateMBean {
 	public class SEPAResponseListener implements ResponseAndNotificationListener {
 		private WebSocket socket;	
 		private HashSet<String> spuIds = new HashSet<String>();
+		
+		public int activeSubscriptions() {
+			return spuIds.size();
+		}
 		
 		public void unsubscribeAll() {
 			synchronized(spuIds) {
@@ -132,7 +142,6 @@ public class WSGate extends WebSocketApplication implements WebSocketGateMBean {
 		}
 		
 		SEPABeans.registerMBean(this,mBeanName);
-		
 	}
 	
 	@Override
@@ -176,10 +185,26 @@ public class WSGate extends WebSocketApplication implements WebSocketGateMBean {
 		}
 	}
 	
-	//TODO SPARQL 1.1 Subscribe language
-	private Request parseRequest(Integer token,String request) {
-		if (request.trim().startsWith("subscribe=")) return new SubscribeRequest(token,request.substring(request.trim().indexOf("=")+1));
-		if (request.trim().startsWith("unsubscribe=")) return new UnsubscribeRequest(token,request.substring(request.trim().indexOf("=")+1));
+	/* SPARQL 1.1 Subscribe language 
+	 * 
+	 * {"subscribe":"SPARQL Query 1.1", "authorization": "JWT"}
+	 * 
+	 * {"subscribe":"SPUID", "authorization": "JWT"}
+	 * 
+	 * In not secure connections (ws), authorization key can be missing
+	 * */
+	protected Request parseRequest(Integer token,String request) {
+		JsonObject req;
+		try{
+			req = new JsonParser().parse(request).getAsJsonObject();
+		}
+		catch(JsonParseException | IllegalStateException e) {
+			return null;
+		}
+		
+		if (req.get("subscribe") != null) return new SubscribeRequest(token,req.get("subscribe").getAsString());
+		if (req.get("unsubscribe") != null) return new UnsubscribeRequest(token,req.get("unsubscribe").getAsString());	
+		
 		return null;
 	}
 	
@@ -210,22 +235,8 @@ public class WSGate extends WebSocketApplication implements WebSocketGateMBean {
 		}
 		return true;
 	}
-
 	
-	/*private void unsubscribeAllSPUs(WebSocket socket) {
-		synchronized(activeSockets) {
-			SEPAResponseListener listener = activeSockets.get(socket);
-			Iterator<String> it = listener.getSPUIDs().iterator();
-			
-			while(it.hasNext()) {
-				Integer token = scheduler.getToken();
-				logger.debug(">> Scheduling UNSUBSCRIBE request #"+token);
-				scheduler.addRequest(new UnsubscribeRequest(token,it.next()),listener);		
-			}
-		}
-	}*/
-	
-	public class KeepAlive extends Thread {//implements ResponseListener{
+	public class KeepAlive extends Thread {
 		public void run() {
 			while(true) {
 				try {
@@ -234,11 +245,11 @@ public class WSGate extends WebSocketApplication implements WebSocketGateMBean {
 					return;
 				}
 				
-				//Send heart beat on each active socket to detect broken sockets
-				//HashSet<WebSocket> brokenSockets = new HashSet<WebSocket>();
-				
+				//Send heart beat on each active socket to detect broken sockets				
 				synchronized(activeSockets) {
 					for(WebSocket socket : activeSockets.keySet()) {	
+						//Send ping only on sockets with active subscriptions
+						if (activeSockets.get(socket).activeSubscriptions() == 0) continue;
 						
 						if (socket.isConnected()) {
 							Ping ping = new Ping();
@@ -246,16 +257,9 @@ public class WSGate extends WebSocketApplication implements WebSocketGateMBean {
 						}
 						else {
 							activeSockets.get(socket).unsubscribeAll();
-						}//brokenSockets.add(socket);
+						}
 					}
-				}
-				
-				/*
-				//Send a UNSUBSCRIBE request to all SPUs belonging to broken sockets
-				for (WebSocket socket : brokenSockets) {
-					unsubscribeAllSPUs(socket);
-				}*/
-					
+				}					
 			}
 		}
 	}

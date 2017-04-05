@@ -51,7 +51,7 @@ public class HTTPSGate extends HTTPGate {
 	private SecurityManager sManager = new SecurityManager();
 		
 	//Authorization manager
-	private static AuthorizationManager am;
+	private static AuthorizationManager am = new AuthorizationManager();
 
 	/*
 	Error Code	Description
@@ -72,8 +72,6 @@ public class HTTPSGate extends HTTPGate {
 		else {
 			httpsPort = Integer.parseInt(properties.getProperty("httpsPort", "8443"));
 		}
-
-		am = new AuthorizationManager();
 	}
 	
 	class RegistrationHandler implements HttpHandler {

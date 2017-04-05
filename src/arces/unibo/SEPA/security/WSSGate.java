@@ -30,6 +30,11 @@ import org.glassfish.grizzly.websockets.WebSocket;
 import org.glassfish.grizzly.websockets.WebSocketAddOn;
 import org.glassfish.grizzly.websockets.WebSocketEngine;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
+import com.google.gson.JsonParser;
+
+import arces.unibo.SEPA.commons.request.Request;
 import arces.unibo.SEPA.server.Scheduler;
 import arces.unibo.SEPA.server.WSGate;
 
@@ -41,6 +46,9 @@ public class WSSGate extends WSGate {
 	private SecurityManager sManager = new SecurityManager();
 	private int wssPort = 9443;
 	
+	//Authorization manager
+	private static AuthorizationManager am = new AuthorizationManager();
+		
 	public WSSGate(Properties properties, Scheduler scheduler)  {
 		super(properties, scheduler);
 		
@@ -92,4 +100,29 @@ public class WSSGate extends WSGate {
 		super.onMessage(socket, text);
 	}
 
+	/* SPARQL 1.1 Subscribe language 
+	 * 
+	 * {"subscribe":"SPARQL Query 1.1", "authorization": "JWT"}
+	 * 
+	 * {"subscribe":"SPUID", "authorization": "JWT"}
+	 * 
+	 * In not secure connections (ws), authorization key can be missing
+	 * */
+	protected Request parseRequest(Integer token,String request) {
+		JsonObject req;
+		try{
+			req = new JsonParser().parse(request).getAsJsonObject();
+		}
+		catch(JsonParseException | IllegalStateException e) {
+			return null;
+		}
+		
+		if (req.get("authorization") == null) return null;
+		
+		//Token validation
+		String jwt = req.get("authorization").getAsString();
+		if(!am.validateToken(jwt)) return null;
+		
+		return super.parseRequest(token, request);
+	}
 }
