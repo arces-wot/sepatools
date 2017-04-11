@@ -33,8 +33,8 @@ import org.glassfish.grizzly.websockets.WebSocketEngine;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
 
-import arces.unibo.SEPA.commons.request.Request;
 import arces.unibo.SEPA.server.Scheduler;
 import arces.unibo.SEPA.server.WSGate;
 
@@ -62,14 +62,20 @@ public class WSSGate extends WSGate {
 		
 		// register the application
         WebSocketEngine.getEngine().register("", "/sparql", this);
+        
+        logger.debug("Created");
 	}
 	
 	public boolean start(){
-		final HttpServer secureServer = HttpServer.createSimpleServer("/var/www",wssPort);
+		//Create a secure Websocket application
+		final HttpServer secureServer = HttpServer.createSimpleServer("/var/www/wss",wssPort);
 		secureServer.getListener("grizzly").registerAddOn(new WebSocketAddOn());
 		secureServer.getListener("grizzly").setSSLEngineConfig(sManager.getWssConfigurator());
 		secureServer.getListener("grizzly").setSecure(true);
 		
+		  // Register the application
+        WebSocketEngine.getEngine().register("", "/sparql", this);
+        
         try {
         	secureServer.start();
 		} catch (IOException e) {
@@ -87,17 +93,25 @@ public class WSSGate extends WSGate {
 	
 	@Override
 	public void onClose(WebSocket socket, DataFrame frame) {
+		logger.info("onClose");
 		super.onClose(socket, frame);
 	}
 	
 	@Override
 	public void onConnect(WebSocket socket) {
+		logger.info("onConnect");
 		super.onConnect(socket);
 	}
 	
 	@Override
 	public void onMessage(WebSocket socket, String text) {
-		super.onMessage(socket, text);
+		if (validateToken(text)) super.onMessage(socket, text);
+		else {
+			//Not authorized
+			JsonObject error = new JsonObject();
+			error.add("error", new JsonPrimitive("Authorization missing or token not valid"));
+			socket.send(error.toString());
+		}
 	}
 
 	/* SPARQL 1.1 Subscribe language 
@@ -108,21 +122,18 @@ public class WSSGate extends WSGate {
 	 * 
 	 * In not secure connections (ws), authorization key can be missing
 	 * */
-	protected Request parseRequest(Integer token,String request) {
+	private boolean validateToken(String request) {
 		JsonObject req;
 		try{
 			req = new JsonParser().parse(request).getAsJsonObject();
 		}
 		catch(JsonParseException | IllegalStateException e) {
-			return null;
+			return false;
 		}
 		
-		if (req.get("authorization") == null) return null;
+		if (req.get("authorization") == null) return false;
 		
 		//Token validation
-		String jwt = req.get("authorization").getAsString();
-		if(!am.validateToken(jwt)) return null;
-		
-		return super.parseRequest(token, request);
+		 return am.validateToken(req.get("authorization").getAsString());
 	}
 }

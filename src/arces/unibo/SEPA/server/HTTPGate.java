@@ -350,11 +350,13 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 			}
 			
 			private void sendResponse(Integer token) {
+				// Check response status
+				 
 				try 
 				{
 					if (response == null) {
 						String error = "Timeout";
-						httpExchange.sendResponseHeaders(500, error.length());
+						httpExchange.sendResponseHeaders(408, error.length());
 						OutputStream os = httpExchange.getResponseBody();
 						os.write(error.getBytes());
 						os.close();

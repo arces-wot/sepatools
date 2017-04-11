@@ -193,7 +193,7 @@ public class WSGate extends WebSocketApplication implements WebSocketGateMBean {
 	 * 
 	 * In not secure connections (ws), authorization key can be missing
 	 * */
-	protected Request parseRequest(Integer token,String request) {
+	private Request parseRequest(Integer token,String request) {
 		JsonObject req;
 		try{
 			req = new JsonParser().parse(request).getAsJsonObject();
@@ -213,7 +213,7 @@ public class WSGate extends WebSocketApplication implements WebSocketGateMBean {
 	}
 	
 	public boolean start(){
-		final HttpServer server = HttpServer.createSimpleServer("/var/www", wsPort);
+		final HttpServer server = HttpServer.createSimpleServer("/var/www/ws", wsPort);
 
         // Register the WebSockets add on with the HttpServer
         server.getListener("grizzly").registerAddOn(new WebSocketAddOn());

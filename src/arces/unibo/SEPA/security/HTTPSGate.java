@@ -54,7 +54,7 @@ public class HTTPSGate extends HTTPGate {
 	private static AuthorizationManager am = new AuthorizationManager();
 
 	/*
-	Error Code	Description
+	Error Code	Description (RFC 2616 Status codes) 
 	
 	400			Bad Request
 	401			Unauthorized
@@ -65,6 +65,7 @@ public class HTTPSGate extends HTTPGate {
 	500			Internal Server Error
 	503			Service Unavailable
 	*/
+	
 	public HTTPSGate(Properties properties, Scheduler scheduler) {
 		super(properties, scheduler);
 		

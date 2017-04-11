@@ -1,4 +1,4 @@
-/* This class implements a DOM parser of an .sap file instance of the ApplicationProfile.xsd schema
+/* This class implements a JSON parser of an .sap file
 Copyright (C) 2016-2017 Luca Roffia (luca.roffia@unibo.it)
 
 This program is free software: you can redistribute it and/or modify
@@ -18,45 +18,73 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 package arces.unibo.SEPA.application;
 
 import java.io.File;
-import java.io.IOException;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.Reader;
 import java.util.HashMap;
-import java.util.List;
+import java.util.Map.Entry;
 import java.util.Set;
 
-import org.jdom2.Attribute;
-import org.jdom2.DataConversionException;
-import org.jdom2.Document;
-import org.jdom2.Element;
-import org.jdom2.JDOMException;
-import org.jdom2.input.SAXBuilder;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
-import arces.unibo.SEPA.application.SEPALogger.VERBOSITY;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 import arces.unibo.SEPA.commons.SPARQL.Bindings;
+import arces.unibo.SEPA.commons.SPARQL.RDFTerm;
 import arces.unibo.SEPA.commons.SPARQL.RDFTermLiteral;
 import arces.unibo.SEPA.commons.SPARQL.RDFTermURI;
 
+/* SAP file example
+ {
+    "parameters" : { "path":"sparql",
+		     "subscribeSecurePort":9443, "subscribePort":9000,
+		     "updateSecurePort":8443, "updatePort":8000,
+		     "host":"localhost"},
+    "namespaces" : { "iot":"http://www.arces.unibo.it/iot#",
+		     "rdf":"http://www.w3.org/1999/02/22-rdf-syntax-ns#"},
+    "updates": {
+	"ADD_PERSON":{
+	    "sparql":"INSERT DATA { ?person rdf:type iot:Person . ?person iot:hasName ?name }",
+	    "forcedBindings": {
+		"person" : {"type":"uri", "value":""},
+		"name" : {"type":"literal", "value":""}}}
+    },    
+    "subscribes": {
+	"CLASS_INSTANCES":{
+	    "sparql":"SELECT ?s WHERE { ?s rdf:type ?class }",
+	    "forcedBindings": {
+		"class" : {"type":"uri", "value":""}}},
+	"EVERYTHING":{	
+	    "sparql":"SELECT ?s ?p ?o WHERE  { ?s ?p ?o }",
+	    "forcedBindings": {}}
+    }
+}
+*/
 public class ApplicationProfile {	
-	private final String tag ="SPARQL PARSER";
+	protected Logger logger = LogManager.getLogger("SAP");	
 	
-	private HashMap<String,String> updateMap = new HashMap<>();
-	private HashMap<String,String> subscribeMap = new HashMap<>();
+	protected HashMap<String,String> updateMap = new HashMap<>();
+	protected HashMap<String,String> subscribeMap = new HashMap<>();
 	
-	private HashMap<String,Bindings> updateBindingsMap = new HashMap<>();
-	private HashMap<String,Bindings> subscribeBindingsMap = new HashMap<>();
+	protected HashMap<String,Bindings> updateBindingsMap = new HashMap<>();
+	protected HashMap<String,Bindings> subscribeBindingsMap = new HashMap<>();
 	
-	private HashMap<String,String> namespaceMap = new HashMap<>();
+	protected HashMap<String,String> namespaceMap = new HashMap<>();
 	
-	private Parameters params = new Parameters();
+	protected Parameters params = new Parameters();
 	
-	private Document doc = null;
-	private boolean loaded = false;
+	protected boolean loaded = false;
 	
 	public class Parameters {
 		private String url = "mml.arces.unibo.it";
 		private int updatePort = 8000;
 		private int subscribePort = 9000;
 		private String path = "/sparql";
+		private int updateSecurePort = 8443;
+		private int subscribeSecurePort = 9443;
 		
 		public String getUrl() {
 			return url;
@@ -82,6 +110,18 @@ public class ApplicationProfile {
 		public int getSubscribePort() {
 			return subscribePort;
 		}
+		public int getUpdateSecurePort() {
+			return updateSecurePort;
+		}
+		public void setUpdateSecurePort(int updateSecurePort) {
+			this.updateSecurePort = updateSecurePort;
+		}
+		public int getSubscribeSecurePort() {
+			return subscribeSecurePort;
+		}
+		public void setSubscribeSecurePort(int subscribeSecurePort) {
+			this.subscribeSecurePort = subscribeSecurePort;
+		}
 	}
 	
 	public String qName(String uri){
@@ -99,7 +139,7 @@ public class ApplicationProfile {
 	
 	public String getNamespaceURI(String prefix) {
 		String ret = namespaceMap.get(prefix);
-		if (ret == null) SEPALogger.log(VERBOSITY.ERROR, tag, "Prefix " + prefix + " NOT FOUND");
+		if (ret == null) logger.error("Prefix " + prefix + " NOT FOUND");
 		return ret;
 	}
 	public Bindings subscribeBindings(String id) {
@@ -112,7 +152,7 @@ public class ApplicationProfile {
 	
 	public String subscribe(String id) {
 		if (!subscribeMap.containsKey(id)) {
-			SEPALogger.log(VERBOSITY.ERROR, tag, "SUBSCRIBE ID <" + id + "> NOT FOUND");
+			logger.error("SUBSCRIBE ID <" + id + "> NOT FOUND");
 			return null;
 		}
 		return subscribeMap.get(id);
@@ -120,7 +160,7 @@ public class ApplicationProfile {
 	
 	public String update(String id) {
 		if (!updateMap.containsKey(id)) {
-			SEPALogger.log(VERBOSITY.ERROR, tag, "UPDATE ID <" + id + "> NOT FOUND");
+			logger.error("UPDATE ID <" + id + "> NOT FOUND");
 			return null;
 		}
 		return updateMap.get(id);
@@ -136,101 +176,115 @@ public class ApplicationProfile {
 		updateBindingsMap.clear();
 		namespaceMap.clear();
 		
-		SAXBuilder builder = new SAXBuilder();
 		File inputFile = new File(fileName);
-		
+		Reader reader = null;
 		try {
-			doc = builder.build(inputFile);
-		} catch (JDOMException | IOException e) {
-			SEPALogger.log(VERBOSITY.FATAL, tag, e.getMessage());
+			reader = new FileReader(inputFile);
+		} catch (FileNotFoundException e) {
+			logger.error(e.getMessage());
 			return false;
 		}
+		JsonObject doc = new JsonParser().parse(reader).getAsJsonObject();
 		
-		Element root = doc.getRootElement();
-		
-		if (root == null) return false;
-		
-		List<Element> nodes = root.getChildren();
-		
-		for (Element node : nodes) {
-			HashMap<String,String> sparqlMap = null;
-			HashMap<String,Bindings> bindingsMap = null;
-			
-			switch(node.getName()){
-				case "subscribes":
-					sparqlMap = subscribeMap;
-					bindingsMap = subscribeBindingsMap;
-					break;
-				case "updates":
-					sparqlMap = updateMap;
-					bindingsMap = updateBindingsMap;
-					break;
-				case "namespaces":
-					sparqlMap = namespaceMap;
-					break;
-				case "parameters":
-					List<Attribute> attributes = node.getAttributes();
-					for (Attribute attr : attributes) {
-						switch(attr.getName()){
-							case "updateport":
-								try {
-									params.setUpdatePort(attr.getIntValue());
-								} catch (DataConversionException e) {
-									e.printStackTrace();
-									SEPALogger.log(VERBOSITY.ERROR, tag, "Error parsing application profile \"updateport\" parameter (found: " + attr.getValue() + ")");
-								}
-								break;
-							case "subscribeport":
-								try {
-									params.setSubscribePort(attr.getIntValue());
-								} catch (DataConversionException e) {
-									e.printStackTrace();
-									SEPALogger.log(VERBOSITY.ERROR, tag, "Error parsing application profile \"subscribeport\" parameter (found: " + attr.getValue() + ")");
-								}
-								break;
-							case "url":
-								params.setUrl(attr.getValue());
-								break;
-							case "path":
-								params.setPath(attr.getValue());
-								break;
-						}
-					}
-					break;
-			}
-			
-			List<Element> elements = node.getChildren();
-			
-			if (elements == null) continue;
-			
-			for(Element element : elements) {
-				if (node.getName().equals("namespaces")) {
-					sparqlMap.put(element.getAttributeValue("prefix"), element.getAttributeValue("suffix"));
-					continue;
-				}
-				
-				sparqlMap.put(element.getAttributeValue("id"), element.getChildText("sparql"));
+		if (doc == null) {
+			logger.error("Failed to parse "+fileName);
+			return false;
+		}
 
-				Element forcedBindings = element.getChild("forcedBindings");				
-				if (forcedBindings == null) continue;
-				
-				List<Element> bindingElements = forcedBindings.getChildren();
-				Bindings bindings = new Bindings();
-				for (Element bindingElement : bindingElements) {
-					if (bindingElement.getAttributeValue("type").equals("uri"))
-						bindings.addBinding(bindingElement.getAttributeValue("variable"), new RDFTermURI(bindingElement.getAttributeValue("value")));
-					else
-						bindings.addBinding(bindingElement.getAttributeValue("variable"), new RDFTermLiteral(bindingElement.getAttributeValue("value")));
+		/*		
+		"parameters" : { "path":"sparql",
+		     "subscribeSecurePort":9443, "subscribePort":9000,
+		     "updateSecurePort":8443, "updatePort":8000,
+		     "host":"localhost"},
+		*/
+		JsonElement elem;
+		JsonObject obj;
+		if ((obj = doc.get("parameters").getAsJsonObject()) !=null){
+			if ((elem = obj.get("path")) != null) params.setPath(elem.getAsString());
+			if ((elem = obj.get("subscribeSecurePort")) != null) params.setSubscribeSecurePort(elem.getAsInt());
+			if ((elem = obj.get("subscribePort")) != null) params.setSubscribePort(elem.getAsInt());
+			if ((elem = obj.get("updateSecurePort")) != null) params.setUpdateSecurePort(elem.getAsInt());
+			if ((elem = obj.get("updatePort")) != null) params.setUpdatePort(elem.getAsInt());
+			if ((elem = obj.get("host")) != null) params.setUrl(elem.getAsString());
+		}
+		else logger.warn("Parameters key not found...using defaults");
+
+		/* "namespaces" : { "iot":"http://www.arces.unibo.it/iot#",
+		     "rdf":"http://www.w3.org/1999/02/22-rdf-syntax-ns#"},
+		*/
+		if ((obj = doc.get("namespaces").getAsJsonObject()) !=null){
+			for(Entry<String, JsonElement> entry :obj.entrySet()) namespaceMap.put(entry.getKey(), entry.getValue().getAsString());
+		}
+		else logger.warn("Namespaces key not found");
+		
+		/*
+   		"updates": {
+			"ADD_PERSON":{
+	    		"sparql":"INSERT DATA { ?person rdf:type iot:Person . ?person iot:hasName ?name }",
+	    		"forcedBindings": {
+					"person" : {"type":"uri", "value":""},
+					"name" : {"type":"literal", "value":""}}}
+   		},    
+		 */
+		if ((obj = doc.get("updates").getAsJsonObject()) !=null){
+			for(Entry<String, JsonElement> entry :obj.entrySet()) {
+				JsonObject update = entry.getValue().getAsJsonObject();
+				if (update.get("sparql")!=null) updateMap.put(entry.getKey(), update.get("sparql").getAsString());
+				if (update.get("forcedBindings")!=null) {
+					Bindings bindings = new Bindings();
+					for(Entry<String, JsonElement> binding : update.get("forcedBindings").getAsJsonObject().entrySet()) {
+						JsonObject bindingValue = binding.getValue().getAsJsonObject();
+						if (bindingValue.get("type") == null) continue;
+						if (bindingValue.get("value") == null) continue;
+						RDFTerm value = null;
+						if (bindingValue.get("type").getAsString().equals("uri")) value = new RDFTermURI(bindingValue.get("value").getAsString());
+						else if (bindingValue.get("type").getAsString().equals("literal")) value = new RDFTermLiteral(bindingValue.get("value").getAsString());
+						
+						if (value != null) bindings.addBinding(binding.getKey(), value);
+						else logger.warn("Binding type must be uri or literal");
+					}
+					updateBindingsMap.put(entry.getKey(), bindings);
 				}
-				
-				bindingsMap.put(element.getAttributeValue("id"), bindings);
 			}
 		}
 		
+		/*
+   		"subscribes": {
+			"CLASS_INSTANCES":{
+	    		"sparql":"SELECT ?s WHERE { ?s rdf:type ?class }",
+	    		"forcedBindings": {
+					"class" : {"type":"uri", "value":""}}},
+		"EVERYTHING":{	
+	    	"sparql":"SELECT ?s ?p ?o WHERE  { ?s ?p ?o }",
+	    	"forcedBindings": {}}
+		 */
+		if ((obj = doc.get("subscribes").getAsJsonObject()) !=null){
+			for(Entry<String, JsonElement> entry :obj.entrySet()) {
+				JsonObject subscribe = entry.getValue().getAsJsonObject();
+				if (subscribe.get("sparql")!=null) subscribeMap.put(entry.getKey(), subscribe.get("sparql").getAsString());
+				if (subscribe.get("forcedBindings")!=null) {
+					Bindings bindings = new Bindings();
+					for(Entry<String, JsonElement> binding : subscribe.get("forcedBindings").getAsJsonObject().entrySet()) {
+						JsonObject bindingValue = binding.getValue().getAsJsonObject();
+						if (bindingValue.get("type") == null) continue;
+						if (bindingValue.get("value") == null) continue;
+						RDFTerm value = null;
+						if (bindingValue.get("type").getAsString().equals("uri")) value = new RDFTermURI(bindingValue.get("value").getAsString());
+						else if (bindingValue.get("type").getAsString().equals("literal")) value = new RDFTermLiteral(bindingValue.get("value").getAsString());
+						
+						if (value != null) bindings.addBinding(binding.getKey(), value);
+						else logger.warn("Binding type must be uri or literal");
+					}
+					subscribeBindingsMap.put(entry.getKey(), bindings);
+				}
+			}
+		}
+
 		loaded = true;
 		
 		return true;
 	}
+	
 	public boolean isLoaded() {
 		return loaded;
 	}
