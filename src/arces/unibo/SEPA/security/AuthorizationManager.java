@@ -117,8 +117,9 @@ public class AuthorizationManager {
 		logger.debug("Access token: "+access_token);
 		
 		//Validate token
-		if(validateToken(access_token)) logger.debug("VALIDATED :-)");
-		else logger.debug("FAILED :-(");
+		JsonObject isValid = validateToken(access_token);
+		if(isValid.get("valid").getAsBoolean()) logger.debug("VALIDATED :-)");
+		else logger.debug("FAILED :-( "+isValid.get("message").getAsString());
 		logger.debug("*********Security check END***********");
 	}
 
@@ -483,20 +484,29 @@ public class AuthorizationManager {
 		return jwt;
 	}
 	
-	public boolean validateToken(String accessToken) {
+	public JsonObject validateToken(String accessToken) {
 		SignedJWT signedJWT = null;
+		JsonObject ret = new JsonObject();
 		try {
 			signedJWT = SignedJWT.parse(accessToken);
 		} catch (ParseException e) {
 			logger.error(e.getMessage());
-			return false;
+			ret.add("valid", new JsonPrimitive(false));
+			ret.add("message", new JsonPrimitive(e.getMessage()));
+			return ret;
 		}
 
 		try {
-			 if(!signedJWT.verify(verifier)) return false;
+			 if(!signedJWT.verify(verifier)) {
+				ret.add("valid", new JsonPrimitive(false));
+				ret.add("message", new JsonPrimitive("Verification failed"));
+				return ret;
+			 }
 		} catch (JOSEException e) {
 			logger.error(e.getMessage());
-			return false;
+			ret.add("valid", new JsonPrimitive(false));
+			ret.add("message", new JsonPrimitive(e.getMessage()));
+			return ret;
 		}
 		
 		// Process the token
@@ -505,42 +515,60 @@ public class AuthorizationManager {
 			claimsSet = jwtProcessor.process(accessToken, context);
 		} catch (ParseException | BadJOSEException | JOSEException e) {
 			logger.error(e.getMessage());
-			return false;
+			ret.add("valid", new JsonPrimitive(false));
+			ret.add("message", new JsonPrimitive(e.getMessage()));
+			return ret;
 		}
 		
 		Date now = new Date();
 		if (now.after(claimsSet.getExpirationTime())) {
 			logger.debug("Token is expired "+claimsSet.getExpirationTime());
-			return false;
+			ret.add("valid", new JsonPrimitive(false));
+			ret.add("message", new JsonPrimitive("Token is expired "+claimsSet.getExpirationTime()));
+			return ret;
 		}
 		if (now.before(claimsSet.getNotBeforeTime())) {
 			logger.debug("Token can not be used before: "+claimsSet.getNotBeforeTime());
-			return false;
+			ret.add("valid", new JsonPrimitive(false));
+			ret.add("message", new JsonPrimitive("Token can not be used before: "+claimsSet.getNotBeforeTime()));
+			return ret;
 		}
 		if (!claimsSet.getIssuer().equals(issuer)) {
 			logger.debug("Issuer not recognized");
-			return false;
+			ret.add("valid", new JsonPrimitive(false));
+			ret.add("message", new JsonPrimitive("Issuer not recognized"));
+			return ret;
 		}
 		String[] id = claimsSet.getJWTID().split(":");
 		if (id == null) {
 			logger.debug("JWT ID not recognized (1)");
-			return false;
+			ret.add("valid", new JsonPrimitive(false));
+			ret.add("message", new JsonPrimitive("JWT ID not recognized (1)"));
+			return ret;
 		}
 		if (id.length != 2) {
 			logger.debug("JWT ID not recognized (2)");
-			return false;	
+			ret.add("valid", new JsonPrimitive(false));
+			ret.add("message", new JsonPrimitive("JWT ID not recognized (2)"));
+			return ret;	
 		}
 		if (!credentials.containsKey(id[0])) {
 			logger.debug("JWT ID not recognized (3)");
-			return false;
+			ret.add("valid", new JsonPrimitive(false));
+			ret.add("message", new JsonPrimitive("JWT ID not recognized (1)"));
+			return ret;
 		}
 		if (!credentials.get(id[0]).equals(id[1])) {
 			logger.debug("JWT ID not recognized (4)");
-			return false;	
+			ret.add("valid", new JsonPrimitive(false));
+			ret.add("message", new JsonPrimitive("JWT ID not recognized (1)"));
+			return ret;	
 		}
 				
 		logger.debug(claimsSet.toJSONObject());
 		
-		return true;
+		ret.add("valid", new JsonPrimitive(true));
+		ret.add("message", new JsonPrimitive("Token verified"));
+		return ret;	
 	}	
 }

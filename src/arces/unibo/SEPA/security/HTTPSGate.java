@@ -22,7 +22,6 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 
 import java.util.List;
-import java.util.Properties;
 
 import org.apache.commons.io.IOUtils;
 
@@ -38,6 +37,7 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpsServer;
 
+import arces.unibo.SEPA.server.EngineProperties;
 import arces.unibo.SEPA.server.HTTPGate;
 import arces.unibo.SEPA.server.Scheduler;
 
@@ -66,12 +66,12 @@ public class HTTPSGate extends HTTPGate {
 	503			Service Unavailable
 	*/
 	
-	public HTTPSGate(Properties properties, Scheduler scheduler) {
+	public HTTPSGate(EngineProperties properties, Scheduler scheduler) {
 		super(properties, scheduler);
 		
 		if (properties == null) logger.error("Properties are null");
 		else {
-			httpsPort = Integer.parseInt(properties.getProperty("httpsPort", "8443"));
+			httpsPort = properties.getHttpsPort();
 		}
 	}
 	
@@ -363,8 +363,9 @@ public class HTTPSGate extends HTTPGate {
 			//******************
 			String jwt = bearer.get(0).split(" ")[1];
 			
-			if(am.validateToken(jwt)) super.handle(httpExchange);
-			else failureResponse(httpExchange,401,"Token validation failed");
+			JsonObject isValid = am.validateToken(jwt);
+			if(isValid.get("valid").getAsBoolean()) super.handle(httpExchange);
+			else failureResponse(httpExchange,401,isValid.get("message").getAsString());
 		}
 	}
 	
@@ -376,8 +377,8 @@ public class HTTPSGate extends HTTPGate {
 		try {
 			server = HttpsServer.create(new InetSocketAddress(httpsPort), 0);
 		} catch (IOException e) {
-			 logger.error(e.getMessage());
-			return;
+			logger.fatal(e.getMessage());
+			System.exit(1);
 		}
 		
 		// set security configuration

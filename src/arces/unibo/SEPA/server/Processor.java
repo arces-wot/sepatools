@@ -1,4 +1,4 @@
-/* This class implements the processing of the requests coming form the scheduler
+/*  This class implements the processing of the requests coming form the scheduler
     Copyright (C) 2016-2017 Luca Roffia (luca.roffia@unibo.it)
 
     This program is free software: you can redistribute it and/or modify
@@ -19,7 +19,7 @@ package arces.unibo.SEPA.server;
 
 import java.util.Observable;
 import java.util.Observer;
-import java.util.Properties;
+
 import javax.management.InstanceAlreadyExistsException;
 import javax.management.MBeanRegistrationException;
 import javax.management.MalformedObjectNameException;
@@ -43,7 +43,7 @@ public class Processor extends Observable implements Observer {
 	private Endpoint endpoint;
 	private static final Logger logger = LogManager.getLogger("Processor");
 	
-	public Processor(Properties properties) throws MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException {	
+	public Processor(SPARQLEndpointProperties properties) throws MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException {	
 		//Create SPARQL 1.1 interface
 		endpoint = new Endpoint(properties);
 		

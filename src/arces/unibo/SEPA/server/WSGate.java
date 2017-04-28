@@ -21,7 +21,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.Properties;
+
 import java.util.Set;
 
 import org.glassfish.grizzly.http.server.HttpServer;
@@ -69,7 +69,7 @@ public class WSGate extends WebSocketApplication implements WebSocketGateMBean {
 	private int wsPort = 9000;
 	protected int keepAlivePeriod = 5000;
 	
-	private Logger logger = LogManager.getLogger("WSGate");	
+	private Logger logger = LogManager.getLogger("Websockets Gate");	
 	protected static String mBeanName = "arces.unibo.SEPA.server:type=WSGate";
 	
 	protected HashMap<WebSocket,SEPAResponseListener> activeSockets = new HashMap<WebSocket,SEPAResponseListener>();
@@ -131,14 +131,14 @@ public class WSGate extends WebSocketApplication implements WebSocketGateMBean {
 		}
 	}
 		
-	public WSGate(Properties properties,Scheduler scheduler) {
+	public WSGate(EngineProperties properties,Scheduler scheduler) {
 		if (scheduler == null) logger.error("Scheduler is null");
 		this.scheduler = scheduler;
 		
 		if (properties == null) logger.error("Properties are null");
 		else {
-			wsPort = Integer.parseInt(properties.getProperty("wsPort", "9000"));
-			keepAlivePeriod =  Integer.parseInt(properties.getProperty("keepAlivePeriod", "5000"));
+			wsPort = properties.getWsPort();
+			keepAlivePeriod =  properties.getKeepAlivePeriod();
 		}
 		
 		SEPABeans.registerMBean(this,mBeanName);
@@ -148,7 +148,7 @@ public class WSGate extends WebSocketApplication implements WebSocketGateMBean {
 	public void onClose(WebSocket socket, DataFrame frame) {
 		logger.debug("onClose: "+socket.toString());
 		
-		if (keepAlivePeriod == 0) activeSockets.get(socket).unsubscribeAll();//unsubscribeAllSPUs(socket);
+		if (keepAlivePeriod == 0) activeSockets.get(socket).unsubscribeAll();
 	}
 
 	@Override
@@ -170,7 +170,7 @@ public class WSGate extends WebSocketApplication implements WebSocketGateMBean {
 		if(request == null) {
 			logger.debug("Not supported request: "+text);
 			
-			ErrorResponse response = new ErrorResponse(token,"Not supported request: "+text);
+			ErrorResponse response = new ErrorResponse(token,"Not supported request: "+text,400);
 			
 			socket.send(response.toString());
 			
@@ -213,6 +213,7 @@ public class WSGate extends WebSocketApplication implements WebSocketGateMBean {
 	}
 	
 	public boolean start(){
+		//Create an HTTP server to which attach the websocket
 		final HttpServer server = HttpServer.createSimpleServer("/var/www/ws", wsPort);
 
         // Register the WebSockets add on with the HttpServer
@@ -221,15 +222,17 @@ public class WSGate extends WebSocketApplication implements WebSocketGateMBean {
         // register the application
         WebSocketEngine.getEngine().register("", "/sparql", this);
 
+        //Start the server
         try {
 			server.start();
 		} catch (IOException e) {
-			logger.info("Failed to start WebSocket gate on port "+wsPort+ " "+e.getMessage());
-			return false;
+			logger.fatal("Failed to start WebSocket gate on port "+wsPort+ " "+e.getMessage());
+			System.exit(1);
 		}
 		
 		logger.info("Started on port "+wsPort);
 
+		//Start the keep alive thread
 		if (keepAlivePeriod > 0) {
 			new KeepAlive().start();
 		}

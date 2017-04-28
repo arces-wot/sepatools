@@ -34,17 +34,8 @@ import org.apache.http.entity.ByteArrayEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
-import org.glassfish.tyrus.client.ClientManager;
-
-import java.net.URI;
-import java.net.URISyntaxException;
-
-import javax.websocket.ClientEndpointConfig;
-import javax.websocket.DeploymentException;
-import javax.websocket.Endpoint;
-import javax.websocket.EndpointConfig;
-import javax.websocket.MessageHandler;
-import javax.websocket.Session;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -53,17 +44,8 @@ import com.google.gson.JsonPrimitive;
 import arces.unibo.SEPA.application.SEPALogger;
 import arces.unibo.SEPA.application.SEPALogger.VERBOSITY;
 import arces.unibo.SEPA.commons.SPARQL.BindingsResults;
-import arces.unibo.SEPA.commons.response.Notification;
 
 public class SecureEventProtocol {
-	
-	public interface NotificationHandler {
-		public void semanticEvent(Notification notify);
-		public void subscribeConfirmed(String spuid);
-		public void unsubscribeConfirmed(String spuid);
-		public void ping();
-		public void brokenSubscription();
-	}
 	
 	private String tag ="SEProtocol";
 	private final String propertiesFile = "client.properties";
@@ -71,93 +53,11 @@ public class SecureEventProtocol {
 		
 	private String postUrl;
 	private String wsUrl;
-	private String sparql;
-	
-	private NotificationHandler handler = null;
 	private SEPAEndpoint wsClient;
 	
-	private enum SUBSCRIPTION_STATE {SUBSCRIBED,UNSUBSCRIBED,BROKEN_SOCKET};
-	private SocketWatchdog watchDog = new SocketWatchdog();
+	private static final Logger logger = LogManager.getLogger("SE Protocol");
 	
-	class SocketWatchdog extends Thread {
-
-		private String tag ="Watchdog";
-		
-		private long pingPeriod = 0;
-		private long firstPing = 0;
-		private long DEFAULT_PING_PERIOD = 5000;
-		private long DEFAULT_SUBSCRIPTION_DELAY = 5000;
-		
-		private boolean pingReceived = false;		
-		private SUBSCRIPTION_STATE state = SUBSCRIPTION_STATE.UNSUBSCRIBED;
-		
-		public synchronized void ping() {
-			SEPALogger.log(VERBOSITY.DEBUG, tag, "Ping!");
-			pingReceived = true;
-			if (firstPing == 0) firstPing = System.currentTimeMillis();
-			else {
-				pingPeriod = System.currentTimeMillis() - firstPing;	
-				firstPing = 0;
-				SEPALogger.log(VERBOSITY.DEBUG, tag, "Ping period: "+pingPeriod);
-			}
-			notifyAll();
-		}
-		
-		public void subscribed() {
-			state = SUBSCRIPTION_STATE.SUBSCRIBED;
-			SEPALogger.log(VERBOSITY.DEBUG, tag, "Subscribed");
-		}
-		
-		public void unsubscribed() {
-			state = SUBSCRIPTION_STATE.UNSUBSCRIBED;
-			SEPALogger.log(VERBOSITY.DEBUG, tag, "Unsubscribed");
-		}
-		
-		private synchronized boolean waitPing() {
-			SEPALogger.log(VERBOSITY.DEBUG, tag, "Wait ping...");
-			pingReceived = false;
-			try {
-				if (pingPeriod != 0) wait(pingPeriod*3/2);
-				else wait(DEFAULT_PING_PERIOD*3/2);
-			} catch (InterruptedException e) {
-
-			}	
-			return pingReceived;
-		}
-		
-		private synchronized boolean subscribing() {
-			SEPALogger.log(VERBOSITY.DEBUG, tag, "Subscribing...");
-			while(state == SUBSCRIPTION_STATE.BROKEN_SOCKET) {
-				if (wsClient.isConnected()) wsClient.close();
-				wsClient.subscribe(sparql);
-				try {
-					wait(DEFAULT_SUBSCRIPTION_DELAY);
-				} catch (InterruptedException e) {
-
-				}
-			}
-			return (state == SUBSCRIPTION_STATE.SUBSCRIBED);
-		}
-		
-		public void run() {
-			try {
-				Thread.sleep(DEFAULT_PING_PERIOD*5/2);
-			} catch (InterruptedException e) {
-				return;
-			}
-			
-			while(true){
-				while (waitPing()) {}
-				
-				if (state == SUBSCRIPTION_STATE.SUBSCRIBED) {
-					if (handler != null) handler.brokenSubscription();
-					state = SUBSCRIPTION_STATE.BROKEN_SOCKET;
-				}
-				
-				if(!subscribing()) return;
-			}
-		}
-	}
+	public enum SUBSCRIPTION_STATE {SUBSCRIBED,UNSUBSCRIBED,BROKEN_SOCKET};
 	
 	public String getUpdateURL() {
 		return postUrl;
@@ -167,7 +67,7 @@ public class SecureEventProtocol {
 		return wsUrl;
 	}
 	
-	public SecureEventProtocol(String url, int updatePort,int subscribePort, String path) {				
+	private void init(String url, int updatePort,int subscribePort, String path) {
 		postUrl = "http://"+url+":"+updatePort+path;
 		wsUrl = "ws://"+url+":"+subscribePort+path;
 		
@@ -176,9 +76,13 @@ public class SecureEventProtocol {
 		properties.setProperty("path", path);
 		properties.setProperty("url", url);
 		
-		storeProperties(propertiesFile);
+		wsClient = new SEPAEndpoint(wsUrl);
 		
-		wsClient = new SEPAEndpoint();
+		storeProperties(propertiesFile);
+	}
+	
+	public SecureEventProtocol(String url, int updatePort,int subscribePort, String path) {				
+		init(url,updatePort,subscribePort,path);
 	}
 
 	public SecureEventProtocol() {
@@ -189,157 +93,27 @@ public class SecureEventProtocol {
 		String path = properties.getProperty("path", "/sparql");
 		String url = properties.getProperty("url", "localhost");
 		
-		postUrl = "http://"+url+":"+updatePort+path;
-		wsUrl = "ws://"+url+":"+subscribePort+path;
-		
-		properties.setProperty("updatePort", Integer.toString(updatePort));
-		properties.setProperty("subscribePort", Integer.toString(subscribePort));
-		properties.setProperty("path", path);
-		properties.setProperty("url", url);
-		
-		storeProperties(propertiesFile);
-		
-		wsClient = new SEPAEndpoint();
+		init(url,updatePort,subscribePort,path);
 	}
 
 	public boolean update(String sparql) {
-		return new JsonParser().parse(SPARQLPrimitive(sparql,true)).getAsJsonObject().get("status").getAsBoolean();
+		JsonObject response = new JsonParser().parse(SPARQLPrimitive(sparql,true)).getAsJsonObject();
+		int code = response.get("code").getAsInt();
+		if (code >= 200 && code <= 300) return true;
+		logger.error(response.get("body"));
+		return false;
 	}
 	
 	public BindingsResults query(String sparql) {
-		JsonObject json = new JsonParser().parse(SPARQLPrimitive(sparql,false)).getAsJsonObject();
+		JsonObject response = new JsonParser().parse(SPARQLPrimitive(sparql,false)).getAsJsonObject();
+		int code = response.get("code").getAsInt();
+		if (code >= 200 && code <= 300) return new BindingsResults(new JsonParser().parse(response.get("body").getAsString()).getAsJsonObject());
 		
-		if(!json.get("status").getAsBoolean()) return null;
-		
-		return new BindingsResults(new JsonParser().parse(json.get("body").getAsString()).getAsJsonObject());
-	}
-	
-	
-	class SEPAEndpoint extends Endpoint {
-		private Session wsClientSession = null;;
-		private final ClientEndpointConfig cec = ClientEndpointConfig.Builder.create().build();
-		private ClientManager client = ClientManager.createClient();
-		private SEPAMessageHandler messageHandler = new SEPAMessageHandler();
-		
-		@Override
-		public void onOpen(Session session, EndpointConfig arg1) {
-			wsClientSession = session;
-        	wsClientSession.addMessageHandler(messageHandler);	
-        	try {
-				wsClientSession.getBasicRemote().sendText("subscribe="+sparql);
-			} 
-			catch (IOException e) {}
-		}
-		
-		private boolean connect() {
-			try {
-				client.connectToServer(this,cec, new URI(wsUrl));
-			} catch (DeploymentException e) {
-				e.printStackTrace();
-				return false;
-			} catch (IOException e) {
-				e.printStackTrace();
-				return false;
-			} catch (URISyntaxException e) {
-				e.printStackTrace();
-				return false;
-			}
-			return true;
-		}
-		
-		private boolean isConnected() {
-			if (wsClientSession == null) return false;
-			return wsClientSession.isOpen();
-		}
-		
-		public boolean subscribe(String sparql) {
-			if (isConnected())
-				try {
-					wsClientSession.getBasicRemote().sendText("subscribe="+sparql);
-				} 
-				catch (IOException e) {
-					return false;
-				}
-			else {
-				return connect();	
-			}
-		
-			return true;
-		}
-		
-		public boolean unsubscribe(String spuid) {
-			if (isConnected())
-				try {
-					wsClientSession.getBasicRemote().sendText("unsubscribe="+spuid);
-				} 
-				catch (IOException e) {
-					return false;
-				}
-			
-			return true;
-		}
-		
-		public boolean close() {
-			try {
-				wsClientSession.close();
-			} catch (IOException e) {
-				e.printStackTrace();
-				return false;
-			}
-			return true;
-		}
-	}
-	
-	class SEPAMessageHandler implements MessageHandler.Whole<String> {
-
-		@Override
-		public void onMessage(String message) {
-			SEPALogger.log(VERBOSITY.DEBUG, tag, message);
-			if (handler == null) {
-				SEPALogger.log(VERBOSITY.WARNING, tag, "Notification handler is NULL");
-				return;
-			}
-      	  	
-			JsonObject notify = new JsonParser().parse(message).getAsJsonObject();
-				
-      	  	//Ping
-      	  	if(notify.get("ping") != null) {
-      	  		handler.ping();
-      	  		
-      	  		watchDog.ping();
-      	  		return;
-      	  	}
-			 
-      	  	//Subscribe confirmed
-      	  	if (notify.get("subscribed") != null) {
-      	  		handler.subscribeConfirmed(notify.get("subscribed").getAsString());
-      	  		
-      	  		if (!watchDog.isAlive()) watchDog.start();
-      	  		watchDog.subscribed();
-      	  		return;
-      	  	}
-      	  	
-      	  	//Unsubscribe confirmed
-      	  	if (notify.get("unsubscribed") != null) {
-      	  		handler.unsubscribeConfirmed(notify.get("unsubscribed").getAsString());
-      	  		wsClient.close();
-      	  		
-      	  		watchDog.unsubscribed();
-      	  		return;
-      	  	}
-      	  	
-      	  	//Notification
-      	  	if (notify.get("notification") != null) {
-      		  handler.semanticEvent(new Notification(notify));
-      	  }	
-		}
-		
+		return null;
 	}
 	
 	public boolean subscribe(String sparql,NotificationHandler handler) {
-		this.handler = handler;
-		this.sparql = sparql;
-		return wsClient.subscribe(sparql);
+		return wsClient.subscribe(sparql,handler);
 	}
 
 	public boolean unsubscribe(String subID) {
@@ -364,7 +138,7 @@ public class SecureEventProtocol {
 			SEPALogger.log(VERBOSITY.ERROR, tag, e.getMessage());
 			
 			JsonObject json = new JsonObject();
-			json.add("status", new JsonPrimitive(false));
+			json.add("code", new JsonPrimitive(500));
         	json.add("body", new JsonPrimitive(e.getMessage()));
         	return json.toString();
 		}
@@ -374,26 +148,14 @@ public class SecureEventProtocol {
 	        
 	        @Override
 	        public String handleResponse(final HttpResponse response) throws ClientProtocolException, IOException {
-	            int status = response.getStatusLine().getStatusCode();
+	            
+	        	int code = response.getStatusLine().getStatusCode();
+	        	String body = EntityUtils.toString(response.getEntity());
+	        	
 	            JsonObject json = new JsonObject();
-	            if (status >= 200 && status < 300) 
-	            {
-	                HttpEntity entity = response.getEntity();
-	                if (entity != null) {
-	                	json.add("status", new JsonPrimitive(true));
-	                	json.add("body", new JsonPrimitive(EntityUtils.toString(entity)));
-	                }
-	                else {
-	                	json.add("status", new JsonPrimitive(false));
-	                	json.add("body", new JsonPrimitive("Http response entity is null. Response status: "+status));
-	                }
-	            } 
-	            else 
-	            {
-	            	SEPALogger.log(VERBOSITY.ERROR, tag, "Unexpected response status: " + status);
-	            	json.add("status", new JsonPrimitive(false));
-                	json.add("body", new JsonPrimitive("Http response entity is null. Response status: "+status));
-	            }
+	            json.add("code", new JsonPrimitive(code));
+            	json.add("body", new JsonPrimitive(body));
+	            
 	            return json.toString();
 	        }
 		};
@@ -413,7 +175,7 @@ public class SecureEventProtocol {
 	    	SEPALogger.log(VERBOSITY.ERROR, tag, e.getMessage());
 	    	
 	    	JsonObject json = new JsonObject();
-			json.add("status", new JsonPrimitive(false));
+			json.add("code", new JsonPrimitive(500));
         	json.add("body", new JsonPrimitive(e.getMessage()));
         	return json.toString();	      	
 	    } 

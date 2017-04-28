@@ -17,7 +17,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package arces.unibo.SEPA.commons.response;
 
-import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 
 import arces.unibo.SEPA.commons.response.Response;
@@ -32,10 +31,10 @@ import arces.unibo.SEPA.commons.response.Response;
 
 public class UpdateResponse extends Response {
 
-	public UpdateResponse(Integer token, String message) {
+	public UpdateResponse(Integer token, String body) {
 		super(token);
-		JsonObject obj = new JsonObject();
-		obj.add("message",new JsonPrimitive(message));
-		json.add("updated", obj);
+		
+		json.add("body", new JsonPrimitive(body));
+		json.add("code", new JsonPrimitive(200));
 	}
 }

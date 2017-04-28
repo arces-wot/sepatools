@@ -18,10 +18,12 @@
 package arces.unibo.SEPA.server;
 
 import java.util.HashMap;
-import java.util.Properties;
+
 import java.util.concurrent.ConcurrentLinkedQueue;
+
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+
 import arces.unibo.SEPA.commons.request.QueryRequest;
 import arces.unibo.SEPA.commons.request.Request;
 import arces.unibo.SEPA.commons.request.SubscribeRequest;
@@ -65,7 +67,7 @@ public class RequestResponseHandler {
 	//Subscribers
 	private HashMap<String,ResponseAndNotificationListener> subscribers = new HashMap<String,ResponseAndNotificationListener>();
 	
-	public RequestResponseHandler(Properties properties){
+	public RequestResponseHandler(EngineProperties properties){
 		if (properties == null) logger.error("Properties are null");
 	}
 	

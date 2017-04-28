@@ -22,9 +22,10 @@ import java.io.OutputStream;
 
 import java.net.InetSocketAddress;
 
-import java.util.Properties;
-
 import org.apache.commons.io.IOUtils;
+
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 import com.sun.net.httpserver.*;
 
@@ -49,7 +50,7 @@ import arces.unibo.SEPA.server.RequestResponseHandler.ResponseAndNotificationLis
 public class HTTPGate extends Thread implements HTTPGateMBean {
 	
 	protected static HttpServer server = null;
-	protected Logger logger = LogManager.getLogger("HttpGate");	
+	protected Logger logger = LogManager.getLogger("HTTP Gate");	
 	protected static String mBeanName = "arces.unibo.SEPA.server:type=HTTPGate";
 	
 	private static int port = 8000; 
@@ -60,11 +61,11 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 	private long updateTransactions  = 0;
 	private long queryTransactions  = 0;
 	
-	public HTTPGate(Properties properties,Scheduler scheduler) {
+	public HTTPGate(EngineProperties properties,Scheduler scheduler) {
 		if (properties == null) logger.error("Properties are null");
 		else {
-			timeout = Integer.parseInt(properties.getProperty("httpTimeout", "2000"));
-			port = Integer.parseInt(properties.getProperty("httpPort", "8000"));
+			timeout = properties.getHttpTimeout();
+			port = properties.getHttpPort();
 		}
 			
 		this.scheduler = scheduler;
@@ -75,6 +76,7 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 
 	@Override
 	public void run() {
+		
 		try {
 			server.wait();
 		} catch (InterruptedException e) {
@@ -86,7 +88,7 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 	@Override
 	public void start(){	
 		this.setName("SEPA HTTP Gate");
-	   
+		   
 		try 
 		{
 			server = HttpServer.create(new InetSocketAddress(port), 0);
@@ -94,12 +96,13 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 		catch (IOException e) {
 			e.printStackTrace();
 			logger.fatal(e.getMessage());
-			return;
+			System.exit(1);
 		}
 		
 	    server.createContext("/sparql", new SPARQLHandler());
 	    server.createContext("/echo", new EchoHandler()); 
 	    server.setExecutor(null);
+	    
 	    server.start();
 	    
 	    logger.info("Started on port "+port);
@@ -115,6 +118,7 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 	private void echoRequest(HttpExchange exchange) {
 		String response = 	"METHOD: " + exchange.getRequestMethod().toUpperCase() + "\n";
 		response += 	  	"PROTOCOL: " + exchange.getProtocol() + "\n";
+		
 		String headerString = "";
 		for (String header : exchange.getRequestHeaders().keySet()) {
 			headerString += " " + header + ":" + exchange.getRequestHeaders().get(header).toString() +"\n";
@@ -155,6 +159,15 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 		response += 		"CONTEXT PATH: " + exchange.getHttpContext().getPath() + "\n";
 		response += 		"QUERY: " + exchange.getRequestURI().getQuery();
 		
+		sendResponse(exchange,httpResponseCode,response);
+	}
+	
+	protected void sendResponse(HttpExchange exchange,int httpResponseCode,String response){
+		//TODO: CORS to be checked
+		exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
+		exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "GET,POST,DELETE,PUT");
+		exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "X-Requested-With,Content-Type,Origin,Accept");
+		
 		try {
 			exchange.sendResponseHeaders(httpResponseCode, response.length());
 			OutputStream os = exchange.getResponseBody();
@@ -162,7 +175,7 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 			os.close();
 		} catch (IOException e) {
 			logger.error("Error on sending HTTP response "+e.getMessage());
-		}
+		}	
 	}
 	
 	public class EchoHandler implements HttpHandler {
@@ -187,7 +200,7 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 			case "GET":
 				logger.debug("HTTP GET");
 				if (httpExchange.getRequestURI().getQuery()== null) {
-					failureResponse(httpExchange,500,"query is null");
+					failureResponse(httpExchange,400,"query is null");
 					return null;	
 				}
 				String[] query = httpExchange.getRequestURI().getQuery().split("&");
@@ -203,14 +216,7 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 			
 			case "POST":
 				logger.debug("HTTP POST");
-				
-				//TODO: to be checked
-				Headers out_headers = httpExchange.getResponseHeaders();
-				out_headers.add("Access-Control-Allow-Origin", "*");
-				out_headers.add("Access-Control-Allow-Methods", "GET,POST,DELETE,PUT");
-				out_headers.add("Access-Control-Allow-Headers", "X-Requested-With,Content-Type,Origin,Accept");
-				//out_headers.add("Content-Type", "application/json");
-				
+
 				String sparql = null;
 				try {
 					sparql = IOUtils.toString(httpExchange.getRequestBody(),"UTF-8");
@@ -243,47 +249,22 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 				return null;
 				
 			case "OPTIONS":
-				
 				// Debug print
 				logger.debug("HTTP OPTIONS");
 				
-				//TODO: to be checked
-				out_headers = httpExchange.getResponseHeaders();
-				out_headers.add("Access-Control-Allow-Origin", "*");
-				out_headers.add("Access-Control-Allow-Methods", "GET,POST,DELETE,PUT");
-				out_headers.add("Access-Control-Allow-Headers", "X-Requested-With,Content-Type,Origin,Accept");
-							
-				/*
-				// read request headers and build response headers
-				Headers out_headers = httpExchange.getResponseHeaders();
-				Headers in_headers = httpExchange.getRequestHeaders();
-			    
-				if (in_headers.containsKey("origin")){
-					logger.info("Received origin: " + in_headers.get("origin"));
-					String origin = in_headers.get("origin").get(0).toString();
-					out_headers.add("Access-Control-Allow-Origin", "*");								
-				}
-				if (in_headers.containsKey("Access-Control-Request-Method")){
-					logger.info("Access-Control-Request-Method: " + in_headers.get("Access-Control-Request-Method"));
-					String acrm = in_headers.get("Access-Control-Request-Method").get(0).toString();					
-					out_headers.add("Access-Control-Allow-Methods", acrm);								
-				}
-				if (in_headers.containsKey("Access-Control-Request-Headers")){
-					logger.info("Access-Control-Request-Headers: " + in_headers.get("Access-Control-Request-Headers"));   
-					String acrh = in_headers.get("Access-Control-Request-Headers").get(0).toString();
-					out_headers.add("Access-Control-Allow-Headers", acrh);								
-				}	
-			    */
-				
 			    // ok, we are ready to send the response.
 			    try {
+			    	//TODO: CORS to be checked
+					httpExchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
+					httpExchange.getResponseHeaders().add("Access-Control-Allow-Methods", "GET,POST,DELETE,PUT");
+					httpExchange.getResponseHeaders().add("Access-Control-Allow-Headers", "X-Requested-With,Content-Type,Origin,Accept");
+					
 			    	httpExchange.sendResponseHeaders(200, 0);
 			    	OutputStream os = httpExchange.getResponseBody();			    
 				    os.write(0);
 				    os.close();
 			    } catch (IOException e) {
-			    	// TODO Auto-generated catch block
-			    	e.printStackTrace();
+			    	logger.error(e.getMessage());
 			    }			    
 
 				return null;
@@ -344,39 +325,18 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 				logger.trace("Request validated in " + (startTime-validatedTime) + " and processed in " + (validatedTime-processedTime) + " ns");
 				
 				//Send HTTP response
-				sendResponse(request.getToken());
+				if (response == null) sendResponse(httpExchange,408,"Timeout");
+				else {
+					// Check response status
+					JsonObject json = new JsonParser().parse(response.toString()).getAsJsonObject();
+					
+					//Query or update response
+					sendResponse(httpExchange,json.get("code").getAsInt(),json.get("body").toString());
+				}
 				
 				scheduler.releaseToken(request.getToken()); 
 			}
 			
-			private void sendResponse(Integer token) {
-				// Check response status
-				 
-				try 
-				{
-					if (response == null) {
-						String error = "Timeout";
-						httpExchange.sendResponseHeaders(408, error.length());
-						OutputStream os = httpExchange.getResponseBody();
-						os.write(error.getBytes());
-						os.close();
-					}
-					else {
-						byte[] responseBody = response.toString().getBytes();
-						logger.debug("Send HTTP response of "+responseBody.length+ " bytes");
-						httpExchange.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
-						httpExchange.sendResponseHeaders(200, responseBody.length);
-						OutputStream os = httpExchange.getResponseBody();
-						os.write(responseBody);
-						os.close();
-					}
-					logger.info("<< HTTP response");
-				} 
-				catch (IOException e) {
-					logger.fatal("Send HTTP Response failed ");
-				}	
-			}
-
 			@Override
 			public void notify(Response response) {
 				logger.info("Response #"+response.getToken());

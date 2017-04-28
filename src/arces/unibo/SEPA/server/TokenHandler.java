@@ -17,7 +17,6 @@
 
 package arces.unibo.SEPA.server;
 
-import java.util.Properties;
 import java.util.Vector;
 
 import org.apache.logging.log4j.Logger;
@@ -39,29 +38,25 @@ public class TokenHandler implements TokenHandlerMBean {
 	private static final Logger logger = LogManager.getLogger("TokenHandler");
 	protected static String mBeanName = "arces.unibo.SEPA.server:type=TokenHandler";
 	
-	private long timeout;	
-	private long maxTokens;
+	//private long timeout;	
+	//private long maxTokens;
+	private EngineProperties properties;
 	private Vector<Integer> jar=new Vector<Integer>();
 	
-	public TokenHandler(Properties properties)  {
-		if (properties == null) logger.error("Properties are null");
-		else {
-			this.timeout = Integer.parseInt(properties.getProperty("tokenTimeout", "0"));
-			this.maxTokens = Integer.parseInt(properties.getProperty("maxTokens", "1000"));
-		}
-		for (int i=0; i < maxTokens; i++) jar.addElement(i);
+	public TokenHandler(EngineProperties properties)  {
+		for (int i=0; i < properties.getMaxTokens(); i++) jar.addElement(i);
 		
 		SEPABeans.registerMBean(this,mBeanName);
 	}
 	
 	@Override
 	public void setTimeout(long timeout) {
-		this.timeout = timeout;
+		properties.setTokenTimeout(timeout);
 	}
 	
 	@Override
 	public long getTimeout() {
-		return timeout;
+		return properties.getTokenTimeout();
 	}
 	
 	/**
@@ -84,7 +79,7 @@ public class TokenHandler implements TokenHandlerMBean {
 			if (jar.size() == 0){
 				logger.warn("No token available...wait...");
 				try {
-					jar.wait(timeout);
+					jar.wait(properties.getTokenTimeout());
 				} catch (InterruptedException e) {
 					logger.debug(e.getMessage());
 					e.printStackTrace();
@@ -131,7 +126,7 @@ public class TokenHandler implements TokenHandlerMBean {
 
 	@Override
 	public long getMaxTokens() {
-		return this.maxTokens;
+		return properties.getMaxTokens();
 	}
 
 }

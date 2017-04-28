@@ -27,7 +27,7 @@ import arces.unibo.SEPA.commons.response.ErrorResponse;
 import arces.unibo.SEPA.commons.response.Notification;
 import arces.unibo.SEPA.commons.response.QueryResponse;
 import arces.unibo.SEPA.commons.response.Response;
-import arces.unibo.SEPA.commons.response.SubscriptionProcessingResult;
+
 import arces.unibo.SEPA.server.Endpoint;
 
 public class SPUNaive extends SPU{
@@ -57,17 +57,18 @@ public class SPUNaive extends SPU{
 	}
 
 	@Override
-	public SubscriptionProcessingResult process(SubscriptionProcessingInputData update) {
-		Notification notification = null;
-		
+	public Notification process(SubscriptionProcessingInputData update) {
+				
 		logger.debug( getUUID() + " Start processing");
 		
-		//Query the endpoint
+		//Query the SPARQL processing service
 		Response ret = subscription.queryProcessor.process(subscription.subscribe);
 		
-		if (ret.getClass().equals(ErrorResponse.class)) {				
-			return new SubscriptionProcessingResult(getUUID(),notification);	
+		if (ret.getClass().equals(ErrorResponse.class)) {
+			logger.error(ret.toString());
+			return new Notification(getUUID(),null,0);	
 		}
+		
 		QueryResponse currentResults = (QueryResponse) ret;
 		
 		//Current and previous bindings
@@ -88,21 +89,21 @@ public class SPUNaive extends SPU{
 		for(Bindings solution : currentBindings.getBindings()) {
 			if(!lastBindings.contains(solution) && !solution.isEmpty()) added.add(solution);	
 		}
-			
-		//Send notification
+		
+		//Update the last bindings with the current ones
+		lastBindings = new BindingsResults(newBindings);
+				
+		//Send notification (or endprocessing indication)
+		Notification notification = null;
 		if (!added.isEmpty() || !removed.isEmpty()){
 			ARBindingsResults bindings =  new ARBindingsResults(added,removed);
 			notification = new Notification(getUUID(),bindings,sequence++);
 		}
-		
-		//Update the last bindings with the current ones
-		lastBindings = new BindingsResults(newBindings);
-		
-		SubscriptionProcessingResult res = new SubscriptionProcessingResult(getUUID(),notification);
+		else notification = new Notification(getUUID(),null,0);
 		
 		logger.debug( getUUID() + " End processing");
 		
-		return res;	
+		return notification;	
 	}
 
 }

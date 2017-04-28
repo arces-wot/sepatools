@@ -26,7 +26,7 @@ import arces.unibo.SEPA.commons.response.Response;
  *
  * The JSON serialization is the following:
  *
- * {"subscribed" : "SPUID"}}
+ * {"subscribed" : "SPUID"}
  *
  * @author Luca Roffia (luca.roffia@unibo.it)
  * @version 0.1

@@ -18,8 +18,6 @@
 package arces.unibo.SEPA.security;
 
 import java.io.IOException;
-import java.util.Properties;
-
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -35,6 +33,7 @@ import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
 
+import arces.unibo.SEPA.server.EngineProperties;
 import arces.unibo.SEPA.server.Scheduler;
 import arces.unibo.SEPA.server.WSGate;
 
@@ -49,7 +48,7 @@ public class WSSGate extends WSGate {
 	//Authorization manager
 	private static AuthorizationManager am = new AuthorizationManager();
 		
-	public WSSGate(Properties properties, Scheduler scheduler)  {
+	public WSSGate(EngineProperties properties, Scheduler scheduler)  {
 		super(properties, scheduler);
 		
 		if (scheduler == null) logger.error("Scheduler is null");
@@ -57,11 +56,8 @@ public class WSSGate extends WSGate {
 		
 		if (properties == null) logger.error("Properties are null");
 		else {
-			wssPort = Integer.parseInt(properties.getProperty("wssPort", "9443"));
+			wssPort = properties.getWssPort();
 		}
-		
-		// register the application
-        WebSocketEngine.getEngine().register("", "/sparql", this);
         
         logger.debug("Created");
 	}
@@ -79,8 +75,8 @@ public class WSSGate extends WSGate {
         try {
         	secureServer.start();
 		} catch (IOException e) {
-			logger.error("Failed to start Secure WebSocket gate on port "+wssPort+ " "+e.getMessage());
-			return false;
+			logger.fatal("Failed to start Secure WebSocket gate on port "+wssPort+ " "+e.getMessage());
+			System.exit(1);
 		}
 		
 		logger.info("Started on port "+wssPort);
@@ -134,6 +130,7 @@ public class WSSGate extends WSGate {
 		if (req.get("authorization") == null) return false;
 		
 		//Token validation
-		 return am.validateToken(req.get("authorization").getAsString());
+		
+		 return am.validateToken(req.get("authorization").getAsString()).get("valid").getAsBoolean();
 	}
 }

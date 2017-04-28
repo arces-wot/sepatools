@@ -19,13 +19,15 @@ package arces.unibo.SEPA.server;
 
 import java.util.Observable;
 import java.util.Observer;
-import java.util.Properties;
+
 import javax.management.InstanceAlreadyExistsException;
 import javax.management.MBeanRegistrationException;
 import javax.management.MalformedObjectNameException;
 import javax.management.NotCompliantMBeanException;
+
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+
 import arces.unibo.SEPA.commons.request.QueryRequest;
 import arces.unibo.SEPA.commons.request.Request;
 import arces.unibo.SEPA.commons.request.SubscribeRequest;
@@ -61,7 +63,7 @@ public class Scheduler extends Thread implements Observer {
 		
 	private boolean running = true;
 	
-	public Scheduler(Properties properties,Processor processor) throws MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException {
+	public Scheduler(EngineProperties properties,Processor processor) throws MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException {
 		requestHandler = new RequestResponseHandler(properties);
 		tokenHandler = new TokenHandler(properties);
 		
@@ -160,38 +162,44 @@ public class Scheduler extends Thread implements Observer {
 
 	@Override
 	public void update(Observable o, Object arg) {
+		//Notification
 		if (arg.getClass().equals(Notification.class)) {
 			Notification notify = (Notification) arg;
 			requestHandler.addNotification(notify);
 			logger.debug("<< "+notify.toString());
 		}
+		//Query response
 		else if (arg.getClass().equals(QueryResponse.class)) {
 			QueryResponse response = (QueryResponse) arg;
 			requestHandler.addResponse(response);
 			logger.debug("<< "+response.toString());
 		}
+		//Update response
 		else if (arg.getClass().equals(UpdateResponse.class)) {
 			UpdateResponse response = (UpdateResponse) arg;
 			requestHandler.addResponse(response);
 			logger.debug("<< "+response.toString());
 		}
+		//Subscribe response
 		else if (arg.getClass().equals(SubscribeResponse.class)) {
 			SubscribeResponse response = (SubscribeResponse) arg;
 			requestHandler.addResponse(response);
 			logger.debug("<< "+response.toString());
 		}
+		//Unsubscribe response
 		else if (arg.getClass().equals(UnsubscribeResponse.class)) {
 			UnsubscribeResponse response = (UnsubscribeResponse) arg;
 			requestHandler.addResponse(response);
 			logger.debug("<< "+response.toString());
 		}
+		//Error response
 		else if (arg.getClass().equals(ErrorResponse.class)) {
 			ErrorResponse response = (ErrorResponse) arg;
 			requestHandler.addResponse(response);
-			logger.warn("<< "+response.toString());
+			logger.error("<< "+response.toString());
 		}
 		else {
-			logger.warn("<< Unsupported response: "+arg.toString());
+			logger.warn("<< Unknown response: "+arg.toString());
 		}
 	}
 

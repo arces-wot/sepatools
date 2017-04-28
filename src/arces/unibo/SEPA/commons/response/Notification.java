@@ -27,7 +27,11 @@ import arces.unibo.SEPA.commons.SPARQL.ARBindingsResults;
  *
  * The JSON serialization looks like:
  *
- * {"notification" : "SPUID" , "sequence" : "SEQUENTIAL NUMBER", "results" : <JSON Notification Results>}
+ * {
+ * 		"spuid" : "SPUID" , 
+ * 		"sequence" : "SEQUENTIAL NUMBER", 
+ * 		"results" : <JSON Notification Results>
+ * }
  * 
 * @author Luca Roffia (luca.roffia@unibo.it)
 * @version 0.1
@@ -36,21 +40,21 @@ import arces.unibo.SEPA.commons.SPARQL.ARBindingsResults;
 public class Notification extends Response {
 
 	public Notification(String spuid,ARBindingsResults results,Integer sequence) {
-		super(0);
+		super();
 
-		json.add("results",results.toJson());
+		if (results != null) json.add("results",results.toJson());
 		json.add("sequence", new JsonPrimitive(sequence));
-		json.add("notification",new JsonPrimitive(spuid));
+		json.add("spuid",new JsonPrimitive(spuid));
 	}
 	
 	public Notification(JsonObject notify) {
-		super(0);
+		super();
 
 		json = notify;
 	}
 	
 	public String getSPUID() {
-		return json.get("notification").getAsString();
+		return json.get("spuid").getAsString();
 	}
 	
 	public String toString() {
@@ -63,5 +67,9 @@ public class Notification extends Response {
 
 	public Integer getSequence() {
 		return json.get("sequence").getAsInt();
+	}
+
+	public boolean toBeNotified() {
+		return json.get("results") != null;
 	}
 }

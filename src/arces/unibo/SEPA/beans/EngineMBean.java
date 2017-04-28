@@ -1,10 +1,10 @@
 package arces.unibo.SEPA.beans;
 
 import java.util.Date;
-import java.util.Properties;
+import arces.unibo.SEPA.server.EngineProperties;
 
 public interface EngineMBean {
 	
-	public Properties getProperties();
+	public EngineProperties getProperties();
 	public Date getStartDate();
 }

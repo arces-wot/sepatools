@@ -24,7 +24,7 @@ import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 import arces.unibo.SEPA.commons.request.SubscribeRequest;
 import arces.unibo.SEPA.commons.request.UnsubscribeRequest;
-import arces.unibo.SEPA.commons.response.SubscriptionProcessingResult;
+import arces.unibo.SEPA.commons.response.Notification;
 import arces.unibo.SEPA.commons.response.UpdateResponse;
 import arces.unibo.SEPA.server.Endpoint;
 
@@ -98,7 +98,7 @@ public class SPUManager extends Observable implements Observer{
 		}
 	}
 	
-	private synchronized void subscriptionProcessingEnded(){
+	private synchronized void subscriptionProcessingEnded(String spuid){
 		subscriptionsChecked++;
 		notifyAll();
 		logger.debug(  "SPU processing ended #"+subscriptionsChecked);
@@ -106,19 +106,19 @@ public class SPUManager extends Observable implements Observer{
 
 	@Override
 	public void update(Observable o, Object arg) {
-		if (arg.getClass().equals(SubscriptionProcessingResult.class)){
-			SubscriptionProcessingResult ret = (SubscriptionProcessingResult) arg;
+		if (arg.getClass().equals(Notification.class)){
+			Notification ret = (Notification) arg;
 			
 			//SPU processing ended
 			logger.debug( "SPU "+ret.getSPUID()+" proccesing ended");
-			subscriptionProcessingEnded();
+			subscriptionProcessingEnded(ret.getSPUID());
 						
 			//Send notification if required
 			if (!ret.toBeNotified()) return;
 			else {
 				logger.debug( "Notify observers");
 				setChanged();
-				notifyObservers(ret.getNotification());
+				notifyObservers(ret);
 			}
 		}
 		else {

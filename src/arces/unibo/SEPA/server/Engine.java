@@ -16,13 +16,7 @@
 */
 package arces.unibo.SEPA.server;
 
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-
 import java.util.Date;
-import java.util.Properties;
 
 import javax.management.InstanceAlreadyExistsException;
 import javax.management.MBeanRegistrationException;
@@ -30,13 +24,12 @@ import javax.management.MalformedObjectNameException;
 import javax.management.NotCompliantMBeanException;
 
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import arces.unibo.SEPA.beans.EngineMBean;
 import arces.unibo.SEPA.beans.SEPABeans;
 import arces.unibo.SEPA.security.HTTPSGate;
 import arces.unibo.SEPA.security.WSSGate;
-
-import org.apache.logging.log4j.LogManager;
 
 /**
  * This class represents the SPARQL Subscription (SUB) Engine of the Semantic Event Processing Architecture (SEPA)
@@ -48,9 +41,8 @@ import org.apache.logging.log4j.LogManager;
 public class Engine extends Thread implements EngineMBean {
 
 	//Properties and logging
-	private final String defaultPropertiesFile = "defaults.properties";
-	private final String propertiesFile = "engine.properties";
-	private Properties properties = new Properties();
+	private EngineProperties engineProperties = new EngineProperties("engine.properties");
+	private SPARQLEndpointProperties endpointProperties = new SPARQLEndpointProperties("endpoint.properties");
 	private final Date startDate = new Date(); 
 	private static final Logger logger = LogManager.getLogger("Engine");
 	protected static String mBeanName = "arces.unibo.SEPA.server:type=Engine";
@@ -71,7 +63,7 @@ public class Engine extends Thread implements EngineMBean {
 	
 	public static void main(String[] args) throws MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException {
 		System.out.println("##########################################################################################");
-		System.out.println("# SEPA Engine Ver 0.1  Copyright (C) 2016-2017                                           #");
+		System.out.println("# SEPA Engine Ver 0.3  Copyright (C) 2016-2017                                           #");
 		System.out.println("# University of Bologna (Italy)                                                          #");
 		System.out.println("# Contact: luca.roffia@unibo.it                                                          #");
 		System.out.println("# This program comes with ABSOLUTELY NO WARRANTY                                         #");                                    
@@ -101,7 +93,7 @@ public class Engine extends Thread implements EngineMBean {
 		}
 		else {
 			logger.info("Failed to initialize the SUB Engine...exit...");
-			return;
+			System.exit(1);
 		}
 		
 		//Starting main engine thread
@@ -113,10 +105,12 @@ public class Engine extends Thread implements EngineMBean {
 		this.setName("SEPA Engine");
 		logger.info("SUB Engine starting...");	
 		
+		//Scheduler
+		scheduler.start();
+		
 		//Protocol handlers
 		httpGate.start();
 		websocketGate.start();
-		scheduler.start();
 		
 		//Secure protocol handlers
 		httpsGate.start();
@@ -126,80 +120,26 @@ public class Engine extends Thread implements EngineMBean {
 		logger.info("SUB Engine started");	
 	}
 	
-	public boolean init() throws MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException {
-		boolean defaultProperties = false;
-		if (!loadProperties(propertiesFile)) {
-			if (!loadProperties(defaultPropertiesFile)) defaultProperties = true;
-		}
+	public boolean init() throws MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException {		
+		processor = new Processor(endpointProperties);
+		scheduler = new Scheduler(engineProperties,processor);
 		
-		processor = new Processor(properties);
-		scheduler = new Scheduler(properties,processor);
-		
-		httpGate = new HTTPGate(properties,scheduler);
-		websocketGate = new WSGate(properties,scheduler);
+		//Not secure protocols
+		httpGate = new HTTPGate(engineProperties,scheduler);
+		websocketGate = new WSGate(engineProperties,scheduler);
 		
 		//Secure protocols
-		httpsGate = new HTTPSGate(properties,scheduler);
-		wssGate = new WSSGate(properties,scheduler);
-		
-		storeProperties(defaultProperties);
-		
+		httpsGate = new HTTPSGate(engineProperties,scheduler);
+		wssGate = new WSSGate(engineProperties,scheduler);
+			
 		return true;
 	}
 	
-	private boolean loadProperties(String fname){
-		FileInputStream in;
-		try {
-			in = new FileInputStream(fname);
-		} catch (FileNotFoundException e) {
-			logger.error("Error on opening properties file: "+fname);
-			return false;
-		}
-		try {
-			properties.load(in);
-		} catch (IOException e) {
-			logger.error("Error on loading properties file: "+fname);
-			return false;
-		}
-		try {
-			in.close();
-		} catch (IOException e) {
-			logger.error("Error on closing properties file: "+fname);
-			return false;
-		}
-		
-		return true;	
-	}
 	
-	private boolean storeProperties(boolean def) {
-		FileOutputStream out;
-		try {
-			out = new FileOutputStream(defaultPropertiesFile);
-		} catch (FileNotFoundException e) {
-			logger.error("Error on opening properties file: "+defaultPropertiesFile);
-			return false;
-		}
-		try {
-			if (def) properties.store(out, "---SUB Engine DEFAULT properties file ---");
-			else properties.store(out, "---SUB Engine properties file ---");
-		} catch (IOException e) {
-			logger.error("Error on storing properties file: "+defaultPropertiesFile);
-			return false;
-		}
-		try {
-			out.close();
-		} catch (IOException e) {
-			logger.error("Error on closing properties file: "+defaultPropertiesFile);
-			return false;
-		}
-		
-		return true;
-
-	}
 
 	@Override
-	public Properties getProperties() {
-		return this.properties;
+	public EngineProperties getProperties() {
+		return this.engineProperties;
 	}
 
 	@Override

@@ -23,8 +23,7 @@ import arces.unibo.SEPA.commons.SPARQL.Bindings;
 import arces.unibo.SEPA.commons.SPARQL.BindingsResults;
 import arces.unibo.SEPA.commons.SPARQL.RDFTermURI;
 import arces.unibo.SEPA.commons.response.Notification;
-import arces.unibo.SEPA.protocol.SecureEventProtocol.NotificationHandler;
-
+import arces.unibo.SEPA.protocol.NotificationHandler;
 
 public abstract class Consumer extends Client implements IConsumer,NotificationHandler {
 	protected String sparqlSubscribe = null;

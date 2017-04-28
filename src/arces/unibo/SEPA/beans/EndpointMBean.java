@@ -4,6 +4,7 @@ public interface EndpointMBean {
 
 	String getHost();
 	int getPort();
-	String getPath();
+	String getUpdatePath();
+	String getQueryPath();
 	
 }

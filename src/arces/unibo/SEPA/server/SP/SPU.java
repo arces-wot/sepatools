@@ -24,8 +24,8 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import arces.unibo.SEPA.commons.request.SubscribeRequest;
+import arces.unibo.SEPA.commons.response.Notification;
 import arces.unibo.SEPA.commons.response.SubscribeResponse;
-import arces.unibo.SEPA.commons.response.SubscriptionProcessingResult;
 import arces.unibo.SEPA.commons.response.UpdateResponse;
 import arces.unibo.SEPA.server.Endpoint;
 import arces.unibo.SEPA.server.QueryProcessor;
@@ -69,7 +69,7 @@ public abstract class SPU extends Observable implements Runnable {
 	
 	//To be implemented by specific implementations
 	public abstract void init();
-	public abstract SubscriptionProcessingResult process(SubscriptionProcessingInputData update);
+	public abstract Notification process(SubscriptionProcessingInputData update);
 	
 	public synchronized void subscriptionCheck(UpdateResponse res) {
 		subscription.update = res;
@@ -108,7 +108,7 @@ public abstract class SPU extends Observable implements Runnable {
 			if (update == null && !running) return;
 			
 			//Processing
-			SubscriptionProcessingResult result = process(update);
+			Notification result = process(update);
 			
 			//Results notification
 			setChanged();

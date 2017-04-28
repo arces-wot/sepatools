@@ -29,16 +29,55 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package arces.unibo.SEPA.commons.response;
 
-import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 
-public class ErrorResponse extends Response {
+/**
+ * This class represents a generic error. 
+ * 
+ * If applies, the use of HTTP status codes is suggested 
+ * (RFC 2616, https://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html)
+ *
+	400 Bad Request
+	401 Unauthorized
+	402 Payment Required
+	403 Forbidden
+	404 Not Found
+	405 Method Not Allowed
+	406 Not Acceptable
+	407 Proxy Authentication Required
+	408 Request Timeout
+	409 Conflict
+	410 Gone
+	411 Length Required
+	412 Precondition Failed
+	413 Request Entity Too Large
+	414 Request-URI Too Long
+	415 Unsupported Media Type
+	416 Requested Range Not Satisfiable
+	417 Expectation Failed
 
-	public ErrorResponse(Integer token,String message) {
+	500 Internal Server Error
+	501 Not Implemented
+	502 Bad Gateway
+	503 Service Unavailable
+	504 Gateway Timeout
+	505 HTTP Version Not Supported
+
+ * The JSON serialization looks like:
+ *
+ * {
+ * 		"body" : "Internal Server Error: SPARQL endpoint not found" , 
+ * 		"code" : 500
+ * }
+ * 
+* @author Luca Roffia (luca.roffia@unibo.it)
+* @version 0.1
+* */
+public class ErrorResponse extends Response {	
+	public ErrorResponse(Integer token,String message,int code) {
 		super(token);
 
-		JsonObject obj = new JsonObject();
-		obj.add("message", new JsonPrimitive(message));
-		json.add("error", obj);
+		json.add("body", new JsonPrimitive(message));
+		json.add("code", new JsonPrimitive(code));
 	}
 }

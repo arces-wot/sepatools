@@ -1592,9 +1592,12 @@ public class Dashboard {
 				BindingsResults ret = kp.query(prefixes+query, forced);
 				long stop = System.currentTimeMillis();
 				
-				bindingsDM.clear();
-				bindingsDM.setAddedResults(ret);
-				lblInfo.setText(ret.size()+" bindings results in "+(stop-start)+" ms");
+				if (ret != null) {
+					bindingsDM.clear();
+					bindingsDM.setAddedResults(ret);
+					lblInfo.setText(ret.size()+" bindings results in "+(stop-start)+" ms");
+				}
+				else lblInfo.setText("Query failed");
 				
 			}
 		});

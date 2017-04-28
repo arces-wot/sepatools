@@ -30,17 +30,17 @@ import com.google.gson.JsonObject;
 public abstract class Response {
 	protected JsonObject json;
 	private Integer token = 0;
-	
-	public Response(Integer token,JsonObject body) {
-		this.token = token;
-		json = body;
-	}
 
 	public Response(Integer token) {
 		this.token = token;
 		json = new JsonObject();
 	}
 
+	public Response() {
+		this.token = 0;
+		json = new JsonObject();
+	}
+	
 	public String toString() {
 		return json.toString();
 	}
@@ -49,7 +49,7 @@ public abstract class Response {
 		return token;
 	}
 	
-	public JsonObject toJson(){
+	public JsonObject getAsJsonObject(){
 		return json;
 	}
 	

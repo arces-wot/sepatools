@@ -20,7 +20,6 @@ package arces.unibo.SEPA.commons.response;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 
 /**
@@ -34,23 +33,11 @@ import com.google.gson.JsonPrimitive;
  * @version 0.1
  * */
 
-public class Ping {
-	protected JsonObject json;
+public class Ping extends Response {
 	
 	public Ping() {
-		Date date = new Date();
-		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
-		String timestamp = sdf.format(date);
-
-		json = new JsonObject();
-		json.add("ping", new JsonPrimitive(timestamp) );
-	}
-	
-	public String toString() {
-		return json.toString();
-	}
-	
-	public JsonObject toJson(){
-		return json;
+		super(0);
+		
+		json.add("ping", new JsonPrimitive(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(new Date())) );
 	}
 }

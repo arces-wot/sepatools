@@ -24,10 +24,9 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
 
-import java.util.Properties;
-
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
+import org.apache.http.ParseException;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.ResponseHandler;
 import org.apache.http.client.methods.HttpGet;
@@ -53,6 +52,8 @@ import arces.unibo.SEPA.commons.response.QueryResponse;
 import arces.unibo.SEPA.commons.response.Response;
 import arces.unibo.SEPA.commons.request.UpdateRequest;
 import arces.unibo.SEPA.commons.response.UpdateResponse;
+import arces.unibo.SEPA.server.SPARQLEndpointProperties.HTTPMethod;
+import arces.unibo.SEPA.server.SPARQLEndpointProperties.ResultsFormat;
 
 /**
  * This class implements the SPARQL 1.1 protocol interface
@@ -63,201 +64,119 @@ import arces.unibo.SEPA.commons.response.UpdateResponse;
 * */
 
 public class Endpoint implements EndpointMBean {
-	
-	private enum HTTPMethod {GET,POST,URL_ENCODED_POST};
-	private enum ResultsFormat {JSON,XML,CSV};
-	private enum SPARQLOperation {QUERY,UPDATE};
-	
+		
 	private static final Logger logger = LogManager.getLogger("Endpoint");
 	protected static String mBeanName = "arces.unibo.SEPA.server:type=Endpoint";
 	
-	public class SPARQLEndpointProperties {
-		private String scheme;
-		private String host;
-		private int port;
-		private String path;
-		private HTTPMethod queryMethod;
-		private HTTPMethod updateMethod;
-		private ResultsFormat resultsFormat;
-			
-		public String getHttpScheme() {
-			return scheme;
-		}
-		public void setHttpScheme(String endpointHttpScheme) {
-			this.scheme = endpointHttpScheme;
-		}
-		
-		public String getHost() {
-			return host;
-		}
-		public void setHost(String endpointHost) {
-			this.host = endpointHost;
-		}
-		
-		public int getPort() {
-			return port;
-		}
-		public void setPort(int endpointPort) {
-			this.port = endpointPort;
-		}
-		
-		public String getPath() {
-			return path;
-		}
-		
-		public void setPath(String endpointPath) {
-			this.path = endpointPath;
-		}
-		public HTTPMethod getQueryMethod() {
-			return queryMethod;
-		}
-		public void setQueryMethod(HTTPMethod endpointQueryMethod) {
-			this.queryMethod = endpointQueryMethod;
-		}
-		public ResultsFormat getQueryResultsFormat() {
-			return resultsFormat;
-		}
-		public void setQueryResultsFormat(ResultsFormat endpointQueryResultsFormat) {
-			this.resultsFormat = endpointQueryResultsFormat;
-		}
-		public void setUpdateMethod(HTTPMethod post) {
-			this.updateMethod = post;	
-		}
-		public HTTPMethod getUpdateMethod() {
-			return updateMethod;	
-		}
-	}
-	
-	private SPARQLEndpointProperties endpointProperties = new SPARQLEndpointProperties();
+	private SPARQLEndpointProperties endpointProperties;
+	private enum SPARQLOperation {QUERY,UPDATE};
 	
 	private static CloseableHttpClient httpclient = HttpClients.createDefault();
 	private static ResponseHandler<String> responseHandler;
 	
-	public Endpoint(Properties properties) {
+	public Endpoint(SPARQLEndpointProperties properties) {
 				
 		SEPABeans.registerMBean(this,mBeanName);
 		
-		if (properties == null) logger.error("Properties are null");
+		if (properties == null) {
+			logger.error("Properties are null");
+			System.exit(1);
+		}
 		else {
-			endpointProperties.setHttpScheme(properties.getProperty("endpointHttpScheme", "http"));
-			endpointProperties.setHost(properties.getProperty("endpointHost", "localhost"));
-			endpointProperties.setPort(Integer.parseInt(properties.getProperty("endpointPort", "9999")));
-			endpointProperties.setPath(properties.getProperty("endpointPath", "/bigdata/sparql"));
-			
-			switch (properties.getProperty("endpointQueryMethod", "GET")){
-				case "GET":
-					endpointProperties.setQueryMethod(HTTPMethod.GET);
-					break;
-				case "POST":
-					endpointProperties.setQueryMethod(HTTPMethod.POST);
-					break;
-				case "URL_ENCODED_POST":
-					endpointProperties.setQueryMethod(HTTPMethod.URL_ENCODED_POST);
-					break;
-			}
-			
-			switch (properties.getProperty("endpointUpdateMethod", "POST")){
-				case "POST":
-					endpointProperties.setUpdateMethod(HTTPMethod.POST);
-					break;
-				case "URL_ENCODED_POST":
-					endpointProperties.setUpdateMethod(HTTPMethod.URL_ENCODED_POST);
-					break;
-			}
-			
-			switch (properties.getProperty("endpointQueryResultsFormat", "JSON")){
-				case "XML":
-					endpointProperties.setQueryResultsFormat(ResultsFormat.XML);
-					break;
-				case "JSON":
-					endpointProperties.setQueryResultsFormat(ResultsFormat.JSON);
-					break;
-				case "CSV":
-					endpointProperties.setQueryResultsFormat(ResultsFormat.CSV);
-					break;
-			}
+			endpointProperties = properties;
 		}
 		
+		logger.info("**********************************");
 		logger.info("SPARQL endpoint service properties");
 		logger.info("Host:" + endpointProperties.getHost());
 		logger.info("Port:" + endpointProperties.getPort());
 		logger.info("Scheme:" + endpointProperties.getHttpScheme());
-		logger.info("Path:" + endpointProperties.getPath());
+		logger.info("Query Path:" + endpointProperties.getQueryPath());
+		logger.info("Update Path:" + endpointProperties.getQueryPath());
 		logger.info("Query method:" + endpointProperties.getQueryMethod());
 		logger.info("Update method:" + endpointProperties.getUpdateMethod());
 		logger.info("Query results format:" + endpointProperties.getQueryResultsFormat());
+		logger.info("**********************************");
 			
 		responseHandler = new ResponseHandler<String>() {
 	        @Override
-	        public String handleResponse(final HttpResponse response) throws ClientProtocolException, IOException {
-	            int status = response.getStatusLine().getStatusCode();
-	            JsonObject json = new JsonObject();
+	        public String handleResponse(final HttpResponse response) {
+	            /*SPARQL 1.1 Protocol (https://www.w3.org/TR/sparql11-protocol/)
+	        	
+	        	UPDATE
+	        	 2.2 update operation
+	        	 The response to an update request indicates success or failure of the request via HTTP response status code.
+	        	
+	        	QUERY
+	        	 2.1.5 Accepted Response Formats
+
+				Protocol clients should use HTTP content negotiation [RFC2616] to request response formats that the client can consume. See below for more on potential response formats.
+				
+				2.1.6 Success Responses
+				
+				The SPARQL Protocol uses the response status codes defined in HTTP to indicate the success or failure of an operation. Consult the HTTP specification [RFC2616] for detailed definitions of each status code. While a protocol service should use a 2XX HTTP response code for a successful query, it may choose instead to use a 3XX response code as per HTTP.
+				
+				The response body of a successful query operation with a 2XX response is either:
+				
+				a SPARQL Results Document in XML, JSON, or CSV/TSV format (for SPARQL Query forms SELECT and ASK); or,
+				an RDF graph [RDF-CONCEPTS] serialized, for example, in the RDF/XML syntax [RDF-XML], or an equivalent RDF graph serialization, for SPARQL Query forms DESCRIBE and CONSTRUCT).
+				The content type of the response to a successful query operation must be the media type defined for the format of the response body.
+				
+				2.1.7 Failure Responses
+				
+				The HTTP response codes applicable to an unsuccessful query operation include:
+				
+				400 if the SPARQL query supplied in the request is not a legal sequence of characters in the language defined by the SPARQL grammar; or,
+				500 if the service fails to execute the query. SPARQL Protocol services may also return a 500 response code if they refuse to execute a query. This response does not indicate whether the server may or may not process a subsequent, identical request or requests.
+				The response body of a failed query request is implementation defined. Implementations may use HTTP content negotiation to provide human-readable or machine-processable (or both) information about the failed query request.
+				
+				A protocol service may use other 4XX or 5XX HTTP response codes for other failure conditions, as per HTTP.
+	        	*/
+	        	int status = response.getStatusLine().getStatusCode();
 	            
-	            if (status >= 200 && status < 300) 
-	            {
-	                HttpEntity entity = response.getEntity();
-	                if (entity != null) {
-	                	json.add("status", new JsonPrimitive(true));
-	                	json.add("body", new JsonPrimitive(EntityUtils.toString(entity)));
-	                }
-	                else {
-	                	json.add("status", new JsonPrimitive(false));
-	                	json.add("body", new JsonPrimitive("Http response entity is null. Response status: "+status));
-	                }
-	            } 
-	            else 
-	            {
-	            	logger.error("Unexpected response status: " + status);
-	            	json.add("status", new JsonPrimitive(false));
-                	json.add("body", new JsonPrimitive("Http response entity is null. Response status: "+status));
-	            }
+	        	JsonObject json = new JsonObject();
+	            json.add("code", new JsonPrimitive(status));
+	            
+	        	String body = null;				
+	            try {
+					body = EntityUtils.toString(response.getEntity());
+				} catch (ParseException e) {
+					body = e.getMessage();
+				} catch (IOException e) {
+					body = e.getMessage();
+				}
+
+	            json.add("body",new JsonPrimitive(body));
+	            
 	            return json.toString();
 	        }
       };
 	}
 	
-	public UpdateResponse update(UpdateRequest req) {
-		String response = SPARQLProtocolOperation(req.getSPARQL(),SPARQLOperation.UPDATE,endpointProperties.getUpdateMethod(),endpointProperties.getQueryResultsFormat());
-		return new UpdateResponse(req.getToken(),response);
+	public Response update(UpdateRequest req) {
+		return SPARQLProtocolOperation(req.getToken(),req.getSPARQL(),SPARQLOperation.UPDATE,endpointProperties.getUpdateMethod(),endpointProperties.getQueryResultsFormat());
 	}
 
 	public Response query(QueryRequest req) {
-		switch(endpointProperties.getQueryResultsFormat()) {
-			case JSON:
-				String response = SPARQLProtocolOperation(req.getSPARQL(),SPARQLOperation.QUERY,endpointProperties.getQueryMethod(),endpointProperties.getQueryResultsFormat());
-				
-				JsonParser parser = new JsonParser();
-				JsonObject json = parser.parse(response).getAsJsonObject();
-			
-				if (!json.get("status").getAsBoolean()) return new ErrorResponse(req.getToken(),json.get("body").getAsString());
-				String ret = json.get("body").getAsString();
-				
-				return new QueryResponse(req.getToken(),new JsonParser().parse(ret).getAsJsonObject());
-			
-			default:
-				return new ErrorResponse(req.getToken(),"Usupported query result format");
-		}
-		
+		return SPARQLProtocolOperation(req.getToken(),req.getSPARQL(),SPARQLOperation.QUERY,endpointProperties.getQueryMethod(),endpointProperties.getQueryResultsFormat());	
 	}
 	
-	private String SPARQLProtocolOperation(String sparql,SPARQLOperation op,HTTPMethod method,ResultsFormat format) {
-		String responseBody = null;
+	private Response SPARQLProtocolOperation(int token,String sparql,SPARQLOperation op,HTTPMethod method,ResultsFormat format) {
+		String response = null;
 		URI uri;
 		HttpUriRequest httpRequest;
 		String query = null;
 		String contentType = null;
 		HttpEntity body = null;
 		
-		JsonObject json = new JsonObject();
+		if (!ResultsFormat.JSON.equals(format)) return new ErrorResponse(token,"Only JSON response format is implemented",501);
 		
 		if (method.equals(HTTPMethod.POST)) {
 			try {
 				body = new ByteArrayEntity(sparql.getBytes("UTF-8"));
 			} catch (UnsupportedEncodingException e) {
 				logger.error(e.getMessage());
-				json.add("status",new JsonPrimitive(false));
-				json.add("body", new JsonPrimitive(e.getMessage()));
-				return json.toString();
+				return new ErrorResponse(token,e.getMessage(),415);
 			}
 			if (op.equals(SPARQLOperation.QUERY)) {
 				contentType = "application/sparql-query";	
@@ -271,9 +190,8 @@ public class Endpoint implements EndpointMBean {
 			try {
 				encodedSparql = URLEncoder.encode(sparql, "UTF-8");
 			} catch (UnsupportedEncodingException e) {
-				json.add("status",new JsonPrimitive(false));
-				json.add("body", new JsonPrimitive(e.getMessage()));
-				return json.toString();
+				logger.error(e.getMessage());
+				return new ErrorResponse(token,e.getMessage(),415);
 			}
 			
 			if (op.equals(SPARQLOperation.QUERY)) {
@@ -285,50 +203,43 @@ public class Endpoint implements EndpointMBean {
 				body = new ByteArrayEntity(encodedSparql.getBytes("UTF-8"));
 			} catch (UnsupportedEncodingException e) {
 				logger.error(e.getMessage());
-				json.add("status",new JsonPrimitive(false));
-				json.add("body", new JsonPrimitive(e.getMessage()));
-				return json.toString();
+				return new ErrorResponse(token,e.getMessage(),415);
 			}
 		}
 		
 		if (method.equals(HTTPMethod.GET)){
 			if (!op.equals(SPARQLOperation.QUERY)) {
-				json.add("status",new JsonPrimitive(false));
-				json.add("body", new JsonPrimitive("GET method can be used only for query operation"));
-				return json.toString();
+				return new ErrorResponse(token,"GET method can be used only for query operation",400);
 			}
 			try {
 				query = "query="+URLEncoder.encode(sparql, "UTF-8");
 			} catch (UnsupportedEncodingException e) {
-				json.add("status",new JsonPrimitive(false));
-				json.add("body", new JsonPrimitive(e.getMessage()));
-				return json.toString();
+				logger.error(e.getMessage());
+				return new ErrorResponse(token,e.getMessage(),415);
 			}
 		}
+		
+		String path;
+		if (op.equals(SPARQLOperation.QUERY)) path = endpointProperties.getQueryPath();
+		else path = endpointProperties.getUpdatePath();
 		
 		try {
 			uri = new URI(endpointProperties.getHttpScheme(),
 					   null,
 					   endpointProperties.getHost(),
 					   endpointProperties.getPort(),
-					   endpointProperties.getPath(),
+					   path,
 					   query,
 					   null);
 		} catch (URISyntaxException e) {
 			logger.error("Error on creating request URI "+e.getMessage());
-			json.add("status",new JsonPrimitive(false));
-			json.add("body", new JsonPrimitive(e.getMessage()));
-			return json.toString();
+			return new ErrorResponse(token,e.getMessage(),414);
 		}
 		
 		//GET or POST
-		if (method.equals(HTTPMethod.GET)) {
-			httpRequest = new HttpGet(uri);	 	
-		}
-		else {
-			httpRequest = new HttpPost(uri);
-		}
-		
+		if (method.equals(HTTPMethod.GET))httpRequest = new HttpGet(uri);	 	
+		else httpRequest = new HttpPost(uri);
+				
 		//HTTP Header to specify the results format
 		switch(format){
 			case XML:
@@ -345,10 +256,11 @@ public class Endpoint implements EndpointMBean {
 		if (contentType != null) httpRequest.setHeader("Content-Type", contentType);
 		if (body != null) ((HttpPost) httpRequest).setEntity(body);
 		
+		//Do the HTTP request
 		try {
 			long timing = System.nanoTime();
-	    	
-			responseBody = httpclient.execute(httpRequest, responseHandler);
+
+			response = httpclient.execute(httpRequest, responseHandler);
 	    	
 			timing = System.nanoTime() - timing;
 	    	
@@ -357,23 +269,37 @@ public class Endpoint implements EndpointMBean {
 	    }
 	    catch(java.net.ConnectException e) {
 	    	logger.error(e.getMessage());
-	    	json.add("status",new JsonPrimitive(false));
-			json.add("body", new JsonPrimitive(e.getMessage()));
-			return json.toString();
+	    	return new ErrorResponse(token,e.getMessage(),503);
 	    } 
 		catch (ClientProtocolException e) {
 			logger.error(e.getMessage());	
-			json.add("status",new JsonPrimitive(false));
-			json.add("body", new JsonPrimitive(e.getMessage()));
-			return json.toString();
+			return new ErrorResponse(token,e.getMessage(),500);
 		} 
 		catch (IOException e) {
 			logger.error(e.getMessage());
-			json.add("status",new JsonPrimitive(false));
-			json.add("body", new JsonPrimitive(e.getMessage()));
-			return json.toString();
+			return new ErrorResponse(token,e.getMessage(),500);
 		}
-		return responseBody;
+		
+		//Parsing the response (could be SPARQL 1.1 service specific)
+		return parseEndpointResponse(token,response,op,format);
+	}
+	
+	/*It is returned as JSON object
+	 * 
+	 * {"code":HTTP Status code,
+	 * "body": "response body"}
+	 * */
+	private Response parseEndpointResponse(int token,String jsonResponse,SPARQLOperation op,ResultsFormat format) {
+		JsonObject json = new JsonParser().parse(jsonResponse).getAsJsonObject();
+		int code = json.get("code").getAsInt();
+		String body = json.get("body").getAsString();
+		
+		if (code != 200) return new ErrorResponse(token,body,code);
+		
+		if (format.equals(ResultsFormat.JSON) && op.equals(SPARQLOperation.QUERY)) return new QueryResponse(token,body);
+		if(op.equals(SPARQLOperation.UPDATE)) return new UpdateResponse(token,body);			
+			
+		return new ErrorResponse(token,body,415);
 	}
 
 	@Override
@@ -387,7 +313,12 @@ public class Endpoint implements EndpointMBean {
 	}
 
 	@Override
-	public String getPath() {
-		return this.endpointProperties.getPath();
+	public String getQueryPath() {
+		return this.endpointProperties.getQueryPath();
+	}
+	
+	@Override
+	public String getUpdatePath() {
+		return this.endpointProperties.getUpdatePath();
 	}
 }
