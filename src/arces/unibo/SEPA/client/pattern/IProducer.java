@@ -15,7 +15,7 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package arces.unibo.SEPA.application;
+package arces.unibo.SEPA.client.pattern;
 
 import arces.unibo.SEPA.commons.SPARQL.Bindings;
 

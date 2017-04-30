@@ -15,15 +15,18 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package arces.unibo.SEPA.application;
+package arces.unibo.SEPA.client.pattern;
 
-import arces.unibo.SEPA.application.SEPALogger.VERBOSITY;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import arces.unibo.SEPA.commons.SPARQL.Bindings;
 
 public abstract class Aggregator extends Consumer implements IAggregator {
 	protected String sparqlUpdate = "INSERT { ?subject ?predicate ?object }";
 	protected String updateID = "";
-	protected String tag = "SEPA AGGREGATOR";
+	
+	private static final Logger logger = LogManager.getLogger("Aggregator");
 	
 	public Aggregator(String url,int updatePort,int subscribePort,String path,String subscribe,String update) {
 		super(url,updatePort,subscribePort,path,subscribe);
@@ -34,11 +37,11 @@ public abstract class Aggregator extends Consumer implements IAggregator {
 		super(appProfile,subscribeID);
 		
 		if (appProfile == null){
-			SEPALogger.log(VERBOSITY.FATAL,tag,"Cannot be initialized with UPDATE ID " +updateID+" (application profile is null)");
+			logger.fatal("Cannot be initialized with UPDATE ID " +updateID+" (application profile is null)");
 			return;	
 		}
 		if (appProfile.update(updateID) == null) {
-			SEPALogger.log(VERBOSITY.FATAL,tag,"UPDATE ID " +updateID+" not found");
+			logger.fatal("UPDATE ID " +updateID+" not found");
 			return;
 		}
 		
@@ -49,13 +52,13 @@ public abstract class Aggregator extends Consumer implements IAggregator {
 	public boolean update(Bindings forcedBindings){
 		 
 		 if (protocolClient == null) {
-			 SEPALogger.log(VERBOSITY.ERROR,tag,"UPDATE " +updateID+" FAILED because client has not been inizialized");
+			 logger.fatal("UPDATE " +updateID+" FAILED because client has not been inizialized");
 			 return false;
 		 }
 		 
 		 String sparql = prefixes() + replaceBindings(sparqlUpdate,forcedBindings);
 		 
-		 SEPALogger.log(VERBOSITY.DEBUG,tag,"<UPDATE> "+updateID+" ==> "+sparql);
+		 logger.debug("<UPDATE> "+updateID+" ==> "+sparql);
 		 
 		 return protocolClient.update(sparql);
 	 }

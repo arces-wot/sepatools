@@ -1,6 +1,4 @@
-package arces.unibo.SEPA.protocol;
-
-import arces.unibo.SEPA.commons.response.Notification;
+package arces.unibo.SEPA.commons.response;
 
 public interface NotificationHandler {
 	public void semanticEvent(Notification notify);

@@ -26,6 +26,9 @@ import javax.management.MalformedObjectNameException;
 import javax.management.NotCompliantMBeanException;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+
+import arces.unibo.SEPA.commons.SPARQL.Endpoint;
+import arces.unibo.SEPA.commons.SPARQL.EndpointProperties;
 import arces.unibo.SEPA.commons.request.QueryRequest;
 import arces.unibo.SEPA.commons.request.SubscribeRequest;
 import arces.unibo.SEPA.commons.request.UnsubscribeRequest;
@@ -43,9 +46,10 @@ public class Processor extends Observable implements Observer {
 	private Endpoint endpoint;
 	private static final Logger logger = LogManager.getLogger("Processor");
 	
-	public Processor(SPARQLEndpointProperties properties) throws MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException {	
+	public Processor(EndpointProperties properties) throws MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException {	
 		//Create SPARQL 1.1 interface
 		endpoint = new Endpoint(properties);
+		logger.info(endpoint.toString());
 		
 		//Create processor to manage (optimize) QUERY and UPDATE request
 		queryProcessor = new QueryProcessor(endpoint);

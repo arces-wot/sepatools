@@ -23,11 +23,12 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import arces.unibo.SEPA.commons.SPARQL.Endpoint;
 import arces.unibo.SEPA.commons.request.SubscribeRequest;
 import arces.unibo.SEPA.commons.response.Notification;
 import arces.unibo.SEPA.commons.response.SubscribeResponse;
 import arces.unibo.SEPA.commons.response.UpdateResponse;
-import arces.unibo.SEPA.server.Endpoint;
 import arces.unibo.SEPA.server.QueryProcessor;
 
 /**

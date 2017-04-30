@@ -1,4 +1,4 @@
-package arces.unibo.SEPA.tools;
+package arces.unibo.SEPA.client.tools;
 
 public class PopulateExperiment extends SmartLightingBenchmark {
 	protected String tag ="LampExp";

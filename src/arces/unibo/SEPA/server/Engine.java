@@ -28,8 +28,12 @@ import org.apache.logging.log4j.LogManager;
 
 import arces.unibo.SEPA.beans.EngineMBean;
 import arces.unibo.SEPA.beans.SEPABeans;
-import arces.unibo.SEPA.security.HTTPSGate;
-import arces.unibo.SEPA.security.WSSGate;
+import arces.unibo.SEPA.commons.SPARQL.EndpointProperties;
+import arces.unibo.SEPA.commons.request.Request;
+import arces.unibo.SEPA.gates.HTTPGate;
+import arces.unibo.SEPA.gates.HTTPSGate;
+import arces.unibo.SEPA.gates.WebsocketGate;
+import arces.unibo.SEPA.server.RequestResponseHandler.ResponseAndNotificationListener;
 
 /**
  * This class represents the SPARQL Subscription (SUB) Engine of the Semantic Event Processing Architecture (SEPA)
@@ -38,11 +42,12 @@ import arces.unibo.SEPA.security.WSSGate;
 * @version 0.1
 * */
 
-public class Engine extends Thread implements EngineMBean {
+public class Engine extends Thread implements EngineMBean,SchedulerInterface {
 
-	//Properties and logging
+	//Properties, logging and JMX
 	private EngineProperties engineProperties = new EngineProperties("engine.properties");
-	private SPARQLEndpointProperties endpointProperties = new SPARQLEndpointProperties("endpoint.properties");
+	private EndpointProperties endpointProperties = new EndpointProperties("endpoint.properties");
+	
 	private final Date startDate = new Date(); 
 	private static final Logger logger = LogManager.getLogger("Engine");
 	protected static String mBeanName = "arces.unibo.SEPA.server:type=Engine";
@@ -58,8 +63,7 @@ public class Engine extends Thread implements EngineMBean {
 	private HTTPSGate httpsGate = null;
 	
 	//SPARQL 1.1 SE Protocol handler
-	private WSGate websocketGate = null;
-	private WSSGate wssGate = null;
+	private WebsocketGate websocketApp;
 	
 	public static void main(String[] args) throws MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException {
 		System.out.println("##########################################################################################");
@@ -70,19 +74,22 @@ public class Engine extends Thread implements EngineMBean {
 		System.out.println("# This is free software, and you are welcome to redistribute it under certain conditions #");
 		System.out.println("# GNU GENERAL PUBLIC LICENSE, Version 3, 29 June 2007                                    #");
 		System.out.println("##########################################################################################");
-		System.out.println("Referenced library         						License");                                                                 
-		System.out.println("commons-io         				http://www.apache.org/licenses/LICENSE-2.0.html");                         
-		System.out.println("commons-logging    				http://www.apache.org/licenses/LICENSE-2.0.html");   
-		System.out.println("httpclient         				http://www.apache.org/licenses/LICENSE-2.0.html");  		
-		System.out.println("httpcore           				http://www.apache.org/licenses/LICENSE-2.0.html"); 
-		System.out.println("log4j              				http://www.apache.org/licenses/LICENSE-2.0.html");  			
-		System.out.println("grizzply-websockets-server			https://grizzly.java.net/nonav/license.html");
-		System.out.println("gson  						http://www.apache.org/licenses/LICENSE-2.0.html");
-		System.out.println("jdom						https://github.com/hunterhacker/jdom/blob/master/LICENSE.txt");
-		System.out.println("tyrus-standalone-client 			https://tyrus.java.net/license.html");	
-		System.out.println("org.eclipse.paho.client.mqttv3			https://projects.eclipse.org/content/eclipse-public-license-1.0");
-		System.out.println("bcprov.jdk15on					https://opensource.org/licenses/MIT");   
-		System.out.println("bcpkix-jdk15on 					https://opensource.org/licenses/MIT");   
+		System.out.println("");
+		
+		System.out.println("Dependencies");
+		System.out.println("com.google.code.gson		2.8.0	Apache 2.0");
+		System.out.println("com.nimbusds			4.34.2	The Apache Software License, Version 2.0");
+		System.out.println("commons-io			2.5	Apache License, Version 2.0");
+		System.out.println("commons-logging			1.2	The Apache Software License, Version 2.0");
+		System.out.println("org.apache.httpcomponents	4.5.3	Apache License, Version 2.0");
+		System.out.println("org.apache.httpcomponents	4.4.6	Apache License, Version 2.0");
+		System.out.println("org.apache.logging.log4j	2.8.1	Apache License, Version 2.0");
+		System.out.println("org.bouncycastle		1.56	Bouncy Castle Licence");
+		System.out.println("org.eclipse.paho		1.1.1	Eclipse Public License - Version 1.0");
+		System.out.println("org.glassfish.grizzly		2.3.30	CDDL+GPL");
+		System.out.println("org.glassfish.tyrus.bundles	1.13.1	Dual license consisting of the CDDL v1.1 and GPL v2");
+		System.out.println("org.jdom			2.0.6	Similar to Apache License but with the acknowledgment clause removed");
+		System.out.println("");
 		
 		Engine engine = new Engine();
 		
@@ -108,35 +115,31 @@ public class Engine extends Thread implements EngineMBean {
 		//Scheduler
 		scheduler.start();
 		
-		//Protocol handlers
+		//SPARQL 1.1 Protocol handlers
 		httpGate.start();
-		websocketGate.start();
-		
-		//Secure protocol handlers
 		httpsGate.start();
-		wssGate.start();
+		
+		//SPARQL 1.1 SE Protocol handler for WebSocket based subscriptions
+		websocketApp.start();
 		
 		super.start();
 		logger.info("SUB Engine started");	
+		System.out.println("");	
 	}
 	
 	public boolean init() throws MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException {		
 		processor = new Processor(endpointProperties);
 		scheduler = new Scheduler(engineProperties,processor);
 		
-		//Not secure protocols
-		httpGate = new HTTPGate(engineProperties,scheduler);
-		websocketGate = new WSGate(engineProperties,scheduler);
+		//SPARQL 1.1 Protocol handlers
+		httpGate = new HTTPGate(engineProperties,this);
+		httpsGate = new HTTPSGate(engineProperties,this);
 		
-		//Secure protocols
-		httpsGate = new HTTPSGate(engineProperties,scheduler);
-		wssGate = new WSSGate(engineProperties,scheduler);
-			
+		//SPARQL 1.1 SE Protocol handler for WebSocket based subscriptions
+		websocketApp = new WebsocketGate(engineProperties,scheduler);
 		return true;
 	}
 	
-	
-
 	@Override
 	public EngineProperties getProperties() {
 		return this.engineProperties;
@@ -145,5 +148,22 @@ public class Engine extends Thread implements EngineMBean {
 	@Override
 	public Date getStartDate() {
 		return this.startDate;
+	}
+
+	@Override
+	public Integer getToken() {
+		if (scheduler != null) return scheduler.getToken();
+		return 0;
+	}
+
+	@Override
+	public void addRequest(Request request, ResponseAndNotificationListener listener) {
+		if (scheduler != null) scheduler.addRequest(request, listener);
+		
+	}
+
+	@Override
+	public void releaseToken(Integer token) {
+		if (scheduler != null) scheduler.releaseToken(token);
 	}
 }

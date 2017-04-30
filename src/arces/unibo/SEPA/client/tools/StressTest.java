@@ -1,15 +1,16 @@
-package arces.unibo.SEPA.tools;
+package arces.unibo.SEPA.client.tools;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import arces.unibo.SEPA.application.ApplicationProfile;
-import arces.unibo.SEPA.application.GenericClient;
-import arces.unibo.SEPA.application.SEPALogger;
-import arces.unibo.SEPA.application.SEPALogger.VERBOSITY;
-import arces.unibo.SEPA.application.Producer;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import arces.unibo.SEPA.client.pattern.ApplicationProfile;
+import arces.unibo.SEPA.client.pattern.GenericClient;
+import arces.unibo.SEPA.client.pattern.Producer;
 import arces.unibo.SEPA.commons.SPARQL.ARBindingsResults;
 import arces.unibo.SEPA.commons.SPARQL.Bindings;
 import arces.unibo.SEPA.commons.SPARQL.BindingsResults;
@@ -19,12 +20,16 @@ import arces.unibo.SEPA.commons.SPARQL.RDFTermURI;
 public class StressTest {
 	static long NUPDATE = 5;
 	static long NQUERY = 3;
+	
 	static List<UpdateThread> updateThreads = new ArrayList<UpdateThread>();
 	static List<QueryThread> queryThreads = new ArrayList<QueryThread>();
 	static List<Thread> activeThreads = new ArrayList<Thread>();
 	
+	private static final Logger logger = LogManager.getLogger("StressTest");
+	
 	static class UpdateThread extends Producer implements Runnable {
-		private String tag = "Update";
+		
+		
 		public UpdateThread(ApplicationProfile appProfile) {
 			super(appProfile, "INSERT_LAMP");
 		}
@@ -49,21 +54,15 @@ public class StressTest {
 		    	
 				timing = System.nanoTime() - timing;
 				
-				SEPALogger.log(VERBOSITY.INFO, tag, "Timing(ns) "+timing);
+				logger.info("Timing(ns) "+timing);
 			}
 		}
 	}
 	
 	static class QueryThread extends GenericClient implements Runnable {
-		public QueryThread(String url, int updatePort, int subscribePort, String path) {
-			super(url, updatePort, subscribePort, path);
-		}
 		
 		public QueryThread(ApplicationProfile appProfile) {
-			super(appProfile.getParameters().getUrl(), 
-					appProfile.getParameters().getUpdatePort(), 
-					appProfile.getParameters().getSubscribePort(), 
-					appProfile.getParameters().getPath());
+			super(appProfile);
 		}
 			
 		private boolean running = true;

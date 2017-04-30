@@ -1,11 +1,13 @@
-package arces.unibo.SEPA.protocol;
+package arces.unibo.SEPA.client.api;
 
-import arces.unibo.SEPA.protocol.SecureEventProtocol.SUBSCRIPTION_STATE;
+import arces.unibo.SEPA.client.api.SPARQL11SEProtocol.SUBSCRIPTION_STATE;
+
+import arces.unibo.SEPA.commons.response.NotificationHandler;
 
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 
-class SocketWatchdog extends Thread {
+class WebsocketWatchdog extends Thread {
 	
 	private long pingPeriod = 0;
 	private long firstPing = 0;
@@ -15,13 +17,13 @@ class SocketWatchdog extends Thread {
 	private boolean pingReceived = false;		
 	private SUBSCRIPTION_STATE state = SUBSCRIPTION_STATE.UNSUBSCRIBED;
 	
-	private static final Logger logger = LogManager.getLogger("Watchdog");
+	private static final Logger logger = LogManager.getLogger("WebsocketWatchdog");
 	
 	private NotificationHandler handler = null;
-	private SEPAEndpoint wsClient;
+	private WebsocketEndpoint wsClient;
 	private String sparql;
 	
-	public SocketWatchdog(NotificationHandler handler, SEPAEndpoint wsClient,String sparql) {
+	public WebsocketWatchdog(NotificationHandler handler, WebsocketEndpoint wsClient,String sparql) {
 		this.handler = handler;
 		this.wsClient = wsClient;
 		this.sparql = sparql;

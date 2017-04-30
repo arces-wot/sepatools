@@ -32,9 +32,6 @@ public class EngineProperties {
 	private static final Logger logger = LogManager.getLogger("EngineProperties");
 	private Properties properties = new Properties();
 	
-	//Properties
-	//private SPARQLEndpointProperties endpointProperties = new SPARQLEndpointProperties("endpoint.properties");
-	
 	private int httpTimeout;
 	private int wsPort;
 	private int httpsPort;
@@ -174,11 +171,4 @@ public class EngineProperties {
 	public void setTokenTimeout(long timeout) {
 		tokenTimeout = timeout;
 	}
-	
-	/*
-	public SPARQLEndpointProperties getEndpointProperties(){
-		return endpointProperties;
-	}
-	*/
-
 }

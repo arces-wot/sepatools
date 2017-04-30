@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package arces.unibo.SEPA.security;
+package arces.unibo.SEPA.gates;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -37,12 +37,13 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpsServer;
 
+import arces.unibo.SEPA.security.AuthorizationManager;
+import arces.unibo.SEPA.security.SecurityManager;
 import arces.unibo.SEPA.server.EngineProperties;
-import arces.unibo.SEPA.server.HTTPGate;
-import arces.unibo.SEPA.server.Scheduler;
+import arces.unibo.SEPA.server.SchedulerInterface;
 
 public class HTTPSGate extends HTTPGate {
-	protected Logger logger = LogManager.getLogger("HttpsGate");	
+	protected Logger logger = LogManager.getLogger("HTTPSGate");	
 	protected static String mBeanName = "arces.unibo.SEPA.server:type=HTTPSGate";
 	
 	private static int httpsPort = 8443;
@@ -66,7 +67,7 @@ public class HTTPSGate extends HTTPGate {
 	503			Service Unavailable
 	*/
 	
-	public HTTPSGate(EngineProperties properties, Scheduler scheduler) {
+	public HTTPSGate(EngineProperties properties, SchedulerInterface scheduler) {
 		super(properties, scheduler);
 		
 		if (properties == null) logger.error("Properties are null");

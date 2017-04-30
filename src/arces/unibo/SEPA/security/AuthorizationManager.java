@@ -100,7 +100,7 @@ public class AuthorizationManager {
 	}
 	
 	public void securityCheck(String identity) {
-		logger.debug("*********Security check START***********");
+		logger.debug("*** Security check ***");
 		//Register
 		logger.debug("Register: "+identity);
 		JsonObject json = register(identity);
@@ -120,7 +120,8 @@ public class AuthorizationManager {
 		JsonObject isValid = validateToken(access_token);
 		if(isValid.get("valid").getAsBoolean()) logger.debug("VALIDATED :-)");
 		else logger.debug("FAILED :-( "+isValid.get("message").getAsString());
-		logger.debug("*********Security check END***********");
+		logger.debug("**********************");
+		System.out.println("");	
 	}
 
 	private boolean loadCertificate(String keyStorePath,String keystorePwd,String keyPwd,String keyID) {

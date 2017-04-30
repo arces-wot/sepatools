@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package arces.unibo.SEPA.server;
+package arces.unibo.SEPA.commons.SPARQL;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -23,6 +23,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
+import java.nio.charset.Charset;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -32,7 +33,8 @@ import org.apache.http.client.ResponseHandler;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpUriRequest;
-import org.apache.http.entity.ByteArrayEntity;
+
+import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
@@ -47,13 +49,13 @@ import org.apache.logging.log4j.LogManager;
 import arces.unibo.SEPA.commons.response.ErrorResponse;
 import arces.unibo.SEPA.beans.EndpointMBean;
 import arces.unibo.SEPA.beans.SEPABeans;
+import arces.unibo.SEPA.commons.SPARQL.ProtocolProperties.HTTPMethod;
+import arces.unibo.SEPA.commons.SPARQL.ProtocolProperties.ResultsFormat;
 import arces.unibo.SEPA.commons.request.QueryRequest;
 import arces.unibo.SEPA.commons.response.QueryResponse;
 import arces.unibo.SEPA.commons.response.Response;
 import arces.unibo.SEPA.commons.request.UpdateRequest;
 import arces.unibo.SEPA.commons.response.UpdateResponse;
-import arces.unibo.SEPA.server.SPARQLEndpointProperties.HTTPMethod;
-import arces.unibo.SEPA.server.SPARQLEndpointProperties.ResultsFormat;
 
 /**
  * This class implements the SPARQL 1.1 protocol interface
@@ -68,13 +70,17 @@ public class Endpoint implements EndpointMBean {
 	private static final Logger logger = LogManager.getLogger("Endpoint");
 	protected static String mBeanName = "arces.unibo.SEPA.server:type=Endpoint";
 	
-	private SPARQLEndpointProperties endpointProperties;
+	private EndpointProperties endpointProperties;
 	private enum SPARQLOperation {QUERY,UPDATE};
 	
-	private static CloseableHttpClient httpclient = HttpClients.createDefault();
-	private static ResponseHandler<String> responseHandler;
+	private CloseableHttpClient httpclient = HttpClients.createDefault();
+	private ResponseHandler<String> responseHandler;
 	
-	public Endpoint(SPARQLEndpointProperties properties) {
+	public String toString() {
+		return endpointProperties.toString();
+	}
+	
+	public Endpoint(EndpointProperties properties) {
 				
 		SEPABeans.registerMBean(this,mBeanName);
 		
@@ -86,18 +92,6 @@ public class Endpoint implements EndpointMBean {
 			endpointProperties = properties;
 		}
 		
-		logger.info("**********************************");
-		logger.info("SPARQL endpoint service properties");
-		logger.info("Host:" + endpointProperties.getHost());
-		logger.info("Port:" + endpointProperties.getPort());
-		logger.info("Scheme:" + endpointProperties.getHttpScheme());
-		logger.info("Query Path:" + endpointProperties.getQueryPath());
-		logger.info("Update Path:" + endpointProperties.getQueryPath());
-		logger.info("Query method:" + endpointProperties.getQueryMethod());
-		logger.info("Update method:" + endpointProperties.getUpdateMethod());
-		logger.info("Query results format:" + endpointProperties.getQueryResultsFormat());
-		logger.info("**********************************");
-			
 		responseHandler = new ResponseHandler<String>() {
 	        @Override
 	        public String handleResponse(final HttpResponse response) {
@@ -133,13 +127,16 @@ public class Endpoint implements EndpointMBean {
 				A protocol service may use other 4XX or 5XX HTTP response codes for other failure conditions, as per HTTP.
 	        	*/
 	        	int status = response.getStatusLine().getStatusCode();
-	            
+
 	        	JsonObject json = new JsonObject();
 	            json.add("code", new JsonPrimitive(status));
 	            
-	        	String body = null;				
+	        	String body = null;
+	        	
+	        	HttpEntity entity = response.getEntity();
+	        	
 	            try {
-					body = EntityUtils.toString(response.getEntity());
+					body = EntityUtils.toString(entity,Charset.forName("UTF-8"));
 				} catch (ParseException e) {
 					body = e.getMessage();
 				} catch (IOException e) {
@@ -163,100 +160,12 @@ public class Endpoint implements EndpointMBean {
 	
 	private Response SPARQLProtocolOperation(int token,String sparql,SPARQLOperation op,HTTPMethod method,ResultsFormat format) {
 		String response = null;
-		URI uri;
-		HttpUriRequest httpRequest;
-		String query = null;
-		String contentType = null;
-		HttpEntity body = null;
 		
-		if (!ResultsFormat.JSON.equals(format)) return new ErrorResponse(token,"Only JSON response format is implemented",501);
+		//HTTP request build
+		HttpUriRequest httpRequest =  buildRequest(op,method,format,sparql);
+		if (httpRequest == null) return new ErrorResponse(token,"Error on building HTTP request URI",414);
 		
-		if (method.equals(HTTPMethod.POST)) {
-			try {
-				body = new ByteArrayEntity(sparql.getBytes("UTF-8"));
-			} catch (UnsupportedEncodingException e) {
-				logger.error(e.getMessage());
-				return new ErrorResponse(token,e.getMessage(),415);
-			}
-			if (op.equals(SPARQLOperation.QUERY)) {
-				contentType = "application/sparql-query";	
-			}
-			else contentType = "application/sparql-update";
-		}
-		
-		if (method.equals(HTTPMethod.URL_ENCODED_POST)) {
-			contentType = "application/x-www-form-urlencoded";
-			String encodedSparql;
-			try {
-				encodedSparql = URLEncoder.encode(sparql, "UTF-8");
-			} catch (UnsupportedEncodingException e) {
-				logger.error(e.getMessage());
-				return new ErrorResponse(token,e.getMessage(),415);
-			}
-			
-			if (op.equals(SPARQLOperation.QUERY)) {
-				encodedSparql = "query="+encodedSparql;	
-			}
-			else encodedSparql = "update="+encodedSparql;
-			
-			try {
-				body = new ByteArrayEntity(encodedSparql.getBytes("UTF-8"));
-			} catch (UnsupportedEncodingException e) {
-				logger.error(e.getMessage());
-				return new ErrorResponse(token,e.getMessage(),415);
-			}
-		}
-		
-		if (method.equals(HTTPMethod.GET)){
-			if (!op.equals(SPARQLOperation.QUERY)) {
-				return new ErrorResponse(token,"GET method can be used only for query operation",400);
-			}
-			try {
-				query = "query="+URLEncoder.encode(sparql, "UTF-8");
-			} catch (UnsupportedEncodingException e) {
-				logger.error(e.getMessage());
-				return new ErrorResponse(token,e.getMessage(),415);
-			}
-		}
-		
-		String path;
-		if (op.equals(SPARQLOperation.QUERY)) path = endpointProperties.getQueryPath();
-		else path = endpointProperties.getUpdatePath();
-		
-		try {
-			uri = new URI(endpointProperties.getHttpScheme(),
-					   null,
-					   endpointProperties.getHost(),
-					   endpointProperties.getPort(),
-					   path,
-					   query,
-					   null);
-		} catch (URISyntaxException e) {
-			logger.error("Error on creating request URI "+e.getMessage());
-			return new ErrorResponse(token,e.getMessage(),414);
-		}
-		
-		//GET or POST
-		if (method.equals(HTTPMethod.GET))httpRequest = new HttpGet(uri);	 	
-		else httpRequest = new HttpPost(uri);
-				
-		//HTTP Header to specify the results format
-		switch(format){
-			case XML:
-				httpRequest.setHeader("Accept", "application/sparql-results+xml");
-				break;
-			case JSON:
-				httpRequest.setHeader("Accept", "application/sparql-results+json");
-				break;
-			default:
-				break;
-		}
-		
-		//Content-Type
-		if (contentType != null) httpRequest.setHeader("Content-Type", contentType);
-		if (body != null) ((HttpPost) httpRequest).setEntity(body);
-		
-		//Do the HTTP request
+		//HTTP request execution
 		try {
 			long timing = System.nanoTime();
 
@@ -284,6 +193,134 @@ public class Endpoint implements EndpointMBean {
 		return parseEndpointResponse(token,response,op,format);
 	}
 	
+	private HttpUriRequest buildRequest(SPARQLOperation op,HTTPMethod method,ResultsFormat format,String sparql) {
+		URI uri;
+		HttpUriRequest httpRequest;
+		String query = null;
+		String contentType = null;
+		StringEntity body = null;
+		String accept = null;
+		
+		/*
+	 								HTTP Method			Query String Parameters			Request Content Type				Request Message Body
+	 	----------------------------------------------------------------------------------------------------------------------------------------
+	 	query via GET				GET					query (exactly 1)				None								None
+	 													default-graph-uri (0 or more)
+	 													named-graph-uri (0 or more)
+	 	----------------------------------------------------------------------------------------------------------------------------------------												
+	 	query via URL-encoded POST	POST				None							application/x-www-form-urlencoded	URL-encoded, ampersand-separated query parameters.
+	 																														query (exactly 1)
+	 																														default-graph-uri (0 or more)
+	 																														named-graph-uri (0 or more)
+	 	----------------------------------------------------------------------------------------------------------------------------------------																													
+	 	query via POST directly		POST				default-graph-uri (0 or more)
+	 													named-graph-uri (0 or more)		application/sparql-query			Unencoded SPARQL query string
+	 	*/
+		//QUERY
+		if (op.equals(SPARQLOperation.QUERY)) {
+			//Support only the JSON query response format (https://www.w3.org/TR/sparql11-results-json/)
+			if(!ResultsFormat.JSON.equals(format)) return null;
+			accept = "application/sparql-results+json";
+			
+			switch (method) {
+				case GET:
+				try {
+					query = "query="+ URLEncoder.encode(sparql, "UTF-8");
+				} catch (UnsupportedEncodingException e) {
+					logger.error(e.getMessage());
+					return null;
+				}
+					break;
+				case URL_ENCODED_POST:
+					contentType = "application/x-www-form-urlencoded";
+					String encodedSparql;
+					try {
+						encodedSparql = URLEncoder.encode(sparql, "UTF-8");
+					} catch (UnsupportedEncodingException e) {
+						logger.error(e.getMessage());
+						return null;
+					}
+					encodedSparql = "query="+encodedSparql;	
+					
+					body = new StringEntity(encodedSparql,"UTF-8");
+					break;
+				case POST:
+					contentType = "application/sparql-query";	
+					body =new StringEntity(sparql,"UTF-8");
+					break;
+			}
+		}
+		
+		/*
+									HTTP Method			Query String Parameters			Request Content Type				Request Message Body
+		----------------------------------------------------------------------------------------------------------------------------------------
+		update via URL-encoded POST	POST				None							application/x-www-form-urlencoded	URL-encoded, ampersand-separated query parameters.
+																															update (exactly 1)
+																															using-graph-uri (0 or more)
+																															using-named-graph-uri (0 or more)
+		----------------------------------------------------------------------------------------------------------------------------------------																													
+		update via POST directly	POST				using-graph-uri (0 or more)		application/sparql-update			Unencoded SPARQL update request string
+														using-named-graph-uri (0 or more)		
+		 */
+		//UPDATE
+		if (op.equals(SPARQLOperation.UPDATE)) {
+			accept = "application/json";
+			
+			switch (method) {
+				case URL_ENCODED_POST:
+					contentType = "application/x-www-form-urlencoded";
+					String encodedSparql;
+					try {
+						encodedSparql = URLEncoder.encode(sparql, "UTF-8");
+					} catch (UnsupportedEncodingException e) {
+						logger.error(e.getMessage());
+						return null;
+					}
+					//encodedSparql = "update="+encodedSparql;	
+					
+					body = new StringEntity(encodedSparql,"UTF-8");
+					break;
+				case POST:
+					contentType = "application/sparql-update";	
+					body =new StringEntity(sparql,"UTF-8");
+					break;
+				default:
+					return null;
+			}	
+		}
+		
+		//Path MAY be different for query and update
+		String path;
+		if (op.equals(SPARQLOperation.QUERY)) path = endpointProperties.getQueryPath();
+		else path = endpointProperties.getUpdatePath();
+		
+		try {
+			uri = new URI(endpointProperties.getHttpScheme(),
+					   null,
+					   endpointProperties.getHost(),
+					   endpointProperties.getHttpPort(),
+					   path,
+					   query,
+					   null);
+		} catch (URISyntaxException e) {
+			logger.error("Error on creating request URI "+e.getMessage());
+			return null;
+		}
+		
+		//GET or POST
+		if (method.equals(HTTPMethod.GET)) httpRequest = new HttpGet(uri);	 	
+		else httpRequest = new HttpPost(uri);
+		
+		//Headers
+		if (contentType != null) httpRequest.setHeader("Content-Type", contentType);
+		if (accept != null) httpRequest.setHeader("Accept", accept);
+		
+		//Request body
+		if (body != null) ((HttpPost) httpRequest).setEntity(body);
+		
+		return httpRequest;
+	}
+	
 	/*It is returned as JSON object
 	 * 
 	 * {"code":HTTP Status code,
@@ -309,7 +346,7 @@ public class Endpoint implements EndpointMBean {
 
 	@Override
 	public int getPort() {
-		return this.endpointProperties.getPort();
+		return this.endpointProperties.getHttpPort();
 	}
 
 	@Override

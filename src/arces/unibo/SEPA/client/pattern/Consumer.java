@@ -15,15 +15,17 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package arces.unibo.SEPA.application;
+package arces.unibo.SEPA.client.pattern;
 
-import arces.unibo.SEPA.application.SEPALogger.VERBOSITY;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import arces.unibo.SEPA.commons.SPARQL.ARBindingsResults;
 import arces.unibo.SEPA.commons.SPARQL.Bindings;
 import arces.unibo.SEPA.commons.SPARQL.BindingsResults;
 import arces.unibo.SEPA.commons.SPARQL.RDFTermURI;
 import arces.unibo.SEPA.commons.response.Notification;
-import arces.unibo.SEPA.protocol.NotificationHandler;
+import arces.unibo.SEPA.commons.response.NotificationHandler;
 
 public abstract class Consumer extends Client implements IConsumer,NotificationHandler {
 	protected String sparqlSubscribe = null;
@@ -32,7 +34,7 @@ public abstract class Consumer extends Client implements IConsumer,NotificationH
 	protected int DEFAULT_SUBSCRIPTION_TIMEOUT = 3000;
 	protected SubcribeConfirmSync subConfirm;
 	
-	protected String tag = "SEPA CONSUMER";
+	private static final Logger logger = LogManager.getLogger("Consumer");
 		
 	@Override
 	public void semanticEvent(Notification notify) {
@@ -81,23 +83,21 @@ public abstract class Consumer extends Client implements IConsumer,NotificationH
 
 	@Override
 	public void subscribeConfirmed(String spuid) {
-		SEPALogger.log(VERBOSITY.DEBUG,tag,"Subscribe confirmed "+spuid);
+		logger.debug("Subscribe confirmed "+spuid);
 		subConfirm.notifySubscribeConfirm(spuid);
 	}
 
 	@Override
 	public void unsubscribeConfirmed(String spuid) {
-		SEPALogger.log(VERBOSITY.DEBUG,tag,"Unsubscribe confirmed "+spuid);
+		logger.debug("Unsubscribe confirmed "+spuid);
 	}
 
 	@Override
 	public void ping() {
-		SEPALogger.log(VERBOSITY.DEBUG,tag,"Ping");
+		logger.debug("Ping");
 	}
 	
-	protected class SubcribeConfirmSync {
-		private String tag = "SubcribeConfirmSync";
-		
+	protected class SubcribeConfirmSync {		
 		private String subID = "";
 		
 		public synchronized String waitSubscribeConfirm(int timeout) {
@@ -105,7 +105,7 @@ public abstract class Consumer extends Client implements IConsumer,NotificationH
 			if (!subID.equals("")) return subID;
 			
 			try {
-				SEPALogger.log(VERBOSITY.DEBUG,tag,"Wait for subscribe confirm...");
+				logger.debug("Wait for subscribe confirm...");
 				wait(timeout);
 			} catch (InterruptedException e) {
 	
@@ -115,7 +115,7 @@ public abstract class Consumer extends Client implements IConsumer,NotificationH
 		}
 		
 		public synchronized void notifySubscribeConfirm(String spuid) {
-			SEPALogger.log(VERBOSITY.DEBUG,tag,"Notify confirm!");
+			logger.debug("Notify confirm!");
 			
 			subID = spuid;
 			notifyAll();
@@ -129,7 +129,7 @@ public abstract class Consumer extends Client implements IConsumer,NotificationH
 	public Consumer(ApplicationProfile appProfile,String subscribeID) {
 		super(appProfile);
 		if (appProfile == null) {
-			SEPALogger.log(VERBOSITY.FATAL,tag,"Cannot be initialized with SUBSCRIBE ID: "+subscribeID+ " (application profile is null)");
+			logger.fatal("Cannot be initialized with SUBSCRIBE ID: "+subscribeID+ " (application profile is null)");
 			return;
 		}
 		if (appProfile.subscribe(subscribeID) == null) return;
@@ -138,18 +138,18 @@ public abstract class Consumer extends Client implements IConsumer,NotificationH
 	
 	public String subscribe(Bindings forcedBindings) {
 		if (sparqlSubscribe == null) {
-			 SEPALogger.log(VERBOSITY.FATAL, tag, "SPARQL SUBSCRIBE not defined");
+			logger.fatal( "SPARQL SUBSCRIBE not defined");
 			 return null;
 		 }
 		 
 		 if (protocolClient == null) {
-			 SEPALogger.log(VERBOSITY.FATAL, tag, "Client not initialized");
+			 logger.fatal("Client not initialized");
 			 return null;
 		 }
 		
 		String sparql = prefixes() + replaceBindings(sparqlSubscribe,forcedBindings);
 		
-		SEPALogger.log(VERBOSITY.DEBUG,tag,"<SUBSCRIBE> ==> "+sparql);
+		logger.debug("<SUBSCRIBE> ==> "+sparql);
 	
 		onSubscribe = true;
 		
@@ -157,7 +157,7 @@ public abstract class Consumer extends Client implements IConsumer,NotificationH
 		
 		if(!protocolClient.subscribe(sparql, this)) return null;
 		
-		SEPALogger.log(VERBOSITY.DEBUG,tag,"Wait for subscribe confirm...");
+		logger.debug("Wait for subscribe confirm...");
 		
 		subID = subConfirm.waitSubscribeConfirm(DEFAULT_SUBSCRIPTION_TIMEOUT);
 		
@@ -166,10 +166,10 @@ public abstract class Consumer extends Client implements IConsumer,NotificationH
 	}
 	 
 	public boolean unsubscribe() {
-		SEPALogger.log(VERBOSITY.DEBUG,tag,"UNSUBSCRIBE "+subID);
+		logger.debug("UNSUBSCRIBE "+subID);
 		
 		if (protocolClient == null) {
-			 SEPALogger.log(VERBOSITY.FATAL, tag, "Client not initialized");
+			logger.fatal("Client not initialized");
 			 return false;
 		 }
 		

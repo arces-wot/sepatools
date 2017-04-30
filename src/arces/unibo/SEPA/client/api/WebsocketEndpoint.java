@@ -1,4 +1,4 @@
-package arces.unibo.SEPA.protocol;
+package arces.unibo.SEPA.client.api;
 
 import java.io.IOException;
 import java.net.URI;
@@ -13,6 +13,7 @@ import javax.websocket.Session;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
 import org.glassfish.tyrus.client.ClientManager;
 
 import com.google.gson.JsonObject;
@@ -20,8 +21,9 @@ import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
 
 import arces.unibo.SEPA.commons.response.Notification;
+import arces.unibo.SEPA.commons.response.NotificationHandler;
 
-class SEPAEndpoint extends Endpoint implements MessageHandler.Whole<String> {
+public class WebsocketEndpoint extends Endpoint implements MessageHandler.Whole<String> {
 	private Session wsClientSession = null;;
 	private final ClientEndpointConfig cec = ClientEndpointConfig.Builder.create().build();
 	private ClientManager client = ClientManager.createClient();
@@ -29,12 +31,12 @@ class SEPAEndpoint extends Endpoint implements MessageHandler.Whole<String> {
 	private String sparql;
 	private String wsUrl;
 	
-	private static final Logger logger = LogManager.getLogger("Message handler");
+	private static final Logger logger = LogManager.getLogger("WebsocketEndpoint");
 	
 	private NotificationHandler handler;
-	private SocketWatchdog watchDog = null;
+	private WebsocketWatchdog watchDog = null;
 	
-	public SEPAEndpoint(String wsUrl) {
+	public WebsocketEndpoint(String wsUrl) {
 		this.wsUrl = wsUrl;
 	}
 	
@@ -91,7 +93,7 @@ class SEPAEndpoint extends Endpoint implements MessageHandler.Whole<String> {
 		}
 		
 		//Start watchdog
-		if (watchDog == null) watchDog = new SocketWatchdog(handler,this,sparql); 
+		if (watchDog == null) watchDog = new WebsocketWatchdog(handler,this,sparql); 
 	
 		return true;
 	}
@@ -153,7 +155,6 @@ class SEPAEndpoint extends Endpoint implements MessageHandler.Whole<String> {
   	  	if (notify.get("unsubscribed") != null) {
   	  		handler.unsubscribeConfirmed(notify.get("unsubscribed").getAsString());
   	  		
-  	  		//wsClient.close();
   	  		try {
 				wsClientSession.close();
 			} catch (IOException e) {

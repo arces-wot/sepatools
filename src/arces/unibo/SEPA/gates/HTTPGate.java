@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package arces.unibo.SEPA.server;
+package arces.unibo.SEPA.gates;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -38,6 +38,8 @@ import arces.unibo.SEPA.commons.request.QueryRequest;
 import arces.unibo.SEPA.commons.request.Request;
 import arces.unibo.SEPA.commons.response.Response;
 import arces.unibo.SEPA.commons.request.UpdateRequest;
+import arces.unibo.SEPA.server.EngineProperties;
+import arces.unibo.SEPA.server.SchedulerInterface;
 import arces.unibo.SEPA.server.RequestResponseHandler.ResponseAndNotificationListener;
 
 /**
@@ -48,20 +50,21 @@ import arces.unibo.SEPA.server.RequestResponseHandler.ResponseAndNotificationLis
 * */
 
 public class HTTPGate extends Thread implements HTTPGateMBean {
+	protected SchedulerInterface scheduler;
 	
 	protected static HttpServer server = null;
-	protected Logger logger = LogManager.getLogger("HTTP Gate");	
+	protected Logger logger = LogManager.getLogger("HTTPGate");	
 	protected static String mBeanName = "arces.unibo.SEPA.server:type=HTTPGate";
 	
 	private static int port = 8000; 
 	private static int timeout = 2000;
 
-	private Scheduler scheduler;
+	//private Scheduler scheduler;
 	protected long transactions  = 0; 
 	private long updateTransactions  = 0;
 	private long queryTransactions  = 0;
 	
-	public HTTPGate(EngineProperties properties,Scheduler scheduler) {
+	public HTTPGate(EngineProperties properties,SchedulerInterface scheduler) {
 		if (properties == null) logger.error("Properties are null");
 		else {
 			timeout = properties.getHttpTimeout();
@@ -69,7 +72,7 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 		}
 			
 		this.scheduler = scheduler;
-		if (scheduler == null) logger.error("Scheduler is null");	
+		if (scheduler == null) logger.warn("Listener is null");	
 		
 		SEPABeans.registerMBean(this,mBeanName);
 	}
@@ -168,11 +171,12 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 		exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "GET,POST,DELETE,PUT");
 		exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "X-Requested-With,Content-Type,Origin,Accept");
 		
-		try {
-			exchange.sendResponseHeaders(httpResponseCode, response.length());
-			OutputStream os = exchange.getResponseBody();
-			os.write(response.getBytes());
-			os.close();
+		try {			
+			//UTF-8
+			byte[] out = response.getBytes();
+			exchange.sendResponseHeaders(httpResponseCode, out.length);
+			exchange.getResponseBody().write(out,0,out.length);
+			exchange.getResponseBody().close();
 		} catch (IOException e) {
 			logger.error("Error on sending HTTP response "+e.getMessage());
 		}	
@@ -208,7 +212,9 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 					String[] value = param.split("=");
 					if (value[0].equals("query")) {
 						this.queryTransactions++;
-						return new QueryRequest(scheduler.getToken(),value[1]);
+						Integer token = 0;
+						if (scheduler != null) token = scheduler.getToken();
+						return new QueryRequest(token,value[1]);
 					}
 				}
 				failureResponse(httpExchange,400,"Query must be in the form: \"query=<SPARQL 1.1 Query>\"");
@@ -227,21 +233,29 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 				}
 				if(httpExchange.getRequestHeaders().get("Content-Type").contains("application/sparql-query")) {
 					this.queryTransactions++;
-					return new QueryRequest(scheduler.getToken(),sparql);
+					Integer token = 0;
+					if (scheduler != null) token = scheduler.getToken();
+					return new QueryRequest(token,sparql);
 				}
 				if(httpExchange.getRequestHeaders().get("Content-Type").contains("application/sparql-update")) {
 					this.updateTransactions++;
-					return new UpdateRequest(scheduler.getToken(),sparql);
+					Integer token = 0;
+					if (scheduler != null) token = scheduler.getToken();
+					return new UpdateRequest(token,sparql);
 				}
 
 				if(httpExchange.getRequestHeaders().get("Content-Type").contains("application/x-www-form-urlencoded")) {
 					if (sparql.contains("query=")){
 						this.queryTransactions++;
-						return new QueryRequest(scheduler.getToken(),sparql);
+						Integer token = 0;
+						if (scheduler != null) token = scheduler.getToken();
+						return new QueryRequest(token,sparql);
 					}
 					if (sparql.contains("update="))
 						this.updateTransactions++;
-						return new UpdateRequest(scheduler.getToken(),sparql);
+						Integer token = 0;
+						if (scheduler != null) token = scheduler.getToken();
+						return new UpdateRequest(token,sparql);
 				}
 									
 				logger.error("Request MUST conform to SPARQL 1.1 Protocol (https://www.w3.org/TR/sparql11-protocol/)");
@@ -309,7 +323,7 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 				long validatedTime = System.nanoTime();
 				
 				//Add request
-				if (request != null) scheduler.addRequest(request,this);
+				if (request != null & scheduler != null) scheduler.addRequest(request,this);
 				else return;
 								
 				//Waiting response

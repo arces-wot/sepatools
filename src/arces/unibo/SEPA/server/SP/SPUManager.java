@@ -22,11 +22,12 @@ import java.util.Observable;
 import java.util.Observer;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+
+import arces.unibo.SEPA.commons.SPARQL.Endpoint;
 import arces.unibo.SEPA.commons.request.SubscribeRequest;
 import arces.unibo.SEPA.commons.request.UnsubscribeRequest;
 import arces.unibo.SEPA.commons.response.Notification;
 import arces.unibo.SEPA.commons.response.UpdateResponse;
-import arces.unibo.SEPA.server.Endpoint;
 
 public class SPUManager extends Observable implements Observer{
 	private static final Logger logger = LogManager.getLogger("SPU Manager");

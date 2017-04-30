@@ -15,32 +15,25 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package arces.unibo.SEPA.application;
+package arces.unibo.SEPA.client.pattern;
 
 import java.util.HashMap;
 import java.util.Set;
 
-import arces.unibo.SEPA.application.SEPALogger.VERBOSITY;
-import arces.unibo.SEPA.application.ApplicationProfile.Parameters;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
+import arces.unibo.SEPA.client.api.ClientProperties;
+import arces.unibo.SEPA.client.api.SPARQL11SEProtocol;
+import arces.unibo.SEPA.client.pattern.ApplicationProfile.Parameters;
 import arces.unibo.SEPA.commons.SPARQL.Bindings;
-
-import arces.unibo.SEPA.protocol.SecureEventProtocol;
 
 public abstract class Client implements IClient {	
 	protected HashMap<String,String> URI2PrefixMap = new HashMap<String,String>();
 	protected HashMap<String,String> prefix2URIMap = new HashMap<String,String>();
-	protected SecureEventProtocol protocolClient = null;
+	protected SPARQL11SEProtocol protocolClient = null;
 	
-	protected String getSubscribeURL() {
-		return protocolClient.getSubscribeURL();
-	}
-	
-	protected String getUpdateURL() {
-		return protocolClient.getUpdateURL();
-	}
-	
-	private static String tag ="SEPA CLIENT";
+	private static final Logger logger = LogManager.getLogger("Client");
 	
 	public void addNamespace(String prefix,String uri){
 		if (prefix2URIMap.containsKey(prefix)) removeNamespace(prefix);
@@ -68,8 +61,10 @@ public abstract class Client implements IClient {
 	}
 	
 	public Client(String url,int updatePort,int subscribePort,String path){
-		SEPALogger.log(VERBOSITY.DEBUG,tag,"Opening connection to SEPA engine:"+url+" Update port:"+updatePort+" Subscribe port:"+subscribePort+ " Path: "+path);
-		protocolClient = new SecureEventProtocol(url, updatePort, subscribePort,path);	
+		logger.debug("Opening connection to SEPA engine:"+url+" Update port:"+updatePort+" Subscribe port:"+subscribePort+ " Path: "+path);
+		ClientProperties properties = new ClientProperties("client.properties");
+		protocolClient = new SPARQL11SEProtocol(properties);	
+		logger.info(protocolClient.toString());
 	}
 	
 	public boolean join() {
@@ -82,15 +77,17 @@ public abstract class Client implements IClient {
 	
 	public Client(ApplicationProfile appProfile){
 		if (appProfile == null) {
-			SEPALogger.log(VERBOSITY.FATAL,tag,"Application profile is null. Client cannot be initialized");
+			logger.fatal("Application profile is null. Client cannot be initialized");
 			return;
 		}
-		if (!appProfile.isLoaded()) SEPALogger.log(VERBOSITY.WARNING,tag,"Running with default parameters. No application profile loaded");
+		if (!appProfile.isLoaded()) logger.warn("Running with default parameters. No application profile loaded");
 		
 		Parameters args = appProfile.getParameters();
-		SEPALogger.log(VERBOSITY.DEBUG,tag,"Created Authority:"+args.getUrl()+" Update port:"+args.getUpdatePort()+" Subscribe port:"+args.getSubscribePort()+ " Path: "+args.getPath());
+		logger.debug("Created Authority:"+args.getUrl()+" Update port:"+args.getUpdatePort()+" Subscribe port:"+args.getSubscribePort()+ " Path: "+args.getPath());
 		
-		protocolClient = new SecureEventProtocol(args.getUrl(), args.getUpdatePort(),args.getSubscribePort(),args.getPath());
+		ClientProperties properties = new ClientProperties("client.properties");
+		protocolClient = new SPARQL11SEProtocol(properties);
+		logger.info(protocolClient.toString());
 		
 		Set<String> prefixes = appProfile.getPrefixes();
 		for (String prefix : prefixes) addNamespace(prefix,appProfile.getNamespaceURI(prefix));

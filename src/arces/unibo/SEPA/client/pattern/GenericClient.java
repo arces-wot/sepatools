@@ -15,20 +15,22 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package arces.unibo.SEPA.application;
+package arces.unibo.SEPA.client.pattern;
 
-import arces.unibo.SEPA.application.SEPALogger.VERBOSITY;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import arces.unibo.SEPA.commons.SPARQL.Bindings;
 import arces.unibo.SEPA.commons.SPARQL.BindingsResults;
 
 public abstract class GenericClient extends Aggregator {	
-	private String tag = "Generic client";
+	private static final Logger logger = LogManager.getLogger("GenericClient");
 	
-	public GenericClient(ApplicationProfile appProfile,String subscribeID,String updateID) {
-		super(appProfile,subscribeID,updateID);
-	}
-	public GenericClient(String url,int updatePort,int subscribePort,String path){
-		super(url,updatePort,subscribePort,path,"","");	
+	public GenericClient(ApplicationProfile appProfile){
+		super(appProfile.getParameters().getUrl(),
+				appProfile.getParameters().getUpdatePort(),
+				appProfile.getParameters().getSubscribePort(),
+				appProfile.getParameters().getPath(),"","");	
 	}
 	
 	public boolean update(String SPARQL_UPDATE,Bindings forced) {
@@ -38,13 +40,13 @@ public abstract class GenericClient extends Aggregator {
 	
 	public BindingsResults query(String SPARQL_QUERY,Bindings forced) {
 		if (protocolClient == null) {
-			 SEPALogger.log(VERBOSITY.FATAL, tag, "Client not initialized");
+			 logger.fatal("Client not initialized");
 			 return null;
 		 }
 		
 		String sparql = prefixes() + super.replaceBindings(SPARQL_QUERY,forced);
 
-		SEPALogger.log(VERBOSITY.DEBUG,"SEPA","QUERY "+sparql);
+		logger.debug("SEPA","QUERY "+sparql);
 		
 		return protocolClient.query(sparql);
 	}

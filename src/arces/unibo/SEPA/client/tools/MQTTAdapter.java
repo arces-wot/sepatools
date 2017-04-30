@@ -1,4 +1,4 @@
-package arces.unibo.SEPA.tools;
+package arces.unibo.SEPA.client.tools;
 
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
 import org.eclipse.paho.client.mqttv3.MqttCallback;
@@ -7,13 +7,11 @@ import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 
-import arces.unibo.SEPA.application.SEPALogger;
-import arces.unibo.SEPA.application.Producer;
+import arces.unibo.SEPA.client.pattern.ApplicationProfile;
+import arces.unibo.SEPA.client.pattern.Producer;
 import arces.unibo.SEPA.commons.SPARQL.Bindings;
 import arces.unibo.SEPA.commons.SPARQL.RDFTermLiteral;
 import arces.unibo.SEPA.commons.SPARQL.RDFTermURI;
-import arces.unibo.SEPA.application.ApplicationProfile;
-import arces.unibo.SEPA.application.SEPALogger.VERBOSITY;
 
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
@@ -28,6 +26,8 @@ import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.util.HashMap;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -41,13 +41,17 @@ import org.bouncycastle.openssl.jcajce.JcePEMDecryptorProviderBuilder;
 public class MQTTAdapter extends Producer implements MqttCallback {
 	private MqttClient mqttClient;
 	private String serverURI = "ssl://giove.mars:8883";
+	
 	private static String clientID = "MQTTAdapter";
+	
 	private String[] topicsFilter = {"arces/servers/#"};
 	static MQTTAdapter adapter;
 	private boolean created = false;
 	
 	public static HashMap<String,String> debugHash = new HashMap<String,String>();
  	
+	private static final Logger logger = LogManager.getLogger("MQTTAdapter");
+	
 	public static class SslUtil {
 
 	    public static SSLSocketFactory getSocketFactory(final String caCrtFile, final String crtFile, final String keyFile,
@@ -133,7 +137,7 @@ public class MQTTAdapter extends Producer implements MqttCallback {
 	            return context.getSocketFactory();
 
 	        } catch (Exception e) {
-	            SEPALogger.log(VERBOSITY.ERROR, clientID, e.getMessage());
+	        	logger.error(e.getMessage());
 	        }
 
 	        return null;
@@ -148,7 +152,7 @@ public class MQTTAdapter extends Producer implements MqttCallback {
 			mqttClient = new MqttClient(serverURI,clientID);
 		} 
 		catch (MqttException e) {
-			SEPALogger.log(VERBOSITY.FATAL,clientID,"Failed to create MQTT client "+e.getMessage());
+			logger.error("Failed to create MQTT client "+e.getMessage());
 			return ;
 		}
 		
@@ -157,13 +161,13 @@ public class MQTTAdapter extends Producer implements MqttCallback {
 			MqttConnectOptions options = new MqttConnectOptions();
 			SSLSocketFactory ssl = SslUtil.getSocketFactory("/usr/local/mosquitto-certs/ca.crt", "/usr/local/mosquitto-certs/mml.crt", "/usr/local/mosquitto-certs/mml.key", "");
 			if (ssl == null) {
-				SEPALogger.log(VERBOSITY.ERROR, clientID, "SSL security option creation failed");
+				logger.error("SSL security option creation failed");
 			}
 			else options.setSocketFactory(ssl);
 			mqttClient.connect(options);
 		} 
 		catch (MqttException e) {
-			SEPALogger.log(VERBOSITY.FATAL,clientID,"Failed to connect "+e.getMessage());
+			logger.error("Failed to connect "+e.getMessage());
 			return ;
 		}
 		
@@ -174,14 +178,14 @@ public class MQTTAdapter extends Producer implements MqttCallback {
 			mqttClient.subscribe(topicsFilter);
 		} 
 		catch (MqttException e) {
-			SEPALogger.log(VERBOSITY.FATAL,clientID,"Failed to subscribe "+e.getMessage());
+			logger.fatal("Failed to subscribe "+e.getMessage());
 			return ;
 		}
 		
 		String topics = "";
 		for (int i=0; i < topicsFilter.length;i++) topics += "\""+ topicsFilter[i] + "\" ";
 		
-		SEPALogger.log(VERBOSITY.INFO,clientID,"MQTT client "+clientID+" subscribed to "+serverURI+" Topic filter "+topics);
+		logger.info("MQTT client "+clientID+" subscribed to "+serverURI+" Topic filter "+topics);
 	
 		created = true;
 	}
@@ -200,7 +204,7 @@ public class MQTTAdapter extends Producer implements MqttCallback {
 
 	@Override
 	public void messageArrived(String topic, MqttMessage value) throws Exception {
-		SEPALogger.log(VERBOSITY.DEBUG,clientID,topic+ " "+value.toString());
+		logger.debug(topic+ " "+value.toString());
 		
 		String node = "iot:"+topic.replace('/', '_');
 		String temperature = value.toString();
@@ -211,7 +215,7 @@ public class MQTTAdapter extends Producer implements MqttCallback {
 		
 		if (debugHash.containsKey(node)) {
 			if (!debugHash.get(node).equals(temperature)) {
-				SEPALogger.log(VERBOSITY.DEBUG,clientID,topic+ " "+debugHash.get(node)+"-->"+temperature.toString());	
+				logger.debug(topic+ " "+debugHash.get(node)+"-->"+temperature.toString());	
 			}
 		}
 		
@@ -233,7 +237,7 @@ public class MQTTAdapter extends Producer implements MqttCallback {
 		
 		if (!adapter.join()) return;
 		
-		SEPALogger.log(VERBOSITY.INFO,clientID,"Press any key to exit...");
+		logger.info("Press any key to exit...");
 		
 		try {
 			System.in.read();

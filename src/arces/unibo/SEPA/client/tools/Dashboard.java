@@ -15,7 +15,7 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package arces.unibo.SEPA.tools;
+package arces.unibo.SEPA.client.tools;
 
 import java.awt.Color;
 import java.awt.Component;
@@ -36,7 +36,7 @@ import javax.swing.JLabel;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
-import javax.swing.ToolTipManager;
+
 import javax.swing.event.TableModelListener;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.table.AbstractTableModel;
@@ -44,6 +44,10 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableModel;
 import javax.swing.table.TableRowSorter;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import javax.swing.JPanel;
 import javax.swing.JList;
 import javax.swing.AbstractListModel;
@@ -72,30 +76,25 @@ import javax.swing.event.ListSelectionListener;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.JTextArea;
 import javax.swing.JSplitPane;
-import javax.swing.JTree;
-import java.awt.Canvas;
-import javax.swing.tree.DefaultTreeModel;
-import javax.swing.tree.TreePath;
 
-import arces.unibo.SEPA.application.ApplicationProfile;
-import arces.unibo.SEPA.application.Consumer;
-import arces.unibo.SEPA.application.GenericClient;
+import arces.unibo.SEPA.client.pattern.ApplicationProfile;
+import arces.unibo.SEPA.client.pattern.GenericClient;
 import arces.unibo.SEPA.commons.SPARQL.ARBindingsResults;
 import arces.unibo.SEPA.commons.SPARQL.Bindings;
 import arces.unibo.SEPA.commons.SPARQL.BindingsResults;
 import arces.unibo.SEPA.commons.SPARQL.RDFTermLiteral;
 import arces.unibo.SEPA.commons.SPARQL.RDFTermURI;
 
-import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.border.TitledBorder;
 import java.awt.Checkbox;
 import java.awt.event.ItemListener;
-import java.awt.event.MouseEvent;
 import java.awt.event.ItemEvent;
-import javax.swing.border.EtchedBorder;
+
 import javax.swing.JCheckBox;
 
 public class Dashboard {
+	private static final Logger logger = LogManager.getLogger("Dashboard");
+	
 	Properties appProperties = new Properties();
 	
 	private DefaultTableModel namespacesDM;
@@ -114,12 +113,8 @@ public class Dashboard {
 	
 	class DashboardClient extends GenericClient {
 
-		public DashboardClient(ApplicationProfile appProfile, String subscribeID, String updateID) {
-			super(appProfile, subscribeID, updateID);
-			// TODO Auto-generated constructor stub
-		}
-		public DashboardClient(String url,int updatePort,int subscribePort,String path){
-			super(url,updatePort,subscribePort,path);	
+		public DashboardClient(ApplicationProfile appProfile){
+			super(appProfile);	
 		}
 		
 		@Override
@@ -168,7 +163,6 @@ public class Dashboard {
 			lblInfo.setText("Broken subscription! Waiting for automatic subscription recovery...");
 			
 		}
-		
 	}
 	
 	class SortedListModel extends AbstractListModel<String> {
@@ -248,8 +242,6 @@ public class Dashboard {
 	private JTable subscribeForcedBindings;
 	private static JTable bindingsResultsTable;
 	private JTable namespacesTable;
-	private JTextField prefix;
-	private JTextField namespace;
 
 	private JLabel lblInfo;
 	private JTextArea SPARQLUpdate;
@@ -258,9 +250,7 @@ public class Dashboard {
 	private JButton btnUpdate;
 	private JButton btnSubscribe;
 	private JButton btnQuery;
-	private JLabel lblInfoVisualizer;
 	private Checkbox qNameCheckbox;
-	private JTree classTree;
 	private JPanel resultsPanel;
 	private static JCheckBox chckbxAutoscroll;
 	private JLabel spuidLabel;
@@ -270,200 +260,9 @@ public class Dashboard {
 	
 	ApplicationProfile appProfile = new ApplicationProfile();
 	
-	//Explorer
-	//private ApplicationProfile explorerAP = new ApplicationProfile();
-	private ClassMonitor classMonitor;
-	private PropertyMonitor propertyMonitor;
-	private JTable propertiesTable;
 	private JTextField textFieldUPort;
-	
-	class PropertyMonitor extends Consumer {
-		OWLClassNodeModel root;
-		OWLClassNodeModel domain; 
-		OWLClassNodeModel range;
-		
-		public PropertyMonitor(ApplicationProfile appProfile, String subscribeID) {
-			super(appProfile, subscribeID);
-		}
-
-		@Override
-		public void notify(ARBindingsResults notify, String spuid, Integer sequence) {
-			
-		}
-
-		@Override
-		public void notifyAdded(BindingsResults bindingsResults, String spuid, Integer sequence) {
-			for (Bindings binding : bindingsResults.getBindings()) {
-				String propertyURI = "";
-				String domainURI = "";
-				String rangeURI = "";
-				String comment = "";
-				
-				if (binding.getBindingValue("property") != null) propertyURI = appProfile.qName(binding.getBindingValue("property"));
-				if (binding.getBindingValue("domain") != null) domainURI = appProfile.qName(binding.getBindingValue("domain"));	
-				if (binding.getBindingValue("range") != null) rangeURI = appProfile.qName(binding.getBindingValue("range"));
-				if (binding.getBindingValue("comment") != null) comment = binding.getBindingValue("comment");
-				
-				if (propertyURI.equals("")) continue; 
-				
-				propertiesDM.addRow(new String[]{propertyURI,domainURI,rangeURI,comment});
-			}
-			
-		}
-
-		@Override
-		public void notifyRemoved(BindingsResults bindingsResults, String spuid, Integer sequence) {
-			
-			
-		}
-
-		@Override
-		public void onSubscribe(BindingsResults bindingsResults, String spuid) {
-			propertiesDM.getDataVector().clear();
-			
-			for (Bindings binding : bindingsResults.getBindings()) {
-				String propertyURI = "";
-				String domainURI = "";
-				String rangeURI = "";
-				String comment = "";
-				
-				if (binding.getBindingValue("property") != null) propertyURI = appProfile.qName(binding.getBindingValue("property"));
-				if (binding.getBindingValue("domain") != null) domainURI = appProfile.qName(binding.getBindingValue("domain"));	
-				if (binding.getBindingValue("range") != null) rangeURI = appProfile.qName(binding.getBindingValue("range"));
-				if (binding.getBindingValue("comment") != null) comment = binding.getBindingValue("comment");
-				
-				if (propertyURI.equals("")) continue; 
-				
-				propertiesDM.addRow(new String[]{propertyURI,domainURI,rangeURI,comment});
-			}
-		}
-
-		@Override
-		public void brokenSubscription() {
-			// TODO Auto-generated method stub
-			
-		}
-		
-	}
-	
-	class ClassMonitor extends Consumer {
-		private HashMap<String,OWLClassNodeModel> treeMap = new HashMap<String,OWLClassNodeModel>();
-		OWLClassNodeModel root;
-		
-		public ClassMonitor(ApplicationProfile appProfile, String subscribeID) {
-			super(appProfile, subscribeID);
-		}
-
-		@Override
-		public void notify(ARBindingsResults notify, String spuid, Integer sequence) {}
-
-		@Override
-		public void notifyAdded(BindingsResults bindingsResults, String spuid, Integer sequence) {
-			for (Bindings binding : bindingsResults.getBindings()) {
-				String classURI = null;
-				String classLabel = null;
-				String classComment = null;
-				String subclassURI = null;
-				
-				if (binding.getBindingValue("class") != null) classURI = appProfile.qName(binding.getBindingValue("class"));
-				if (binding.getBindingValue("subclass") != null) subclassURI = appProfile.qName(binding.getBindingValue("subclass"));	
-				if (binding.getBindingValue("label") != null) classLabel = binding.getBindingValue("label");
-				if (binding.getBindingValue("comment") != null) classComment = binding.getBindingValue("comment");
-				
-				OWLClassNodeModel classNode = null;
-				OWLClassNodeModel subclassNode = null;
-				
-				if (classURI != null) {
-					if (!treeMap.containsKey(classURI)) {
-						classNode = new OWLClassNodeModel(classURI);
-						root.add(classNode);
-						treeMap.put(classURI, classNode);
-					}
-					else {
-						classNode = treeMap.get(classURI);
-					}
-					
-					//Label & comment
-					if (classLabel != null) {
-						classNode.setLabel(classLabel);
-						if (classComment != null) classNode.setComment("URI: "+classURI+"\n\n"+classComment);
-						else classNode.setComment("URI: "+classURI);
-					}
-					else if (classComment != null) classNode.setComment(classComment);
-				}
-				
-				if (subclassURI != null) {
-					if (!treeMap.containsKey(subclassURI)){
-						subclassNode = new OWLClassNodeModel(subclassURI);
-						treeMap.put(subclassURI, subclassNode);
-					}
-					else subclassNode = treeMap.get(subclassURI);
-						
-					classNode.add(subclassNode);	
-				}
-			}
-			
-		}
-
-		@Override
-		public void notifyRemoved(BindingsResults bindingsResults, String spuid, Integer sequence) {
-			
-		}
-
-		@Override
-		public void onSubscribe(BindingsResults bindingsResults, String spuid) {
-			root = new OWLClassNodeModel("owl:Thing");
-			classTree.setModel(new DefaultTreeModel(root));
-			
-			treeMap.clear();
-			
-			notifyAdded(bindingsResults,spuid,0);
-		}
-
-		@Override
-		public void brokenSubscription() {
-			// TODO Auto-generated method stub
-			
-		}
-		
-	}
-	
-	static class OWLClassNodeModel extends DefaultMutableTreeNode {
-
-		/**
-		 * 
-		 */
-		private static final long serialVersionUID = 6299628084428311514L;
-
-		private String label = null;
-		private String uri = null;
-		private String comment = null;
-		
-		public OWLClassNodeModel(String uri) {
-			super(uri);
-			this.uri = uri;
-		}
-		
-		@Override
-		public String toString() {
-			if (label != null) return label;
-			return uri;
-		}
-		
-		public String getComment() {
-			if (comment == null) return "";
-			return comment;
-		}
-		
-		public void setLabel(String label) {
-			this.label = label;
-		}
-		
-		public void setComment(String comment) {
-			this.comment = comment;
-		}
-		
-	}
+	private JTextField textFieldUPortSecure;
+	private JTextField textFieldSPortSecure;
 	
 	static class ForcedBindingsTableModel extends AbstractTableModel {
 		/**
@@ -833,61 +632,83 @@ public class Dashboard {
 	/**
 	 * Create the application.
 	 */
-	public Dashboard() {
-		loadProperties();
-		
-		//SEPALogger.loadSettings();
-		
+	public Dashboard() {		
 		initialize();
 		
-		//TODO: experimental explorer
-		//explorerAP.load("explorer.sap");
-		//classMonitor = new ClassMonitor(explorerAP,"CLASSES");
-		//propertyMonitor = new PropertyMonitor(explorerAP,"PROPERTIES");
+		loadSAP(null);
 	}
 	
-	private void loadProperties() {
-		FileInputStream in = null;
-		try {
-			in = new FileInputStream("dashboard.properties");
-		} catch (FileNotFoundException e) {
-			appProperties.setProperty("subscribePort", "9000");
-			appProperties.setProperty("updatePort", "8000");
-			appProperties.setProperty("path", "/sparql");
-			appProperties.setProperty("ip", "localhost");
-			storeProperties(true);
-			return;
+	private boolean loadSAP(String file) {
+		if (file == null) {
+			FileInputStream in = null;
+			try {
+				in = new FileInputStream("dashboard.properties");
+			} catch (FileNotFoundException e) {
+				logger.error(e.getMessage());
+				return false;
+			}
+			
+			Properties sapFile = new Properties();
+			try {
+				sapFile.load(in);
+			} catch (IOException e) {
+				logger.error(e.getMessage());
+				return false;
+			}
+			String path = sapFile.getProperty("appProfile");
+			if (path == null) return false;
+			file = path;
 		}
-		try {
-			appProperties.load(in);
-		} catch (IOException e) {
-			e.printStackTrace();			
+		
+		SPARQLSubscribe.setText("");
+		SPARQLUpdate.setText("");
+		namespacesDM.getDataVector().clear();
+		updateListDM.clear();
+		subscribeListDM.clear();
+		updateForcedBindingsDM.clearBindings();
+		subscribeForcedBindingsDM.clearBindings();
+		
+		updatesList.clearSelection();
+		subscribesList.clearSelection();
+		
+		if(appProfile.load(file)) {
+			frmSepaDashboard.setTitle("SEPA Dashboard Ver 1.0 " + " - " + file);
+			
+			//Loading namespaces
+			for(String prefix : appProfile.getPrefixes()) {
+				Vector<String> row = new Vector<String>();
+				row.add(prefix);
+				row.addElement(appProfile.getNamespaceURI(prefix));
+				namespacesDM.addRow(row);
+			}
+			//Loading updates
+			for(String update : appProfile.getUpdateIds()) {
+				//updateListDM.addElement(update);
+				updateListDM.add(update);
+			}
+			//Loading updates
+			for(String subscribe : appProfile.getSubscribeIds()) {
+				//subscribeListDM.addElement(subscribe);
+				subscribeListDM.add(subscribe);
+			}
+			
+			textFieldIP.setText(appProfile.getParameters().getUrl());
+			textFieldUPort.setText(String.format("%d", appProfile.getParameters().getUpdatePort()));
+			textFieldSPort.setText(String.format("%d", appProfile.getParameters().getSubscribePort()));
+			txtFieldPath.setText(appProfile.getParameters().getPath());
+			textFieldUPortSecure.setText(String.format("%d", appProfile.getParameters().getUpdateSecurePort()));
+			textFieldSPortSecure.setText(String.format("%d", appProfile.getParameters().getSubscribeSecurePort()));
+			
+			//Enable all the buttons
+			btnUpdate.setEnabled(true);
+			btnSubscribe.setEnabled(true);
+			btnQuery.setEnabled(true);
+			
+			kp = new DashboardClient(appProfile); 
+			
+			return true;
 		}
-		try {
-			in.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}	
-	}
-	
-	private void storeProperties(boolean def) {
-		FileOutputStream out = null;
-		try {
-			out = new FileOutputStream("dashboard.properties");
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		}
-		try {
-			if (def) appProperties.store(out,"Default values");
-			else appProperties.store(out,"Last used values");
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		try {
-			out.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}	
+		return false;
 	}
 	
 	private class DashboardFileFilter extends FileFilter {
@@ -947,7 +768,7 @@ public class Dashboard {
 		propertiesDM.setColumnIdentifiers(propertiesHeader);
 		
 		frmSepaDashboard = new JFrame();
-		frmSepaDashboard.setTitle("SEPA Dashboard");
+		frmSepaDashboard.setTitle("SEPA Dashboard Ver 0.5");
 		frmSepaDashboard.setBounds(100, 100, 925, 768);
 		frmSepaDashboard.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frmSepaDashboard.getContentPane().setLayout(new BorderLayout(0, 0));
@@ -960,7 +781,7 @@ public class Dashboard {
 		tabbedPane.addTab("SPARQL", null, SPARQLPanel, null);
 		GridBagLayout gbl_SPARQLPanel = new GridBagLayout();
 		gbl_SPARQLPanel.columnWidths = new int[]{0, 0};
-		gbl_SPARQLPanel.rowHeights = new int[] {48, 45, 96, 69};
+		gbl_SPARQLPanel.rowHeights = new int[] {48, 117, 96, 69};
 		gbl_SPARQLPanel.columnWeights = new double[]{1.0, Double.MIN_VALUE};
 		gbl_SPARQLPanel.rowWeights = new double[]{0.0, 0.0, 0.0, 1.0};
 		SPARQLPanel.setLayout(gbl_SPARQLPanel);
@@ -974,13 +795,13 @@ public class Dashboard {
 		gbc_configuration.gridy = 0;
 		SPARQLPanel.add(configuration, gbc_configuration);
 		GridBagLayout gbl_configuration = new GridBagLayout();
-		gbl_configuration.columnWidths = new int[]{37, 134, 0, 77, 38, 91, 33, 78, 47, 37, 0};
+		gbl_configuration.columnWidths = new int[]{37, 134, 0, 77, 77, 38, 72, 75, 33, 78, 37, 0};
 		gbl_configuration.rowHeights = new int[]{26, 0};
-		gbl_configuration.columnWeights = new double[]{0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0, Double.MIN_VALUE};
+		gbl_configuration.columnWeights = new double[]{0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 0.0, Double.MIN_VALUE};
 		gbl_configuration.rowWeights = new double[]{0.0, Double.MIN_VALUE};
 		configuration.setLayout(gbl_configuration);
 		
-		JLabel lblIp = new JLabel("IP");
+		JLabel lblIp = new JLabel("URL");
 		GridBagConstraints gbc_lblIp = new GridBagConstraints();
 		gbc_lblIp.insets = new Insets(0, 0, 0, 5);
 		gbc_lblIp.gridx = 0;
@@ -988,6 +809,7 @@ public class Dashboard {
 		configuration.add(lblIp, gbc_lblIp);
 		
 		textFieldIP = new JTextField();
+		textFieldIP.setEditable(false);
 		textFieldIP.setText(appProperties.getProperty("ip"));
 		GridBagConstraints gbc_textFieldIP = new GridBagConstraints();
 		gbc_textFieldIP.fill = GridBagConstraints.HORIZONTAL;
@@ -997,7 +819,7 @@ public class Dashboard {
 		configuration.add(textFieldIP, gbc_textFieldIP);
 		textFieldIP.setColumns(10);
 		
-		JLabel lblUpdate = new JLabel("UPORT");
+		JLabel lblUpdate = new JLabel("UPort");
 		GridBagConstraints gbc_lblUpdate = new GridBagConstraints();
 		gbc_lblUpdate.anchor = GridBagConstraints.EAST;
 		gbc_lblUpdate.insets = new Insets(0, 0, 0, 5);
@@ -1006,6 +828,7 @@ public class Dashboard {
 		configuration.add(lblUpdate, gbc_lblUpdate);
 		
 		textFieldUPort = new JTextField();
+		textFieldUPort.setEditable(false);
 		textFieldUPort.setText(appProperties.getProperty("updatePort"));
 		GridBagConstraints gbc_textFieldUPort = new GridBagConstraints();
 		gbc_textFieldUPort.insets = new Insets(0, 0, 0, 5);
@@ -1015,92 +838,63 @@ public class Dashboard {
 		configuration.add(textFieldUPort, gbc_textFieldUPort);
 		textFieldUPort.setColumns(10);
 		
-		JLabel lblPort = new JLabel("SPORT");
+		textFieldUPortSecure = new JTextField();
+		GridBagConstraints gbc_textFieldUPortSecure = new GridBagConstraints();
+		gbc_textFieldUPortSecure.insets = new Insets(0, 0, 0, 5);
+		gbc_textFieldUPortSecure.fill = GridBagConstraints.HORIZONTAL;
+		gbc_textFieldUPortSecure.gridx = 4;
+		gbc_textFieldUPortSecure.gridy = 0;
+		configuration.add(textFieldUPortSecure, gbc_textFieldUPortSecure);
+		textFieldUPortSecure.setColumns(10);
+		
+		JLabel lblPort = new JLabel("SPort");
 		GridBagConstraints gbc_lblPort = new GridBagConstraints();
 		gbc_lblPort.anchor = GridBagConstraints.WEST;
 		gbc_lblPort.insets = new Insets(0, 0, 0, 5);
-		gbc_lblPort.gridx = 4;
+		gbc_lblPort.gridx = 5;
 		gbc_lblPort.gridy = 0;
 		configuration.add(lblPort, gbc_lblPort);
 		
 		textFieldSPort = new JTextField();
+		textFieldSPort.setEditable(false);
 		textFieldSPort.setText(appProperties.getProperty("subscribePort"));
 		GridBagConstraints gbc_textFieldSPort = new GridBagConstraints();
 		gbc_textFieldSPort.fill = GridBagConstraints.HORIZONTAL;
 		gbc_textFieldSPort.anchor = GridBagConstraints.NORTH;
 		gbc_textFieldSPort.insets = new Insets(0, 0, 0, 5);
-		gbc_textFieldSPort.gridx = 5;
+		gbc_textFieldSPort.gridx = 6;
 		gbc_textFieldSPort.gridy = 0;
 		configuration.add(textFieldSPort, gbc_textFieldSPort);
 		textFieldSPort.setColumns(10);
+		
+		textFieldSPortSecure = new JTextField();
+		GridBagConstraints gbc_textFieldSPortSecure = new GridBagConstraints();
+		gbc_textFieldSPortSecure.insets = new Insets(0, 0, 0, 5);
+		gbc_textFieldSPortSecure.fill = GridBagConstraints.HORIZONTAL;
+		gbc_textFieldSPortSecure.gridx = 7;
+		gbc_textFieldSPortSecure.gridy = 0;
+		configuration.add(textFieldSPortSecure, gbc_textFieldSPortSecure);
+		textFieldSPortSecure.setColumns(10);
 		
 		JLabel lblName = new JLabel("PATH");
 		GridBagConstraints gbc_lblName = new GridBagConstraints();
 		gbc_lblName.anchor = GridBagConstraints.WEST;
 		gbc_lblName.insets = new Insets(0, 0, 0, 5);
-		gbc_lblName.gridx = 6;
+		gbc_lblName.gridx = 8;
 		gbc_lblName.gridy = 0;
 		configuration.add(lblName, gbc_lblName);
 		
 		txtFieldPath = new JTextField();
+		txtFieldPath.setEditable(false);
 		txtFieldPath.setText(appProperties.getProperty("path"));
 		GridBagConstraints gbc_txtFieldPath = new GridBagConstraints();
 		gbc_txtFieldPath.fill = GridBagConstraints.HORIZONTAL;
 		gbc_txtFieldPath.anchor = GridBagConstraints.NORTH;
 		gbc_txtFieldPath.insets = new Insets(0, 0, 0, 5);
-		gbc_txtFieldPath.gridx = 7;
+		gbc_txtFieldPath.gridx = 9;
 		gbc_txtFieldPath.gridy = 0;
 		configuration.add(txtFieldPath, gbc_txtFieldPath);
 		txtFieldPath.setColumns(10);
-		
-		JButton btnJoin = new JButton("Join");
-		btnJoin.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				if (btnJoin.getText().equals("Join")) {
-					kp = new DashboardClient(textFieldIP.getText(),
-							Integer.parseInt(textFieldUPort.getText()),
-							Integer.parseInt(textFieldSPort.getText()),txtFieldPath.getText());
-					if (kp.join()) {
-						btnJoin.setText("Leave");
-						storeProperties(false);
-						btnUpdate.setEnabled(true);
-						btnSubscribe.setEnabled(true);
-						btnQuery.setEnabled(true);
-						textFieldIP.setEnabled(false);
-						textFieldSPort.setEnabled(false);
-						txtFieldPath.setEnabled(false);
-						textFieldUPort.setEnabled(false);
-						
-						lblInfo.setText("Joined @ "+textFieldIP.getText()+":"+textFieldSPort.getText()+" \""+txtFieldPath.getText()+"\"");
-						storeProperties(false);
-					}
-					else {
-						lblInfo.setText("Not joined...please check the connection parameters");
-					}
-				}
-				else {
-					if (kp.leave()) {
-						btnJoin.setText("Join");
-						btnUpdate.setEnabled(false);
-						btnSubscribe.setEnabled(false);
-						btnQuery.setEnabled(false);
-						textFieldIP.setEnabled(true);
-						textFieldSPort.setEnabled(true);
-						txtFieldPath.setEnabled(true);
-						textFieldUPort.setEnabled(true);
-						
-						lblInfo.setText("Left @ "+textFieldIP.getText()+":"+textFieldSPort.getText()+" \""+txtFieldPath.getText()+" \"");
-					}
-				}
-			}
-		});
-		GridBagConstraints gbc_btnJoin = new GridBagConstraints();
-		gbc_btnJoin.insets = new Insets(0, 0, 0, 5);
-		gbc_btnJoin.fill = GridBagConstraints.HORIZONTAL;
-		gbc_btnJoin.anchor = GridBagConstraints.NORTH;
-		gbc_btnJoin.gridx = 8;
-		gbc_btnJoin.gridy = 0;
-		configuration.add(btnJoin, gbc_btnJoin);
 		
 		JButton btnLoadXmlProfile = new JButton("Load SAP profile");
 		btnLoadXmlProfile.addActionListener(new ActionListener() {
@@ -1111,53 +905,38 @@ public class Dashboard {
 				int returnVal = fc.showOpenDialog(frmSepaDashboard);
 				if (returnVal == JFileChooser.APPROVE_OPTION) {
 					String fileName = fc.getSelectedFile().getPath();
-					appProperties.setProperty("appProfile", fileName);
 					
-					SPARQLSubscribe.setText("");
-					SPARQLUpdate.setText("");
-					namespacesDM.getDataVector().clear();
-					updateListDM.clear();
-					subscribeListDM.clear();
-					updateForcedBindingsDM.clearBindings();
-					subscribeForcedBindingsDM.clearBindings();
+					if(loadSAP(fileName)) { 
 					
-					updatesList.clearSelection();
-					subscribesList.clearSelection();
-					
-					if(appProfile.load(fileName)) {
-						storeProperties(false);
-						frmSepaDashboard.setTitle("SEPA Dashboard" + " - " + fileName);
-						
-						//Loading namespaces
-						for(String prefix : appProfile.getPrefixes()) {
-							Vector<String> row = new Vector<String>();
-							row.add(prefix);
-							row.addElement(appProfile.getNamespaceURI(prefix));
-							namespacesDM.addRow(row);
-						}
-						//Loading updates
-						for(String update : appProfile.getUpdateIds()) {
-							//updateListDM.addElement(update);
-							updateListDM.add(update);
-						}
-						//Loading updates
-						for(String subscribe : appProfile.getSubscribeIds()) {
-							//subscribeListDM.addElement(subscribe);
-							subscribeListDM.add(subscribe);
+						FileOutputStream out = null;
+						try {
+							out = new FileOutputStream("dashboard.properties");
+						} catch (FileNotFoundException e3) {
+							logger.error(e3.getMessage());
+							return;
 						}
 						
-						textFieldIP.setText(appProfile.getParameters().getUrl());
-						textFieldUPort.setText(String.format("%d", appProfile.getParameters().getUpdatePort()));
-						textFieldSPort.setText(String.format("%d", appProfile.getParameters().getSubscribePort()));
-						txtFieldPath.setText(appProfile.getParameters().getPath());
+						Properties sapFile = new Properties();
+						sapFile.put("appProfile", fileName);
+						try {
+							sapFile.store(out,"Dashboard properties");
+						} catch (IOException e1) {
+							logger.error(e1.getMessage());
+						}
+						try {
+							out.close();
+						} catch (IOException e2) {
+							logger.error(e2.getMessage());
+						}
 					}
+					
 				}
 			}
 		});
 		GridBagConstraints gbc_btnLoadXmlProfile = new GridBagConstraints();
 		gbc_btnLoadXmlProfile.fill = GridBagConstraints.HORIZONTAL;
 		gbc_btnLoadXmlProfile.anchor = GridBagConstraints.NORTH;
-		gbc_btnLoadXmlProfile.gridx = 9;
+		gbc_btnLoadXmlProfile.gridx = 10;
 		gbc_btnLoadXmlProfile.gridy = 0;
 		configuration.add(btnLoadXmlProfile, gbc_btnLoadXmlProfile);
 		
@@ -1173,11 +952,12 @@ public class Dashboard {
 		gbl_namespaces.columnWidths = new int[]{0, 0, 0};
 		gbl_namespaces.rowHeights = new int[]{43, 0};
 		gbl_namespaces.columnWeights = new double[]{1.0, 1.0, Double.MIN_VALUE};
-		gbl_namespaces.rowWeights = new double[]{0.0, Double.MIN_VALUE};
+		gbl_namespaces.rowWeights = new double[]{1.0, Double.MIN_VALUE};
 		namespaces.setLayout(gbl_namespaces);
 		
 		JScrollPane scrollPane_4 = new JScrollPane();
 		GridBagConstraints gbc_scrollPane_4 = new GridBagConstraints();
+		gbc_scrollPane_4.gridwidth = 2;
 		gbc_scrollPane_4.insets = new Insets(0, 0, 0, 5);
 		gbc_scrollPane_4.fill = GridBagConstraints.BOTH;
 		gbc_scrollPane_4.gridx = 0;
@@ -1186,69 +966,6 @@ public class Dashboard {
 		
 		namespacesTable = new JTable(namespacesDM);
 		scrollPane_4.setViewportView(namespacesTable);
-		
-		JPanel panel_2 = new JPanel();
-		GridBagConstraints gbc_panel_2 = new GridBagConstraints();
-		gbc_panel_2.fill = GridBagConstraints.BOTH;
-		gbc_panel_2.gridx = 1;
-		gbc_panel_2.gridy = 0;
-		namespaces.add(panel_2, gbc_panel_2);
-		GridBagLayout gbl_panel_2 = new GridBagLayout();
-		gbl_panel_2.columnWidths = new int[]{0, 0, 0};
-		gbl_panel_2.rowHeights = new int[]{43, 0, 0, 0};
-		gbl_panel_2.columnWeights = new double[]{0.0, 1.0, Double.MIN_VALUE};
-		gbl_panel_2.rowWeights = new double[]{0.0, 0.0, 0.0, Double.MIN_VALUE};
-		panel_2.setLayout(gbl_panel_2);
-		
-		JLabel lblPrefix = new JLabel("Prefix");
-		GridBagConstraints gbc_lblPrefix = new GridBagConstraints();
-		gbc_lblPrefix.anchor = GridBagConstraints.EAST;
-		gbc_lblPrefix.insets = new Insets(0, 0, 5, 5);
-		gbc_lblPrefix.gridx = 0;
-		gbc_lblPrefix.gridy = 0;
-		panel_2.add(lblPrefix, gbc_lblPrefix);
-		
-		prefix = new JTextField();
-		GridBagConstraints gbc_prefix = new GridBagConstraints();
-		gbc_prefix.fill = GridBagConstraints.HORIZONTAL;
-		gbc_prefix.insets = new Insets(0, 0, 5, 0);
-		gbc_prefix.gridx = 1;
-		gbc_prefix.gridy = 0;
-		panel_2.add(prefix, gbc_prefix);
-		prefix.setColumns(10);
-		
-		JLabel lblSuffix = new JLabel("Namespace");
-		GridBagConstraints gbc_lblSuffix = new GridBagConstraints();
-		gbc_lblSuffix.anchor = GridBagConstraints.EAST;
-		gbc_lblSuffix.insets = new Insets(0, 0, 5, 5);
-		gbc_lblSuffix.gridx = 0;
-		gbc_lblSuffix.gridy = 1;
-		panel_2.add(lblSuffix, gbc_lblSuffix);
-		
-		namespace = new JTextField();
-		GridBagConstraints gbc_namespace = new GridBagConstraints();
-		gbc_namespace.insets = new Insets(0, 0, 5, 0);
-		gbc_namespace.fill = GridBagConstraints.HORIZONTAL;
-		gbc_namespace.gridx = 1;
-		gbc_namespace.gridy = 1;
-		panel_2.add(namespace, gbc_namespace);
-		namespace.setColumns(10);
-		
-		JButton btnAdd = new JButton("Add");
-		GridBagConstraints gbc_btnAdd = new GridBagConstraints();
-		gbc_btnAdd.gridx = 1;
-		gbc_btnAdd.gridy = 2;
-		panel_2.add(btnAdd, gbc_btnAdd);
-		btnAdd.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				if (prefix.getText().equals("")) return;
-				if (namespace.getText().equals("")) return;
-				Vector<String> row = new Vector<String>();
-				row.add(prefix.getText());
-				row.addElement(namespace.getText());
-				namespacesDM.addRow(row);
-			}
-		});
 		
 		JPanel primitives = new JPanel();
 		primitives.setBorder(new TitledBorder(null, "Primitives", TitledBorder.LEADING, TitledBorder.TOP, null, null));
@@ -1697,131 +1414,6 @@ public class Dashboard {
 		gbc_btnClean.gridx = 3;
 		gbc_btnClean.gridy = 0;
 		panel_1.add(btnClean, gbc_btnClean);
-		
-		JSplitPane visualizer = new JSplitPane();
-		visualizer.setEnabled(false);
-		visualizer.setOneTouchExpandable(true);
-		visualizer.setContinuousLayout(true);
-		tabbedPane.addTab("Explorer", null, visualizer, "To be implemented...");
-		tabbedPane.setEnabledAt(1, true);
-		tabbedPane.setForegroundAt(1, Color.BLACK);
-		
-		JPanel classes = new JPanel();
-		visualizer.setLeftComponent(classes);
-		GridBagLayout gbl_classes = new GridBagLayout();
-		gbl_classes.columnWidths = new int[]{275, 0};
-		gbl_classes.rowHeights = new int[]{0, 0, 0, 0};
-		gbl_classes.columnWeights = new double[]{1.0, Double.MIN_VALUE};
-		gbl_classes.rowWeights = new double[]{1.0, 1.0, 0.0, Double.MIN_VALUE};
-		classes.setLayout(gbl_classes);
-		
-		JScrollPane scrollPane_7 = new JScrollPane();
-		GridBagConstraints gbc_scrollPane_7 = new GridBagConstraints();
-		gbc_scrollPane_7.fill = GridBagConstraints.BOTH;
-		gbc_scrollPane_7.insets = new Insets(0, 0, 5, 0);
-		gbc_scrollPane_7.gridx = 0;
-		gbc_scrollPane_7.gridy = 0;
-		classes.add(scrollPane_7, gbc_scrollPane_7);
-		
-		classTree = new JTree(){
-			/**
-			 * 
-			 */
-			private static final long serialVersionUID = -1001045036021299702L;
-
-			@Override
-			public String getToolTipText(MouseEvent evt) {
-			    if (getRowForLocation(evt.getX(), evt.getY()) == -1) return null;
-			    TreePath curPath = getPathForLocation(evt.getX(), evt.getY());
-			    OWLClassNodeModel node = (OWLClassNodeModel)curPath.getLastPathComponent();
-			    return node.getComment();
-			}
-		};
-		scrollPane_7.setViewportView(classTree);
-		classTree.setBorder(new TitledBorder(null, "Class tree", TitledBorder.LEADING, TitledBorder.TOP, null, null));
-		classTree.setModel(new DefaultTreeModel(null));
-		ToolTipManager.sharedInstance().registerComponent(classTree);
-		
-		JPanel panel_3 = new JPanel();
-		panel_3.setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.LOWERED, null, null), "Object properties", TitledBorder.LEADING, TitledBorder.TOP, null, new Color(0, 0, 0)));
-		GridBagConstraints gbc_panel_3 = new GridBagConstraints();
-		gbc_panel_3.fill = GridBagConstraints.BOTH;
-		gbc_panel_3.insets = new Insets(0, 0, 5, 0);
-		gbc_panel_3.gridx = 0;
-		gbc_panel_3.gridy = 1;
-		classes.add(panel_3, gbc_panel_3);
-		GridBagLayout gbl_panel_3 = new GridBagLayout();
-		gbl_panel_3.columnWidths = new int[]{275, 0};
-		gbl_panel_3.rowHeights = new int[]{0, 0};
-		gbl_panel_3.columnWeights = new double[]{1.0, Double.MIN_VALUE};
-		gbl_panel_3.rowWeights = new double[]{1.0, Double.MIN_VALUE};
-		panel_3.setLayout(gbl_panel_3);
-		
-		JScrollPane scrollPane_8 = new JScrollPane();
-		GridBagConstraints gbc_scrollPane_8 = new GridBagConstraints();
-		gbc_scrollPane_8.fill = GridBagConstraints.BOTH;
-		gbc_scrollPane_8.gridx = 0;
-		gbc_scrollPane_8.gridy = 0;
-		panel_3.add(scrollPane_8, gbc_scrollPane_8);
-		
-		propertiesTable = new JTable(propertiesDM);
-		propertiesTable.setFillsViewportHeight(true);
-		propertiesTable.setBorder(null);
-		scrollPane_8.setViewportView(propertiesTable);
-		
-		JButton btnStart = new JButton("Start");
-		btnStart.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				if (btnStart.getText().equals("Start")) {
-					classTree.setModel(new DefaultTreeModel(null));
-					
-					boolean joined = classMonitor.join() && propertyMonitor.join();
-					
-					if (!joined) return;
-					
-					boolean subscribed = !classMonitor.subscribe(null).equals("") && !propertyMonitor.subscribe(null).equals("");
-					
-					if (subscribed) btnStart.setText("Stop");
-				}
-				else {
-					classMonitor.unsubscribe();
-					classMonitor.leave();
-					propertyMonitor.unsubscribe();
-					propertyMonitor.leave();
-					
-					btnStart.setText("Start");
-				}
-			}
-		});
-		GridBagConstraints gbc_btnStart = new GridBagConstraints();
-		gbc_btnStart.fill = GridBagConstraints.HORIZONTAL;
-		gbc_btnStart.gridx = 0;
-		gbc_btnStart.gridy = 2;
-		classes.add(btnStart, gbc_btnStart);
-		
-		JPanel view3d = new JPanel();
-		visualizer.setRightComponent(view3d);
-		GridBagLayout gbl_view3d = new GridBagLayout();
-		gbl_view3d.columnWidths = new int[]{1, 0};
-		gbl_view3d.rowHeights = new int[]{1, 0, 0};
-		gbl_view3d.columnWeights = new double[]{1.0, Double.MIN_VALUE};
-		gbl_view3d.rowWeights = new double[]{1.0, 0.0, Double.MIN_VALUE};
-		view3d.setLayout(gbl_view3d);
-		
-		Canvas canvas = new Canvas();
-		GridBagConstraints gbc_canvas = new GridBagConstraints();
-		gbc_canvas.insets = new Insets(0, 0, 5, 0);
-		gbc_canvas.fill = GridBagConstraints.BOTH;
-		gbc_canvas.gridx = 0;
-		gbc_canvas.gridy = 0;
-		view3d.add(canvas, gbc_canvas);
-		
-		lblInfoVisualizer = new JLabel("Info");
-		GridBagConstraints gbc_lblInfoVisualizer = new GridBagConstraints();
-		gbc_lblInfoVisualizer.anchor = GridBagConstraints.EAST;
-		gbc_lblInfoVisualizer.gridx = 0;
-		gbc_lblInfoVisualizer.gridy = 1;
-		view3d.add(lblInfoVisualizer, gbc_lblInfoVisualizer);
 		bindingsRender.setNamespaces(namespacesDM);
 	}
 }

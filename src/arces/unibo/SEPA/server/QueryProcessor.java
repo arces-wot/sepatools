@@ -17,6 +17,7 @@
 
 package arces.unibo.SEPA.server;
 
+import arces.unibo.SEPA.commons.SPARQL.Endpoint;
 import arces.unibo.SEPA.commons.request.QueryRequest;
 import arces.unibo.SEPA.commons.response.Response;
 

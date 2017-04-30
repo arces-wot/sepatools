@@ -1,4 +1,4 @@
-package arces.unibo.SEPA.protocol;
+package arces.unibo.SEPA.client.api;
 
 import javax.websocket.MessageHandler;
 
@@ -6,18 +6,19 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 import arces.unibo.SEPA.commons.response.Notification;
+import arces.unibo.SEPA.commons.response.NotificationHandler;
 
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 
-class SEPAMessageHandler implements MessageHandler.Whole<String> {
-	private static final Logger logger = LogManager.getLogger("Message handler");
+class WebsocketMessageHandler implements MessageHandler.Whole<String> {
+	private static final Logger logger = LogManager.getLogger("WebsocketMessageHandler");
 	
 	private NotificationHandler handler;
-	private SocketWatchdog watchDog;
-	private SEPAEndpoint wsClient;
+	private WebsocketWatchdog watchDog;
+	private WebsocketEndpoint wsClient;
 	
-	public SEPAMessageHandler(NotificationHandler handler,SocketWatchdog watchDog,SEPAEndpoint wsClient) {
+	public WebsocketMessageHandler(NotificationHandler handler,WebsocketWatchdog watchDog,WebsocketEndpoint wsClient) {
 		this.handler = handler;
 		this.watchDog = watchDog;
 		this.wsClient = wsClient;

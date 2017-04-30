@@ -19,18 +19,14 @@
 package arces.unibo.SEPA.security;
 
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 
-import java.security.Key;
 import java.security.KeyManagementException;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
 
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
@@ -43,10 +39,7 @@ import org.glassfish.grizzly.ssl.SSLEngineConfigurator;
 
 import com.sun.net.httpserver.HttpsConfigurator;
 
-import sun.security.tools.keytool.CertAndKeyGen;
-import sun.security.x509.X500Name;
-
-public class SecurityManager { //extends HttpsConfigurator {
+public class SecurityManager {
 	private KeyManagerFactory kmf;
 	private TrustManagerFactory tmf;
 	private SSLContext sslContext;
@@ -107,6 +100,7 @@ public class SecurityManager { //extends HttpsConfigurator {
 		return wssConfig;
 	}
 	
+	/*
 	private boolean createStore(String keystoreFilename,String storePassword) {
 		//Create keystore
 		try{
@@ -121,6 +115,7 @@ public class SecurityManager { //extends HttpsConfigurator {
 		
 		return true;
 	}
+	
 	
 	private boolean storePrivateKey(String keystoreFilename,String storePassword,String keyPassword,String alias){
 		//Store private key
@@ -148,17 +143,20 @@ public class SecurityManager { //extends HttpsConfigurator {
 		return true;
 	}
 	
-	private boolean storeCertificate(String keystoreFilename,String storePassword,String certificate) {
+	private boolean storeCertificate(String keystoreFilename,String storePassword,String alias) {
 		try{
 		    KeyStore keyStore = KeyStore.getInstance("JKS");
 		    keyStore.load(new FileInputStream(keystoreFilename),storePassword.toCharArray());
 		     
+		    
 		    CertAndKeyGen gen = new CertAndKeyGen("RSA","SHA1WithRSA");
 		    gen.generate(1024);
 		     
 		    X509Certificate cert=gen.getSelfCertificate(new X500Name("CN=SINGLE_CERTIFICATE"), (long)365*24*3600);
-		     
-		    keyStore.setCertificateEntry(certificate, cert);
+		    
+		    //Certificate cert = keyStore.getCertificate(alias);
+	    
+		    keyStore.setCertificateEntry(alias, cert);
 		     
 		    keyStore.store(new FileOutputStream(keystoreFilename), storePassword.toCharArray());
 		}catch(Exception ex){
@@ -168,12 +166,26 @@ public class SecurityManager { //extends HttpsConfigurator {
 		
 		return true;
 	}
-	
+	*/
 	private boolean loadCertificate(String keystoreFilename,String storePassword,String keyPassword,String key,String certificate) {
-		FileInputStream fIn = null;
 		
-		KeyStore keystore;
+		KeyStore keystore = null;
 		
+		try {
+			keystore = KeyStore.getInstance("JKS");
+		} catch (KeyStoreException e) {
+			logger.fatal(e.getMessage());
+			System.exit(1);
+		}
+		
+		try {
+			keystore.load(new FileInputStream(keystoreFilename),storePassword.toCharArray());
+		} catch (NoSuchAlgorithmException | CertificateException | IOException e) {
+			logger.fatal(e.getMessage());
+			System.exit(1);
+		}
+		 
+		/*
 		//Open or create a new JKS key store
 		try {
 			fIn = new FileInputStream(keystoreFilename);
@@ -191,6 +203,7 @@ public class SecurityManager { //extends HttpsConfigurator {
 				return false;
 			}
 		}	
+		
 		try {
 			keystore = KeyStore.getInstance("JKS");
 		} catch (KeyStoreException e) {
@@ -208,6 +221,7 @@ public class SecurityManager { //extends HttpsConfigurator {
 			logger.error(e.getMessage());
 			return false;
 		}
+		*/
 		
 		// Setup the key manager factory
 		try {
