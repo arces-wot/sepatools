@@ -82,7 +82,6 @@ public class TokenHandler implements TokenHandlerMBean {
 					jar.wait(properties.getTokenTimeout());
 				} catch (InterruptedException e) {
 					logger.debug(e.getMessage());
-					e.printStackTrace();
 				}
 			}
 			if (jar.size()==0) return null;

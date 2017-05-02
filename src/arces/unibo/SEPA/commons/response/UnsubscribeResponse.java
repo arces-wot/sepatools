@@ -43,5 +43,4 @@ public class UnsubscribeResponse extends Response {
 	public String getSPUID() {
 		return super.getAsJsonObject().get("unsubscribed").getAsString();
 	}
-
 }

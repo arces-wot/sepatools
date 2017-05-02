@@ -42,5 +42,4 @@ public class QueryResponse extends Response {
 	public BindingsResults getBindingsResults() {
 		return new BindingsResults(json.get("body").getAsJsonObject());
 	}
-	
 }

@@ -53,4 +53,27 @@ public abstract class Response {
 		return json;
 	}
 	
+	public boolean isError(){
+		return this.getClass() == ErrorResponse.class;
+	}
+	
+	public boolean isNotification(){
+		return this.getClass() == Notification.class;
+	}
+	
+	public boolean isQuery(){
+		return this.getClass() == QueryResponse.class;
+	}
+
+	public boolean isSubscribe(){
+		return this.getClass() == SubscribeResponse.class;
+	}
+	
+	public boolean isUnsubscribe(){
+		return this.getClass() == UnsubscribeResponse.class;
+	}
+	
+	public boolean isUpdate(){
+		return this.getClass() == UpdateResponse.class;
+	}
 }

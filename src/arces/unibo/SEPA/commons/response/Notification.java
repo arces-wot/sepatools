@@ -56,10 +56,6 @@ public class Notification extends Response {
 	public String getSPUID() {
 		return json.get("spuid").getAsString();
 	}
-	
-	public String toString() {
-		return super.toString();
-	}
 
 	public ARBindingsResults getARBindingsResults() {
 		return new ARBindingsResults(json.getAsJsonObject("results"));

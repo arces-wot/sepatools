@@ -1,0 +1,32 @@
+{
+    "parameters" : { 	
+    	"path":"/sparql",
+		"subscribeSecurePort":9443, "subscribePort":9000,
+		"updateSecurePort":8443, "updatePort":8000,
+		"host":"localhost"},
+    "namespaces" : { 	
+    	"chat":"http://www.arces.unibo.it/chat#",
+		"rdf":"http://www.w3.org/1999/02/22-rdf-syntax-ns#"},
+    "updates": {
+		"ADD_MESSAGE":{
+	    	"sparql" :	"delete {?message chat:message ?oldText} 
+	    				insert {?message rdf:type chat:Message . ?message chat:user ?nickname . ?message chat:message ?text} 
+	    				where {OPTIONAL{?message rdf:type chat:Message . ?message chat:message ?oldText . ?message chat:user ?nickname}}",
+	    	"forcedBindings": {
+	    		"text" : {"type":"literal", "value":""},
+				"nickname" : {"type":"literal", "value":""},
+				"message" : {"type":"uri", "value":""}}},
+		"REMOVE_MESSAGE":{
+	    	"sparql":"	delete {?message chat:message ?text . ?message rdf:type chat:Message . ?message chat:user ?nickname}
+	    				where {?message chat:message ?text . ?message chat:user ?nickname . ?message rdf:type chat:Message}",
+	    	"forcedBindings": {
+				"nickname" : {"type":"literal", "value":""}}}
+				},
+    "subscribes": {
+		"MESSAGE":{
+	    	"sparql":"select ?nickname ?text ?message where {?message rdf:type chat:Message . ?message chat:message ?text . ?message chat:user ?nickname}",
+	    	"forcedBindings": {}},
+	    "NICKNAME":{
+	    	"sparql":"select ?nickname where {?message chat:user ?nickname}",
+	    	"forcedBindings": {}}}
+}

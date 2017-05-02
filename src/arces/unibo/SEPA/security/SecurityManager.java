@@ -51,7 +51,7 @@ public class SecurityManager {
 	//WSS
 	private SEPAWssConfigurator wssConfig;
 	
-	private Logger logger = LogManager.getLogger("HttpsSecurityManager");
+	private Logger logger = LogManager.getLogger("SecurityManager");
 	
 	public class SEPAWssConfigurator extends SSLEngineConfigurator {
 		public SEPAWssConfigurator(SSLContext sslContext) {

@@ -36,6 +36,7 @@ import arces.unibo.SEPA.commons.request.UpdateRequest;
 import arces.unibo.SEPA.commons.response.ErrorResponse;
 import arces.unibo.SEPA.commons.response.Notification;
 import arces.unibo.SEPA.commons.response.QueryResponse;
+import arces.unibo.SEPA.commons.response.Response;
 import arces.unibo.SEPA.commons.response.SubscribeResponse;
 import arces.unibo.SEPA.commons.response.UnsubscribeResponse;
 import arces.unibo.SEPA.commons.response.UpdateResponse;
@@ -162,41 +163,42 @@ public class Scheduler extends Thread implements Observer {
 
 	@Override
 	public void update(Observable o, Object arg) {
+		Response response = (Response) arg;
 		//Notification
-		if (arg.getClass().equals(Notification.class)) {
+		if (response.isNotification()) {
 			Notification notify = (Notification) arg;
 			requestHandler.addNotification(notify);
-			logger.debug("<< "+notify.toString());
+			logger.debug("<< NOTIFICATION "+notify.toString());
 		}
 		//Query response
-		else if (arg.getClass().equals(QueryResponse.class)) {
-			QueryResponse response = (QueryResponse) arg;
-			requestHandler.addResponse(response);
-			logger.debug("<< "+response.toString());
+		else if (response.isQuery()) {
+			QueryResponse query = (QueryResponse) arg;
+			requestHandler.addResponse(query);
+			logger.debug("<< QUERY RESPONSE #"+query.getToken()+" "+query.toString());
 		}
 		//Update response
-		else if (arg.getClass().equals(UpdateResponse.class)) {
-			UpdateResponse response = (UpdateResponse) arg;
-			requestHandler.addResponse(response);
-			logger.debug("<< "+response.toString());
+		else if (response.isQuery()) {
+			UpdateResponse update = (UpdateResponse) arg;
+			requestHandler.addResponse(update);
+			logger.debug("<< UPDATE RESPONSE #"+update.getToken()+" "+update.toString());
 		}
 		//Subscribe response
-		else if (arg.getClass().equals(SubscribeResponse.class)) {
-			SubscribeResponse response = (SubscribeResponse) arg;
-			requestHandler.addResponse(response);
-			logger.debug("<< "+response.toString());
+		else if (response.isSubscribe()) {
+			SubscribeResponse subscribe = (SubscribeResponse) arg;
+			requestHandler.addResponse(subscribe);
+			logger.debug("<< SUBSCRIBE RESPONSE #"+subscribe.getToken()+" "+subscribe.toString());
 		}
 		//Unsubscribe response
-		else if (arg.getClass().equals(UnsubscribeResponse.class)) {
-			UnsubscribeResponse response = (UnsubscribeResponse) arg;
-			requestHandler.addResponse(response);
-			logger.debug("<< "+response.toString());
+		else if (response.isUnsubscribe()) {
+			UnsubscribeResponse unsubscribe = (UnsubscribeResponse) arg;
+			requestHandler.addResponse(unsubscribe);
+			logger.debug("<< UNSUBSCRIBE RESPONSE #"+unsubscribe.getToken()+" "+unsubscribe.toString());
 		}
 		//Error response
-		else if (arg.getClass().equals(ErrorResponse.class)) {
-			ErrorResponse response = (ErrorResponse) arg;
-			requestHandler.addResponse(response);
-			logger.error("<< "+response.toString());
+		else if (response.isError()) {
+			ErrorResponse error = (ErrorResponse) arg;
+			requestHandler.addResponse(error);
+			logger.error("<< ERROR #"+error.getToken()+ " " +error.toString());
 		}
 		else {
 			logger.warn("<< Unknown response: "+arg.toString());

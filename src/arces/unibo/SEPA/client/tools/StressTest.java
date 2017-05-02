@@ -143,8 +143,7 @@ public class StressTest {
 		try {
 			System.in.read();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			logger.debug(e.getMessage());
 		}
 		
 		for(Thread th : activeThreads) while(!th.isInterrupted()) th.interrupt();

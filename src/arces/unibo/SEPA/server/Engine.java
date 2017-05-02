@@ -67,28 +67,32 @@ public class Engine extends Thread implements EngineMBean,SchedulerInterface {
 	
 	public static void main(String[] args) throws MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException {
 		System.out.println("##########################################################################################");
-		System.out.println("# SEPA Engine Ver 0.3  Copyright (C) 2016-2017                                           #");
+		System.out.println("# SEPA Engine Ver 0.6  Copyright (C) 2016-2017                                           #");
 		System.out.println("# University of Bologna (Italy)                                                          #");
-		System.out.println("# Contact: luca.roffia@unibo.it                                                          #");
+		System.out.println("#                                                                                        #");
 		System.out.println("# This program comes with ABSOLUTELY NO WARRANTY                                         #");                                    
 		System.out.println("# This is free software, and you are welcome to redistribute it under certain conditions #");
 		System.out.println("# GNU GENERAL PUBLIC LICENSE, Version 3, 29 June 2007                                    #");
+		System.out.println("#                                                                                        #");
+		System.out.println("# GitHub: https://github.com/vaimee/sepatools                                            #");
+		System.out.println("# web: http://wot.arces.unibo.it                                                         #");
+		System.out.println("# e-mail: luca.roffia@unibo.it                                                           #");
 		System.out.println("##########################################################################################");
 		System.out.println("");
 		
 		System.out.println("Dependencies");
-		System.out.println("com.google.code.gson		2.8.0	Apache 2.0");
-		System.out.println("com.nimbusds			4.34.2	The Apache Software License, Version 2.0");
-		System.out.println("commons-io			2.5	Apache License, Version 2.0");
-		System.out.println("commons-logging			1.2	The Apache Software License, Version 2.0");
-		System.out.println("org.apache.httpcomponents	4.5.3	Apache License, Version 2.0");
-		System.out.println("org.apache.httpcomponents	4.4.6	Apache License, Version 2.0");
-		System.out.println("org.apache.logging.log4j	2.8.1	Apache License, Version 2.0");
-		System.out.println("org.bouncycastle		1.56	Bouncy Castle Licence");
-		System.out.println("org.eclipse.paho		1.1.1	Eclipse Public License - Version 1.0");
-		System.out.println("org.glassfish.grizzly		2.3.30	CDDL+GPL");
-		System.out.println("org.glassfish.tyrus.bundles	1.13.1	Dual license consisting of the CDDL v1.1 and GPL v2");
-		System.out.println("org.jdom			2.0.6	Similar to Apache License but with the acknowledgment clause removed");
+		System.out.println("com.google.code.gson          2.8.0       Apache 2.0");
+		System.out.println("com.nimbusds                  4.34.2      The Apache Software License, Version 2.0");
+		System.out.println("commons-io                    2.5         Apache License, Version 2.0");
+		System.out.println("commons-logging               1.2         The Apache Software License, Version 2.0");
+		System.out.println("org.apache.httpcomponents     4.5.3       Apache License, Version 2.0");
+		System.out.println("org.apache.httpcomponents     4.4.6       Apache License, Version 2.0");
+		System.out.println("org.apache.logging.log4j      2.8.1       Apache License, Version 2.0");
+		System.out.println("org.bouncycastle              1.56        Bouncy Castle Licence");
+		System.out.println("org.eclipse.paho              1.1.1       Eclipse Public License - Version 1.0");
+		System.out.println("org.glassfish.grizzly         2.3.30      CDDL+GPL");
+		System.out.println("org.glassfish.tyrus.bundles   1.13.1      Dual license consisting of the CDDL v1.1 and GPL v2");
+		System.out.println("org.jdom                      2.0.6       Similar to Apache License but with the acknowledgment clause removed");
 		System.out.println("");
 		
 		Engine engine = new Engine();

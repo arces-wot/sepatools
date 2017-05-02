@@ -24,11 +24,11 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import arces.unibo.SEPA.commons.SPARQL.Endpoint;
+import arces.unibo.SEPA.commons.SPARQL.SPARQL11Protocol;
 import arces.unibo.SEPA.commons.request.SubscribeRequest;
 import arces.unibo.SEPA.commons.response.Notification;
-import arces.unibo.SEPA.commons.response.SubscribeResponse;
 import arces.unibo.SEPA.commons.response.UpdateResponse;
+
 import arces.unibo.SEPA.server.QueryProcessor;
 
 /**
@@ -41,22 +41,33 @@ import arces.unibo.SEPA.server.QueryProcessor;
 
 public abstract class SPU extends Observable implements Runnable {
 	private static final Logger logger = LogManager.getLogger("SPU");	
-	private String uuid = null;
-	private ConcurrentLinkedQueue<SubscriptionProcessingInputData> spuData = new ConcurrentLinkedQueue<SubscriptionProcessingInputData>();
-	private boolean running = true;
-	protected SubscriptionProcessingInputData subscription = new SubscriptionProcessingInputData();
 	
+	//The URI of the subscription (i.e., sepa://subscription/UUID)
+	private String uuid = null;
+	private String prefix = "sepa://subscription/";
+	
+	//Update queue
+	protected ConcurrentLinkedQueue<UpdateResponse> updateQueue = new ConcurrentLinkedQueue<UpdateResponse>();
+	
+	//Subscription
+	protected QueryProcessor queryProcessor = null;
+	protected SubscribeRequest subscribe = null;	
+	
+	//Thread loop
+	private boolean running = true;
+
 	class SubscriptionProcessingInputData {
 		public UpdateResponse update = null;
 		public QueryProcessor queryProcessor = null;
 		public SubscribeRequest subscribe = null;	
 	}
 	
-	public SPU(SubscribeRequest subscribe,Endpoint endpoint) {
-		uuid = UUID.randomUUID().toString();
-		subscription.subscribe = subscribe;
-		subscription.queryProcessor = new QueryProcessor(endpoint);
-		spuData.offer(subscription);
+	public SPU(SubscribeRequest subscribe,SPARQL11Protocol endpoint) {
+		uuid = prefix + UUID.randomUUID().toString();
+		this.subscribe = subscribe;
+		this.queryProcessor = new QueryProcessor(endpoint);
+		
+		//spuData.offer(subscription);
 	}
 	
 	public synchronized void stopRunning() {
@@ -70,16 +81,16 @@ public abstract class SPU extends Observable implements Runnable {
 	
 	//To be implemented by specific implementations
 	public abstract void init();
-	public abstract Notification process(SubscriptionProcessingInputData update);
+	public abstract Notification process(UpdateResponse update);
 	
 	public synchronized void subscriptionCheck(UpdateResponse res) {
-		subscription.update = res;
-		spuData.offer(subscription);
+		//subscription.update = res;
+		updateQueue.offer(res);
 		notifyAll();
 	}
 	
-	private synchronized SubscriptionProcessingInputData waitUpdate() {
-		while(spuData.isEmpty()){
+	private synchronized UpdateResponse waitUpdate() {
+		while(updateQueue.isEmpty()){
 			try {
 				logger.debug(getUUID() + " Waiting new update response...");
 				wait();
@@ -88,23 +99,18 @@ public abstract class SPU extends Observable implements Runnable {
 			if (!running) return null;
 		}
 		
-		return spuData.poll();	
+		return updateQueue.poll();	
 	}
 	@Override
 	public void run() {
-		//Notify subscription ID (SPU ID)
-		SubscriptionProcessingInputData request = spuData.poll();
-		SubscribeResponse response = new SubscribeResponse(request.subscribe.getToken(),getUUID());
-		setChanged();
-		notifyObservers(response);
-			
+		//Initialize the subscription (e.g., retrieve the first results) 
 		init();
 		
 		//Main loop
 		logger.debug(getUUID()+" Entering main loop...");
 		while(running){			
 			//Wait new update
-			SubscriptionProcessingInputData update = waitUpdate();
+			UpdateResponse update = waitUpdate();
 			
 			if (update == null && !running) return;
 			

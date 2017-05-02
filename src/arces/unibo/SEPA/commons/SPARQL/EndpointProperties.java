@@ -16,8 +16,6 @@ public class EndpointProperties extends Properties {
 	private static final long serialVersionUID = -1298120618228920084L;
 	
 	private static final Logger logger = LogManager.getLogger("SPARQL11ProtocolProperties");
-			
-	
 	
 	public EndpointProperties(String propertiesFile) {
 		FileInputStream in = null;

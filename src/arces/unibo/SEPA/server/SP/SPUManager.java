@@ -23,21 +23,21 @@ import java.util.Observer;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 
-import arces.unibo.SEPA.commons.SPARQL.Endpoint;
+import arces.unibo.SEPA.commons.SPARQL.SPARQL11Protocol;
 import arces.unibo.SEPA.commons.request.SubscribeRequest;
 import arces.unibo.SEPA.commons.request.UnsubscribeRequest;
 import arces.unibo.SEPA.commons.response.Notification;
 import arces.unibo.SEPA.commons.response.UpdateResponse;
 
 public class SPUManager extends Observable implements Observer{
-	private static final Logger logger = LogManager.getLogger("SPU Manager");
-	private Endpoint endpoint;
+	private static final Logger logger = LogManager.getLogger("SPUManager");
+	private SPARQL11Protocol endpoint;
 	private HashMap<String,SPU> spus = new HashMap<String,SPU>();
 
 	//Sequential update processing
 	private static int subscriptionsChecked = 0;
 	
-	public SPUManager(Endpoint endpoint) {
+	public SPUManager(SPARQL11Protocol endpoint) {
 		this.endpoint = endpoint;
 	}
 	
@@ -102,7 +102,7 @@ public class SPUManager extends Observable implements Observer{
 	private synchronized void subscriptionProcessingEnded(String spuid){
 		subscriptionsChecked++;
 		notifyAll();
-		logger.debug(  "SPU processing ended #"+subscriptionsChecked);
+		logger.debug("SPU processing ended #"+subscriptionsChecked);
 	}
 
 	@Override

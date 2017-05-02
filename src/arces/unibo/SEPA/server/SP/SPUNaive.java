@@ -22,27 +22,43 @@ import org.apache.logging.log4j.LogManager;
 import arces.unibo.SEPA.commons.SPARQL.ARBindingsResults;
 import arces.unibo.SEPA.commons.SPARQL.Bindings;
 import arces.unibo.SEPA.commons.SPARQL.BindingsResults;
-import arces.unibo.SEPA.commons.SPARQL.Endpoint;
+import arces.unibo.SEPA.commons.SPARQL.SPARQL11Protocol;
 import arces.unibo.SEPA.commons.request.SubscribeRequest;
 import arces.unibo.SEPA.commons.response.ErrorResponse;
 import arces.unibo.SEPA.commons.response.Notification;
 import arces.unibo.SEPA.commons.response.QueryResponse;
 import arces.unibo.SEPA.commons.response.Response;
+import arces.unibo.SEPA.commons.response.SubscribeResponse;
+import arces.unibo.SEPA.commons.response.UpdateResponse;
 
 public class SPUNaive extends SPU{
 	private BindingsResults lastBindings;
 	private Integer sequence = 0;
 	private static final Logger logger = LogManager.getLogger("SPUNaive");
 	
-	public SPUNaive(SubscribeRequest subscribe, Endpoint endpoint) {
+	public SPUNaive(SubscribeRequest subscribe, SPARQL11Protocol endpoint) {
 		super(subscribe, endpoint);
 	}
 
 	@Override
-	public void init() {
+	public void init() {			
+		//Process the subscribe SPARQL query
+		Response ret = queryProcessor.process(subscribe);
+		if (ret.isError()) {
+			logger.error(ret.toString());
+			setChanged();
+			notifyObservers(ret);
+			return;		
+		}
+		
+		//Notify subscription ID (SPU ID)
+		logger.debug(ret.toString());
+		SubscribeResponse response = new SubscribeResponse(subscribe.getToken(),getUUID(),subscribe.getAlias());
+ 
+		setChanged();
+		notifyObservers(response);
+		
 		//Get first query results
-		Response ret = subscription.queryProcessor.process(subscription.subscribe);
-		if (ret.getClass().equals(ErrorResponse.class)) return;		
 		QueryResponse queryResults = (QueryResponse) ret;
 		
 		//Notify bindings
@@ -56,14 +72,14 @@ public class SPUNaive extends SPU{
 	}
 
 	@Override
-	public Notification process(SubscriptionProcessingInputData update) {
+	public Notification process(UpdateResponse update) {
 				
-		logger.debug( getUUID() + " Start processing");
+		logger.debug("Start processing "+this.getUUID());
 		
 		//Query the SPARQL processing service
-		Response ret = subscription.queryProcessor.process(subscription.subscribe);
+		Response ret = queryProcessor.process(subscribe);
 		
-		if (ret.getClass().equals(ErrorResponse.class)) {
+		if (ret.isError()) {
 			logger.error(ret.toString());
 			return new Notification(getUUID(),null,0);	
 		}
@@ -92,7 +108,7 @@ public class SPUNaive extends SPU{
 		//Update the last bindings with the current ones
 		lastBindings = new BindingsResults(newBindings);
 				
-		//Send notification (or endprocessing indication)
+		//Send notification (or end processing indication)
 		Notification notification = null;
 		if (!added.isEmpty() || !removed.isEmpty()){
 			ARBindingsResults bindings =  new ARBindingsResults(added,removed);

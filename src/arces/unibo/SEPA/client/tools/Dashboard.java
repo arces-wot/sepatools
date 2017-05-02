@@ -623,7 +623,7 @@ public class Dashboard {
 					window = new Dashboard();
 					window.frmSepaDashboard.setVisible(true);
 				} catch (Exception e) {
-					e.printStackTrace();
+					logger.fatal(e.getMessage());
 				}
 			}
 		});

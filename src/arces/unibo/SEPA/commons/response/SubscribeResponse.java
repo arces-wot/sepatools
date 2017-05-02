@@ -39,6 +39,13 @@ public class SubscribeResponse extends Response {
 
 		json.add("subscribed",new JsonPrimitive(spuid));
 	}
+	
+	public SubscribeResponse(Integer token,String spuid,String alias) {
+		super(token);
+
+		json.add("subscribed",new JsonPrimitive(spuid));
+		if (alias != null) json.add("alias",new JsonPrimitive(alias));
+	}
 
 	public String getSPUID() {
 		return json.get("subscribed").getAsString();

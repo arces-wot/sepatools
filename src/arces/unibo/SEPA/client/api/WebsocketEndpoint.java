@@ -58,13 +58,13 @@ public class WebsocketEndpoint extends Endpoint implements MessageHandler.Whole<
 		try {
 			client.connectToServer(this,cec, new URI(wsUrl));
 		} catch (DeploymentException e) {
-			e.printStackTrace();
+			logger.fatal(e.getMessage());
 			return false;
 		} catch (IOException e) {
-			e.printStackTrace();
+			logger.fatal(e.getMessage());
 			return false;
 		} catch (URISyntaxException e) {
-			e.printStackTrace();
+			logger.fatal(e.getMessage());
 			return false;
 		}
 		return true;
@@ -118,7 +118,7 @@ public class WebsocketEndpoint extends Endpoint implements MessageHandler.Whole<
 		try {
 			wsClientSession.close();
 		} catch (IOException e) {
-			e.printStackTrace();
+			logger.debug(e.getMessage());
 			return false;
 		}
 		return true;

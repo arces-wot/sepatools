@@ -17,14 +17,14 @@
 
 package arces.unibo.SEPA.server;
 
-import arces.unibo.SEPA.commons.SPARQL.Endpoint;
+import arces.unibo.SEPA.commons.SPARQL.SPARQL11Protocol;
 import arces.unibo.SEPA.commons.request.UpdateRequest;
 import arces.unibo.SEPA.commons.response.Response;
 
 public class UpdateProcessor {
-	private Endpoint endpoint;
+	private SPARQL11Protocol endpoint;
 
-	public UpdateProcessor(Endpoint endpoint) {
+	public UpdateProcessor(SPARQL11Protocol endpoint) {
 		this.endpoint = endpoint;
 	}
 	

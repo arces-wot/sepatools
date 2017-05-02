@@ -115,7 +115,7 @@ public class WebsocketGate extends WebSocketApplication {
 	
 	@Override
 	public void onMessage(WebSocket socket, String text) {
-		logger.debug("@onMessage");
+		logger.debug("@onMessage "+text);
 		super.onMessage(socket, text);
 		
 		if (secureSockets.contains(socket)) logger.debug("Secure socket");
@@ -163,7 +163,10 @@ public class WebsocketGate extends WebSocketApplication {
 			return null;
 		}
 		
-		if (req.get("subscribe") != null) return new SubscribeRequest(token,req.get("subscribe").getAsString());
+		if (req.get("subscribe") != null) {
+			if (req.get("alias") != null) return new SubscribeRequest(token,req.get("subscribe").getAsString(),req.get("alias").getAsString());
+			return new SubscribeRequest(token,req.get("subscribe").getAsString());
+		}
 		if (req.get("unsubscribe") != null) return new UnsubscribeRequest(token,req.get("unsubscribe").getAsString());	
 		
 		return null;

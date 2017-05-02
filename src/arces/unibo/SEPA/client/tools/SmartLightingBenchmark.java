@@ -443,7 +443,7 @@ public abstract class SmartLightingBenchmark {
 		try {
 			Thread.sleep(delay);
 		} catch (InterruptedException e) {
-			e.printStackTrace();
+			logger.debug(e.getMessage());
 		}
 		
 		for (LampSubscription sub : lampSubs) {

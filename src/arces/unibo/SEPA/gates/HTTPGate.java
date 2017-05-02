@@ -19,8 +19,9 @@ package arces.unibo.SEPA.gates;
 
 import java.io.IOException;
 import java.io.OutputStream;
-
+import java.io.UnsupportedEncodingException;
 import java.net.InetSocketAddress;
+import java.net.URLDecoder;
 
 import org.apache.commons.io.IOUtils;
 
@@ -90,15 +91,14 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 	
 	@Override
 	public void start(){	
-		this.setName("SEPA HTTP Gate");
+		this.setName("Starting...");
 		   
 		try 
 		{
 			server = HttpServer.create(new InetSocketAddress(port), 0);
 		} 
 		catch (IOException e) {
-			e.printStackTrace();
-			logger.fatal(e.getMessage());
+			logger.fatal(e.getMessage()+ " PORT:"+port+" exit...");
 			System.exit(1);
 		}
 		
@@ -197,12 +197,35 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 	 * @throws IOException 
 	 * 
 	 * @see QueryRequest, UpdateRequest
-	* */
+	 * 
+	 * /*
+	 								HTTP Method			Query String Parameters			Request Content Type				Request Message Body
+	 	----------------------------------------------------------------------------------------------------------------------------------------
+	 	query via GET				GET					query (exactly 1)				None								None
+	 													default-graph-uri (0 or more)
+	 													named-graph-uri (0 or more)
+	 	----------------------------------------------------------------------------------------------------------------------------------------												
+	 	query via URL-encoded POST	POST				None							application/x-www-form-urlencoded	URL-encoded, ampersand-separated query parameters.
+	 																														query (exactly 1)
+	 																														default-graph-uri (0 or more)
+	 																														named-graph-uri (0 or more)
+	 	----------------------------------------------------------------------------------------------------------------------------------------																													
+	 	query via POST directly		POST				default-graph-uri (0 or more)
+	 													named-graph-uri (0 or more)		application/sparql-query			Unencoded SPARQL query string
+		----------------------------------------------------------------------------------------------------------------------------------------
+		update via URL-encoded POST	POST				None							application/x-www-form-urlencoded	URL-encoded, ampersand-separated query parameters.
+																															update (exactly 1)
+																															using-graph-uri (0 or more)
+																															using-named-graph-uri (0 or more)
+		----------------------------------------------------------------------------------------------------------------------------------------																													
+		update via POST directly	POST				using-graph-uri (0 or more)		application/sparql-update			Unencoded SPARQL update request string
+														using-named-graph-uri (0 or more)		
+		 */
 	private Request parseSPARQL11(HttpExchange httpExchange) {
 		
 		switch(httpExchange.getRequestMethod().toUpperCase()) {
 			case "GET":
-				logger.debug("HTTP GET");
+				logger.debug("query via GET");
 				if (httpExchange.getRequestURI().getQuery()== null) {
 					failureResponse(httpExchange,400,"query is null");
 					return null;	
@@ -212,50 +235,78 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 					String[] value = param.split("=");
 					if (value[0].equals("query")) {
 						this.queryTransactions++;
-						Integer token = 0;
-						if (scheduler != null) token = scheduler.getToken();
-						return new QueryRequest(token,value[1]);
-					}
-				}
-				failureResponse(httpExchange,400,"Query must be in the form: \"query=<SPARQL 1.1 Query>\"");
-				return null;	
-			
-			case "POST":
-				logger.debug("HTTP POST");
-
-				String sparql = null;
-				try {
-					sparql = IOUtils.toString(httpExchange.getRequestBody(),"UTF-8");
-				} catch (IOException e) {
-					logger.error("Exception on reading SPARQL from POST body: "+e.getMessage());
-					failureResponse(httpExchange,400,"Exception on reading SPARQL from POST body");
-					return null;
-				}
-				if(httpExchange.getRequestHeaders().get("Content-Type").contains("application/sparql-query")) {
-					this.queryTransactions++;
-					Integer token = 0;
-					if (scheduler != null) token = scheduler.getToken();
-					return new QueryRequest(token,sparql);
-				}
-				if(httpExchange.getRequestHeaders().get("Content-Type").contains("application/sparql-update")) {
-					this.updateTransactions++;
-					Integer token = 0;
-					if (scheduler != null) token = scheduler.getToken();
-					return new UpdateRequest(token,sparql);
-				}
-
-				if(httpExchange.getRequestHeaders().get("Content-Type").contains("application/x-www-form-urlencoded")) {
-					if (sparql.contains("query=")){
-						this.queryTransactions++;
+						String sparql = "";
+						try {
+							sparql = URLDecoder.decode(value[1],"UTF-8");
+						} catch (UnsupportedEncodingException e) {
+							failureResponse(httpExchange,400,e.getMessage());
+							return null;
+						}
 						Integer token = 0;
 						if (scheduler != null) token = scheduler.getToken();
 						return new QueryRequest(token,sparql);
 					}
-					if (sparql.contains("update="))
-						this.updateTransactions++;
-						Integer token = 0;
-						if (scheduler != null) token = scheduler.getToken();
-						return new UpdateRequest(token,sparql);
+				}
+				failureResponse(httpExchange,400,"Wrong query format: "+httpExchange.getRequestURI().getQuery());
+				return null;	
+			
+			case "POST":
+				String body = null;
+				try {
+					body = IOUtils.toString(httpExchange.getRequestBody(),"UTF-8");
+				} catch (IOException e) {
+					logger.error(e.getMessage());
+					failureResponse(httpExchange,400,e.getMessage());
+					return null;
+				}
+				
+				if(httpExchange.getRequestHeaders().get("Content-Type").contains("application/sparql-query")) {
+					logger.debug("query via POST directly");
+					this.queryTransactions++;
+					
+					Integer token = 0;
+					if (scheduler != null) token = scheduler.getToken();
+					return new QueryRequest(token,body);
+				}
+				if(httpExchange.getRequestHeaders().get("Content-Type").contains("application/sparql-update")) {
+					logger.debug("update via POST directly");
+					this.updateTransactions++;
+					
+					Integer token = 0;
+					if (scheduler != null) token = scheduler.getToken();
+					return new UpdateRequest(token,body);
+				}
+				
+				if(httpExchange.getRequestHeaders().get("Content-Type").contains("application/x-www-form-urlencoded")) {
+					String decodedBody;
+					try {
+						decodedBody = URLDecoder.decode(body,"UTF-8");
+					} catch (UnsupportedEncodingException e) {
+						logger.error(e.getMessage());
+						failureResponse(httpExchange,400,e.getMessage());
+						return null;
+					}
+					
+					String[] parameters = decodedBody.split("&");
+					for (String param : parameters) {
+						String[] value = param.split("=");
+						if (value[0].equals("query")) {
+							logger.debug("query via URL-encoded");
+							this.queryTransactions++;			
+							
+							Integer token = 0;
+							if (scheduler != null) token = scheduler.getToken();
+							return new QueryRequest(token,value[1]);
+						}
+						if (value[0].equals("update")) {
+							logger.debug("update via URL-encoded");
+							this.updateTransactions++;			
+							
+							Integer token = 0;
+							if (scheduler != null) token = scheduler.getToken();
+							return new UpdateRequest(token,value[1]);
+						}
+					}
 				}
 									
 				logger.error("Request MUST conform to SPARQL 1.1 Protocol (https://www.w3.org/TR/sparql11-protocol/)");

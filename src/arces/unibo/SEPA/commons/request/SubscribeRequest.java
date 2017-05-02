@@ -28,12 +28,28 @@ import arces.unibo.SEPA.commons.request.QueryRequest;
 * */
 
 public class SubscribeRequest extends QueryRequest {
-
+	private String alias = null;
+	
 	public SubscribeRequest(Integer token, String sparql) {
 		super(token, sparql);
 	}
 
+	public SubscribeRequest(Integer token, String sparql,String alias) {
+		super(token, sparql);
+		this.alias = alias;
+	}
+	
 	public String toString() {
-		return "SUBSCRIBE #"+token+" "+sparql;
+		if (alias == null) return "SUBSCRIBE #"+token+" "+sparql;
+		return "SUBSCRIBE #"+token+" Alias: "+alias+" Query: "+sparql;
+	}
+	
+	/**
+	 * This method returns the alias of the subscription. 
+	 * 
+	 * @return The subscription alias or <i>null</i> is not present
+	* */
+	public String getAlias() {
+		return alias;
 	}
 }

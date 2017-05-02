@@ -86,7 +86,7 @@ public class AuthorizationManager {
 	private String httpsAudience = "https://wot.arces.unibo.it:8443/sparql"; 	//TODO: JMX
 	private String wssAudience ="wss://wot.arces.unibo.it:9443/sparql";  		//TODO: JMX
 	 
-	private static final Logger logger = LogManager.getLogger("Authorization manager");
+	private static final Logger logger = LogManager.getLogger("AuthorizationManager");
 	
 	/*
 	Security context. Provides additional information necessary for processing a JOSE object.

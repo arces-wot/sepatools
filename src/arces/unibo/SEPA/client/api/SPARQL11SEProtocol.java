@@ -21,7 +21,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import arces.unibo.SEPA.commons.SPARQL.BindingsResults;
-import arces.unibo.SEPA.commons.SPARQL.Endpoint;
+import arces.unibo.SEPA.commons.SPARQL.SPARQL11Protocol;
 import arces.unibo.SEPA.commons.request.QueryRequest;
 import arces.unibo.SEPA.commons.request.UpdateRequest;
 import arces.unibo.SEPA.commons.response.ErrorResponse;
@@ -29,7 +29,7 @@ import arces.unibo.SEPA.commons.response.NotificationHandler;
 import arces.unibo.SEPA.commons.response.QueryResponse;
 import arces.unibo.SEPA.commons.response.Response;
 
-public class SPARQL11SEProtocol extends Endpoint {
+public class SPARQL11SEProtocol extends SPARQL11Protocol {
 	private static final Logger logger = LogManager.getLogger("SPARQL11SEProtocol");
 	
 	private WebsocketEndpoint wsClient;
@@ -52,13 +52,13 @@ public class SPARQL11SEProtocol extends Endpoint {
 	public boolean update(String sparql) {
 		Response response = super.update(new UpdateRequest(0,sparql));
 		logger.debug(response.toString());
-		return (response.getClass() != ErrorResponse.class);
+		return (!response.isError());
 	}
 	
 	public BindingsResults query(String sparql) {
 		Response response = super.query(new QueryRequest(0,sparql));
 		logger.debug(response.toString());
-		if (response.getClass() == ErrorResponse.class) {
+		if (response.isError()) {
 			logger.error(response);
 			return null;
 		}
