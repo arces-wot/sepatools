@@ -17,15 +17,9 @@
 
 package arces.unibo.SEPA.security;
 
-import java.io.FileInputStream;
-import java.io.IOException;
-
-import java.security.KeyStore;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.cert.CertificateException;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -35,11 +29,10 @@ import java.util.UUID;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.glassfish.grizzly.ssl.SSLEngineConfigurator;
 
 import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.google.gson.JsonPrimitive;
 
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
@@ -60,15 +53,24 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import com.nimbusds.jwt.proc.ConfigurableJWTProcessor;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
+import com.sun.net.httpserver.HttpsConfigurator;
+
+import arces.unibo.SEPA.commons.response.ErrorResponse;
+import arces.unibo.SEPA.commons.response.JWTResponse;
+import arces.unibo.SEPA.commons.response.RegistrationResponse;
+import arces.unibo.SEPA.commons.response.Response;
 
 public class AuthorizationManager {
 	
+	//TODO: to be made persistent (DB)
 	//IDENTITY ==> ID
 	private HashMap<String,String> clients = new HashMap<String,String>();
 	
+	//TODO: to be made persistent (DB)
 	//ID ==> Secret
 	private HashMap<String,String> credentials = new HashMap<String,String>();
 	
+	//TODO: to be made persistent (DB)
 	//ID ==> JWTClaimsSet
 	private HashMap<String,JWTClaimsSet> clientClaims = new HashMap<String,JWTClaimsSet>();
 	
@@ -80,11 +82,13 @@ public class AuthorizationManager {
 	private JsonElement jwkPublicKey;
 	private ConfigurableJWTProcessor<SEPASecurityContext> jwtProcessor;
 	private SEPASecurityContext context = new SEPASecurityContext();
-
-	private long expiring = 60; 												//TODO: JMX
+	private SSLSecurityManager sManager;
+	
+	private long expiring = 5; 												//TODO: JMX
 	private String issuer = "https://wot.arces.unibo.it:8443/oauth/token"; 		//TODO: JMX
 	private String httpsAudience = "https://wot.arces.unibo.it:8443/sparql"; 	//TODO: JMX
 	private String wssAudience ="wss://wot.arces.unibo.it:9443/sparql";  		//TODO: JMX
+	private String subject = "SEPADemo";										//TODO: JMX
 	 
 	private static final Logger logger = LogManager.getLogger("AuthorizationManager");
 	
@@ -99,58 +103,47 @@ public class AuthorizationManager {
 		
 	}
 	
-	public void securityCheck(String identity) {
+	public HttpsConfigurator getHttpsConfigurator() {
+		return sManager.getHttpsConfigurator();
+	} 
+	
+	private void securityCheck(String identity) {
 		logger.debug("*** Security check ***");
 		//Register
 		logger.debug("Register: "+identity);
-		JsonObject json = register(identity);
-		String id = json.get("client_id").getAsString();
-		String secret = json.get("client_secret").getAsString();
-		String auth = id+":"+secret;	
-		logger.debug("ID:SECRET="+auth);
-		
-		//Get token
-		String encodedCredentials = Base64.getEncoder().encodeToString(auth.getBytes());
-		logger.debug("Authorization Basic "+encodedCredentials);
-		json = getToken(encodedCredentials);
-		String access_token = json.get("access_token").getAsString();
-		logger.debug("Access token: "+access_token);
-		
-		//Validate token
-		JsonObject isValid = validateToken(access_token);
-		if(isValid.get("valid").getAsBoolean()) logger.debug("VALIDATED :-)");
-		else logger.debug("FAILED :-( "+isValid.get("message").getAsString());
+		Response response = register(identity);
+		if (response.getClass().equals(RegistrationResponse.class)) {
+			RegistrationResponse ret = (RegistrationResponse) response;
+			String auth = ret.getClientId()+":"+ret.getClientSecret();	
+			logger.debug("ID:SECRET="+auth);
+			
+			//Get token
+			String encodedCredentials = Base64.getEncoder().encodeToString(auth.getBytes());
+			logger.debug("Authorization Basic "+encodedCredentials);
+			response = getToken(encodedCredentials);
+			
+			if (response.getClass().equals(JWTResponse.class)) {
+				logger.debug("Access token: "+((JWTResponse) response).getAccessToken());
+				
+				//Validate token
+				Response valid = validateToken(((JWTResponse) response).getAccessToken());
+				if(!valid.getClass().equals(ErrorResponse.class)) logger.debug("PASSED");
+				else {
+					ErrorResponse error = (ErrorResponse) valid;
+					logger.debug("FAILED Code: "+error.getErrorCode()+ "Message: "+error.getErrorMessage());
+				}
+			}
+			else logger.debug("FAILED");
+		}
+		else logger.debug("FAILED");
 		logger.debug("**********************");
 		System.out.println("");	
 	}
 
-	private boolean loadCertificate(String keyStorePath,String keystorePwd,String keyPwd,String keyID) {
-		// Specify the key store type, e.g. JKS
-		KeyStore keyStore;
-		try {
-			keyStore = KeyStore.getInstance("JKS");
-		} catch (KeyStoreException e) {
-			logger.error(e.getMessage());
-			return false;
-		}
-
-		// Load the key store from file
-		try {
-			keyStore.load(new FileInputStream(keyStorePath), keystorePwd.toCharArray());
-		} catch (NoSuchAlgorithmException | CertificateException | IOException e) {
-			logger.error(e.getMessage());
-			return false;
-		}
-		
+	private boolean init(String keyAlias,String keyPwd){		
 		// Load the key from the key store
-		RSAKey jwk;
-		try {
-			jwk = RSAKey.load(keyStore, "SepaKey", keyPwd.toCharArray());
-		} catch (KeyStoreException | JOSEException e) {
-			logger.error(e.getMessage());
-			return false;
-		}
-		
+		RSAKey jwk = sManager.getJWK(keyAlias,keyPwd);
+						
 		//Get the private and public keys to sign and verify
 		RSAPrivateKey privateKey;
 		RSAPublicKey publicKey;
@@ -188,17 +181,20 @@ public class AuthorizationManager {
 		return true;
 	}
 	
-	public AuthorizationManager() {		
-		loadCertificate("sepa.jks","SepaKeystore2017","SepaKey2017","SepaKey");
+	public AuthorizationManager(String keystoreFileName,String keystorePwd,String keyAlias,String keyPwd,String certificate) {	
+		sManager = new SSLSecurityManager(keystoreFileName, keystorePwd, keyAlias, keyPwd, certificate,false,true,null);
+		init(keyAlias, keyPwd);
 		
 		securityCheck(UUID.randomUUID().toString());
 	}
 	
 	private boolean authorizeIdentity(String id) {
-		//TODO: check if "name" is registered in the users DB
+		logger.debug("authorizeIdentity:"+id);
+		
+		//TODO: check if "id" is registered
 		return true;
 	}
-	/*
+	/**
 	 * POST https://wot.arces.unibo.it:8443/oauth/token
 	 * 
 	 * Accept: application/json
@@ -215,28 +211,27 @@ public class AuthorizationManager {
 	 * 		"signature" : JWK RSA public key (can be used to verify the signature),
 	 * 		"authorized" : Boolean
 	 * }
+	 * 
+	 * In case of error, the following applies:
+	 * {
+	 * 		"code": Error code,
+	 * 		"body": "Error details" (optional)
+	 * 
+	 * }
 	 * */
-	public JsonObject register(String identity) {
-		JsonObject response = new JsonObject();	
+	public Response register(String identity) {
+		logger.debug("Register: "+identity);
 		
 		//Check if entity is authorized to request credentials
 		if (!authorizeIdentity(identity)) {
-			logger.warn("Not authorized indentity "+identity);
-			response.add("client_id", new JsonPrimitive("Not authorized identity"));
-			response.add("client_secret", new JsonPrimitive("Not authorized identity"));
-			response.add("signature", new JsonPrimitive("Not authorized identity"));
-			response.add("authorized", new JsonPrimitive(false));
-			return response;
+			logger.error("Not authorized identity "+identity);
+			return new ErrorResponse(0,ErrorResponse.UNAUTHORIZED,"Not authorized identity "+identity);
 		}
 		
 		//Multiple registration not allowed
 		if (clients.containsKey(identity)) {
-			logger.warn("Multiple registration forbitten "+identity);
-			response.add("client_id", new JsonPrimitive("Multiple registration forbitten"));
-			response.add("client_secret", new JsonPrimitive("Multiple registration forbitten"));
-			response.add("signature", new JsonPrimitive("Multiple registration forbitten"));
-			response.add("authorized", new JsonPrimitive(false));
-			return response;
+			logger.error("Multiple registration forbitten "+identity);
+			return new ErrorResponse(0,ErrorResponse.FORBIDDEN,"Multiple registration forbitten "+identity);
 		}
 		
 		//Create credentials
@@ -250,16 +245,10 @@ public class AuthorizationManager {
 		//Register client
 		clients.put(identity, client_id);
 		
-		//Response
-		response.add("client_id", new JsonPrimitive(client_id));
-		response.add("client_secret", new JsonPrimitive(client_secret));
-		response.add("signature", jwkPublicKey);
-		response.add("authorized", new JsonPrimitive(true));
-		
-		return response;
+		return new RegistrationResponse(client_id,client_secret,jwkPublicKey);
 	}
 	
-	/*
+	/**
 	 * POST https://wot.arces.unibo.it:8443/oauth/token
 	 * 
 	 * Content-Type: application/x-www-form-urlencoded
@@ -271,11 +260,17 @@ public class AuthorizationManager {
 	 * 		"token_type": "bearer",
 	 * 		"expires_in": 3600 
 	 * }
+	 * 
+	 * In case of error, the following applies:
+	 * {
+	 * 		"code": Error code,
+	 * 		"body": "Error details"
+	 * 
+	 * }
 	 * */
-	public JsonObject getToken(String encodedCredentials) {	
-		//Produce JWT compliant with WoT W3C recommendations
-		JsonObject jwt = new JsonObject();
-				
+	public Response getToken(String encodedCredentials) {
+		logger.debug("Get token");
+		
 		//Decode credentials
 		byte[] decoded = null;
 		try{
@@ -283,32 +278,17 @@ public class AuthorizationManager {
 		}
 		catch (IllegalArgumentException e) {
 			logger.error("Not authorized");
-			jwt.add("access_token", new JsonPrimitive(""));
-			jwt.add("token_type", new JsonPrimitive(""));
-			jwt.add("expires_in", new JsonPrimitive(""));		
-			jwt.add("authorized", new JsonPrimitive(false));
-			jwt.add("reason", new JsonPrimitive("Not authorized"));
-			return jwt;
+			return new ErrorResponse(0,ErrorResponse.UNAUTHORIZED,"Client not authorized");
 		}
 		String decodedCredentials = new String(decoded);
 		String[] clientID = decodedCredentials.split(":");
 		if (clientID==null){
 			logger.error("Wrong Basic authorization");
-			jwt.add("access_token", new JsonPrimitive(""));
-			jwt.add("token_type", new JsonPrimitive(""));
-			jwt.add("expires_in", new JsonPrimitive(""));		
-			jwt.add("authorized", new JsonPrimitive(false));
-			jwt.add("reason", new JsonPrimitive("Not authorized"));
-			return jwt;	
+			return new ErrorResponse(0,ErrorResponse.UNAUTHORIZED,"Client not authorized");
 		}
 		if (clientID.length != 2) {
 			logger.error("Wrong Basic authorization");
-			jwt.add("access_token", new JsonPrimitive(""));
-			jwt.add("token_type", new JsonPrimitive(""));
-			jwt.add("expires_in", new JsonPrimitive(""));		
-			jwt.add("authorized", new JsonPrimitive(false));
-			jwt.add("reason", new JsonPrimitive("Not authorized"));
-			return jwt;	
+			return new ErrorResponse(0,ErrorResponse.UNAUTHORIZED,"Client not authorized");
 		}
 		
 		String id = decodedCredentials.split(":")[0];
@@ -318,22 +298,12 @@ public class AuthorizationManager {
 		//Verify credentials
 		if (!credentials.containsKey(id)) {
 			logger.error("Client id: "+id+" is not registered");
-			jwt.add("access_token", new JsonPrimitive(""));
-			jwt.add("token_type", new JsonPrimitive(""));
-			jwt.add("expires_in", new JsonPrimitive(""));		
-			jwt.add("authorized", new JsonPrimitive(false));
-			jwt.add("reason", new JsonPrimitive("Wrong credentials"));
-			return jwt;
+			return new ErrorResponse(0,ErrorResponse.UNAUTHORIZED,"Client not authorized");
 		}
 		
 		if (!credentials.get(id).equals(secret)) {
 			logger.error("Wrong secret: "+secret+ " for client id: "+id);
-			jwt.add("access_token", new JsonPrimitive(""));
-			jwt.add("token_type", new JsonPrimitive(""));
-			jwt.add("expires_in", new JsonPrimitive(""));		
-			jwt.add("authorized", new JsonPrimitive(false));
-			jwt.add("reason", new JsonPrimitive("Wrong credentials"));
-			return jwt;
+			return new ErrorResponse(0,ErrorResponse.UNAUTHORIZED,"Client not authorized");
 		}
 		
 		//Check is a token has been release for this client
@@ -343,13 +313,8 @@ public class AuthorizationManager {
 			Date now = new Date();
 			logger.debug("Check token expiration: "+now+" > "+expires+ " ?");
 			if(now.before(expires)) {
-				logger.error("Token is not expired");
-				jwt.add("access_token", new JsonPrimitive(""));
-				jwt.add("token_type", new JsonPrimitive(""));
-				jwt.add("expires_in", new JsonPrimitive(""));		
-				jwt.add("authorized", new JsonPrimitive(false));
-				jwt.add("reason", new JsonPrimitive("Your token is not expired. You can not request a new token"));
-				return jwt;	
+				logger.warn("Token is not expired");
+				return new ErrorResponse(0,ErrorResponse.BAD_REQUEST,"Token in not expired");
 			}
 		}
 		
@@ -377,7 +342,7 @@ public class AuthorizationManager {
 	   "sub" value is a case-sensitive string containing a StringOrURI
 	   value.  Use of this claim is OPTIONAL.*/
 		 
-		 claimsSetBuilder.subject("SEPADemoApp");
+		 claimsSetBuilder.subject(subject);
 		
 	 /* 4.1.3.  "aud" (Audience) Claim
 
@@ -454,60 +419,37 @@ public class AuthorizationManager {
 			signedJWT = new SignedJWT(new JWSHeader(JWSAlgorithm.RS256), JWTClaimsSet.parse(jwtClaims.toString()));
 		} catch (ParseException e) {
 			logger.error(e.getMessage());
-			jwt.add("access_token", new JsonPrimitive(""));
-			jwt.add("token_type", new JsonPrimitive(""));
-			jwt.add("expires_in", new JsonPrimitive(""));		
-			jwt.add("authorized", new JsonPrimitive(false));
-			jwt.add("reason", new JsonPrimitive("Internal error on signing token (1)"));
-			return jwt;
+			return new ErrorResponse(0,ErrorResponse.INTERNAL_SERVER_ERROR,"Error on signing JWT (1)");
 		}
 		try {
 			signedJWT.sign(signer);
 		} catch (JOSEException e) {
 			logger.error(e.getMessage());
-			jwt.add("access_token", new JsonPrimitive(""));
-			jwt.add("token_type", new JsonPrimitive(""));
-			jwt.add("expires_in", new JsonPrimitive(""));		
-			jwt.add("authorized", new JsonPrimitive(false));
-			jwt.add("reason", new JsonPrimitive("Internal error on signing token (2)"));
-			return jwt;
+			return new ErrorResponse(0,ErrorResponse.INTERNAL_SERVER_ERROR,"Error on signing JWT (2)");
 		}
-				
-		jwt.add("access_token", new JsonPrimitive(signedJWT.serialize()));
-		jwt.add("token_type", new JsonPrimitive("bearer"));
-		jwt.add("expires_in", new JsonPrimitive(expiring));		
-		jwt.add("authorized", new JsonPrimitive(true));
-		jwt.add("reason", new JsonPrimitive(""));
-		
+						
 		//Add the token to the released tokens
 		clientClaims.put(id, jwtClaims);
 		
-		return jwt;
+		return new JWTResponse(signedJWT.serialize(),"bearer",expiring);
 	}
 	
-	public JsonObject validateToken(String accessToken) {
+	public Response validateToken(String accessToken) {
+		logger.debug("Validate token");
+		
+		//Parse and verify the token
 		SignedJWT signedJWT = null;
-		JsonObject ret = new JsonObject();
 		try {
 			signedJWT = SignedJWT.parse(accessToken);
 		} catch (ParseException e) {
-			logger.error(e.getMessage());
-			ret.add("valid", new JsonPrimitive(false));
-			ret.add("message", new JsonPrimitive(e.getMessage()));
-			return ret;
+			return new ErrorResponse(ErrorResponse.UNAUTHORIZED,e.getMessage());
 		}
 
 		try {
-			 if(!signedJWT.verify(verifier)) {
-				ret.add("valid", new JsonPrimitive(false));
-				ret.add("message", new JsonPrimitive("Verification failed"));
-				return ret;
-			 }
+			 if(!signedJWT.verify(verifier)) return new ErrorResponse(ErrorResponse.UNAUTHORIZED);
+			 
 		} catch (JOSEException e) {
-			logger.error(e.getMessage());
-			ret.add("valid", new JsonPrimitive(false));
-			ret.add("message", new JsonPrimitive(e.getMessage()));
-			return ret;
+			return new ErrorResponse(ErrorResponse.UNAUTHORIZED,e.getMessage());
 		}
 		
 		// Process the token
@@ -515,61 +457,20 @@ public class AuthorizationManager {
 		try {
 			claimsSet = jwtProcessor.process(accessToken, context);
 		} catch (ParseException | BadJOSEException | JOSEException e) {
-			logger.error(e.getMessage());
-			ret.add("valid", new JsonPrimitive(false));
-			ret.add("message", new JsonPrimitive(e.getMessage()));
-			return ret;
+			return new ErrorResponse(ErrorResponse.INTERNAL_SERVER_ERROR,e.getMessage());
 		}
 		
+		//Check token expiration
 		Date now = new Date();
-		if (now.after(claimsSet.getExpirationTime())) {
-			logger.debug("Token is expired "+claimsSet.getExpirationTime());
-			ret.add("valid", new JsonPrimitive(false));
-			ret.add("message", new JsonPrimitive("Token is expired "+claimsSet.getExpirationTime()));
-			return ret;
-		}
-		if (now.before(claimsSet.getNotBeforeTime())) {
-			logger.debug("Token can not be used before: "+claimsSet.getNotBeforeTime());
-			ret.add("valid", new JsonPrimitive(false));
-			ret.add("message", new JsonPrimitive("Token can not be used before: "+claimsSet.getNotBeforeTime()));
-			return ret;
-		}
-		if (!claimsSet.getIssuer().equals(issuer)) {
-			logger.debug("Issuer not recognized");
-			ret.add("valid", new JsonPrimitive(false));
-			ret.add("message", new JsonPrimitive("Issuer not recognized"));
-			return ret;
-		}
-		String[] id = claimsSet.getJWTID().split(":");
-		if (id == null) {
-			logger.debug("JWT ID not recognized (1)");
-			ret.add("valid", new JsonPrimitive(false));
-			ret.add("message", new JsonPrimitive("JWT ID not recognized (1)"));
-			return ret;
-		}
-		if (id.length != 2) {
-			logger.debug("JWT ID not recognized (2)");
-			ret.add("valid", new JsonPrimitive(false));
-			ret.add("message", new JsonPrimitive("JWT ID not recognized (2)"));
-			return ret;	
-		}
-		if (!credentials.containsKey(id[0])) {
-			logger.debug("JWT ID not recognized (3)");
-			ret.add("valid", new JsonPrimitive(false));
-			ret.add("message", new JsonPrimitive("JWT ID not recognized (1)"));
-			return ret;
-		}
-		if (!credentials.get(id[0]).equals(id[1])) {
-			logger.debug("JWT ID not recognized (4)");
-			ret.add("valid", new JsonPrimitive(false));
-			ret.add("message", new JsonPrimitive("JWT ID not recognized (1)"));
-			return ret;	
-		}
+		if (now.after(claimsSet.getExpirationTime())) return new ErrorResponse(0,ErrorResponse.UNAUTHORIZED,"Token is expired "+claimsSet.getExpirationTime());
+			
+		if (now.before(claimsSet.getNotBeforeTime())) return new ErrorResponse(0,ErrorResponse.UNAUTHORIZED,"Token can not be used before: "+claimsSet.getNotBeforeTime());	
 				
-		logger.debug(claimsSet.toJSONObject());
-		
-		ret.add("valid", new JsonPrimitive(true));
-		ret.add("message", new JsonPrimitive("Token verified"));
-		return ret;	
+		return new JWTResponse(accessToken,"bearer",now.getTime()-claimsSet.getExpirationTime().getTime());
+	}
+
+	public SSLEngineConfigurator getWssConfigurator() {
+		SSLEngineConfigurator config = new SSLEngineConfigurator(sManager.getWssConfigurator().getSslContext(), false, false, false);
+		return config;
 	}	
 }

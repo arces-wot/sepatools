@@ -7,6 +7,8 @@ import com.google.gson.JsonParser;
 
 import arces.unibo.SEPA.commons.response.Notification;
 import arces.unibo.SEPA.commons.response.NotificationHandler;
+import arces.unibo.SEPA.commons.response.SubscribeResponse;
+import arces.unibo.SEPA.commons.response.UnsubscribeResponse;
 
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
@@ -16,9 +18,9 @@ class WebsocketMessageHandler implements MessageHandler.Whole<String> {
 	
 	private NotificationHandler handler;
 	private WebsocketWatchdog watchDog;
-	private WebsocketEndpoint wsClient;
+	private WebsocketClientEndpoint wsClient;
 	
-	public WebsocketMessageHandler(NotificationHandler handler,WebsocketWatchdog watchDog,WebsocketEndpoint wsClient) {
+	public WebsocketMessageHandler(NotificationHandler handler,WebsocketWatchdog watchDog,WebsocketClientEndpoint wsClient) {
 		this.handler = handler;
 		this.watchDog = watchDog;
 		this.wsClient = wsClient;
@@ -44,7 +46,12 @@ class WebsocketMessageHandler implements MessageHandler.Whole<String> {
 		 
   	  	//Subscribe confirmed
   	  	if (notify.get("subscribed") != null) {
-  	  		handler.subscribeConfirmed(notify.get("subscribed").getAsString());
+  	  		SubscribeResponse response;
+	  		if (notify.get("alias") != null) 
+	  			response = new SubscribeResponse(notify.get("subscribed").getAsString(),notify.get("alias").getAsString());
+	  		else
+	  		response = new SubscribeResponse(notify.get("subscribed").getAsString());
+	  		handler.subscribeConfirmed(response);
   	  		
   	  		if (!watchDog.isAlive()) watchDog.start();
   	  		watchDog.subscribed();
@@ -53,7 +60,8 @@ class WebsocketMessageHandler implements MessageHandler.Whole<String> {
   	  	
   	  	//Unsubscribe confirmed
   	  	if (notify.get("unsubscribed") != null) {
-  	  		handler.unsubscribeConfirmed(notify.get("unsubscribed").getAsString());
+  	  		handler.unsubscribeConfirmed(new UnsubscribeResponse(notify.get("unsubscribed").getAsString()));
+  	  		
   	  		wsClient.close();
   	  		
   	  		watchDog.unsubscribed();

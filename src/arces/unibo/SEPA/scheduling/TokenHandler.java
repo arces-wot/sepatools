@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package arces.unibo.SEPA.server;
+package arces.unibo.SEPA.scheduling;
 
 import java.util.Vector;
 
@@ -68,10 +68,10 @@ public class TokenHandler implements TokenHandlerMBean {
 	}
 	
 	/**
-	 * Returns a new token if more tokens are available or null otherwise
-	 * @returns an Integer representing the token
+	 * Returns a new token if more tokens are available or -1 otherwise
+	 * @returns an int representing the token
 	 */
-	public Integer getToken()
+	public int getToken()
 	{
 		Integer token;
 		
@@ -84,7 +84,7 @@ public class TokenHandler implements TokenHandlerMBean {
 					logger.debug(e.getMessage());
 				}
 			}
-			if (jar.size()==0) return null;
+			if (jar.size()==0) return -1;
 		
 			token =  jar.get(0);
 			jar.removeElementAt(0);

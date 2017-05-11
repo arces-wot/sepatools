@@ -1,4 +1,4 @@
-/* This class implements the BOOSTER part of the Semantic Event Processing Architecture (SEPA) Engine
+/* This class implements the Context Triple Store (CTS) part of the Semantic Event Processing Architecture (SEPA) Engine
     Copyright (C) 2016-2017 Luca Roffia (luca.roffia@unibo.it)
 
     This program is free software: you can redistribute it and/or modify
@@ -15,15 +15,15 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package arces.unibo.SEPA.server.SP;
+package arces.unibo.SEPA.processing;
 
 /**
- * This class represents the BOOSTER component of the SUB Engine
- * 
- * The BOOSTER implements the subscription algorithm
+ * This class represents the Context Triple Store (CTS) used by SPUs (Semantic Processing Unit)
  * 
  * @author Luca Roffia (luca.roffia@unibo.it)
  * @version 0.1
  */
 
-public class Booster {	}
+public class CTS {
+	
+}

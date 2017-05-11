@@ -1,4 +1,4 @@
-/* This class implements the processing of a SPARQL 1.1 QUERY
+/* This class implements the BOOSTER part of the Semantic Event Processing Architecture (SEPA) Engine
     Copyright (C) 2016-2017 Luca Roffia (luca.roffia@unibo.it)
 
     This program is free software: you can redistribute it and/or modify
@@ -15,20 +15,15 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package arces.unibo.SEPA.server;
+package arces.unibo.SEPA.processing;
 
-import arces.unibo.SEPA.commons.SPARQL.SPARQL11Protocol;
-import arces.unibo.SEPA.commons.request.QueryRequest;
-import arces.unibo.SEPA.commons.response.Response;
+/**
+ * This class represents the BOOSTER component of the SUB Engine
+ * 
+ * The BOOSTER implements the subscription algorithm
+ * 
+ * @author Luca Roffia (luca.roffia@unibo.it)
+ * @version 0.1
+ */
 
-public class QueryProcessor {
-	private SPARQL11Protocol endpoint;
-	
-	public QueryProcessor(SPARQL11Protocol endpoint) {
-		this.endpoint = endpoint;
-	}
-	
-	public Response process(QueryRequest req) {		
-		return endpoint.query(req);
-	}
-}
+public class Booster {	}

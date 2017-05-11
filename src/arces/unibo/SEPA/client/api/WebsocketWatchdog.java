@@ -20,13 +20,33 @@ class WebsocketWatchdog extends Thread {
 	private static final Logger logger = LogManager.getLogger("WebsocketWatchdog");
 	
 	private NotificationHandler handler = null;
-	private WebsocketEndpoint wsClient;
+	private WebsocketClientEndpoint wsClient;
 	private String sparql;
+	private String token;
+	private String alias;
 	
-	public WebsocketWatchdog(NotificationHandler handler, WebsocketEndpoint wsClient,String sparql) {
+	public WebsocketWatchdog(NotificationHandler handler, WebsocketClientEndpoint wsClient,String sparql,String alias,String token) {
 		this.handler = handler;
 		this.wsClient = wsClient;
 		this.sparql = sparql;
+		this.token = token;
+		this.alias = alias;
+	}
+	
+	public WebsocketWatchdog(NotificationHandler handler, WebsocketClientEndpoint wsClient,String sparql,String alias) {
+		this.handler = handler;
+		this.wsClient = wsClient;
+		this.sparql = sparql;
+		this.token = null;
+		this.alias = alias;
+	}
+	
+	public WebsocketWatchdog(NotificationHandler handler, WebsocketClientEndpoint wsClient,String sparql) {
+		this.handler = handler;
+		this.wsClient = wsClient;
+		this.sparql = sparql;
+		this.token = null;
+		this.alias = null;
 	}
 	
 	public synchronized void ping() {
@@ -71,7 +91,7 @@ class WebsocketWatchdog extends Thread {
 		}
 		while(state == SUBSCRIPTION_STATE.BROKEN_SOCKET) {
 			if (wsClient.isConnected()) wsClient.close();
-			wsClient.subscribe(sparql,handler);
+			wsClient.subscribe(sparql,alias,token,handler);
 			try {
 				wait(DEFAULT_SUBSCRIPTION_DELAY);
 			} catch (InterruptedException e) {

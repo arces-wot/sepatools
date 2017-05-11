@@ -23,7 +23,7 @@ import java.util.Set;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import arces.unibo.SEPA.client.api.ClientProperties;
+import arces.unibo.SEPA.client.api.SPARQL11SEProperties;
 import arces.unibo.SEPA.client.api.SPARQL11SEProtocol;
 import arces.unibo.SEPA.client.pattern.ApplicationProfile.Parameters;
 import arces.unibo.SEPA.commons.SPARQL.Bindings;
@@ -62,7 +62,7 @@ public abstract class Client implements IClient {
 	
 	public Client(String url,int updatePort,int subscribePort,String path){
 		logger.debug("Opening connection to SEPA engine:"+url+" Update port:"+updatePort+" Subscribe port:"+subscribePort+ " Path: "+path);
-		ClientProperties properties = new ClientProperties("client.properties");
+		SPARQL11SEProperties properties = new SPARQL11SEProperties("client.properties");
 		protocolClient = new SPARQL11SEProtocol(properties);	
 		logger.info(protocolClient.toString());
 	}
@@ -85,7 +85,7 @@ public abstract class Client implements IClient {
 		Parameters args = appProfile.getParameters();
 		logger.debug("Created Authority:"+args.getUrl()+" Update port:"+args.getUpdatePort()+" Subscribe port:"+args.getSubscribePort()+ " Path: "+args.getPath());
 		
-		ClientProperties properties = new ClientProperties("client.properties");
+		SPARQL11SEProperties properties = new SPARQL11SEProperties("client.properties");
 		protocolClient = new SPARQL11SEProtocol(properties);
 		logger.info(protocolClient.toString());
 		

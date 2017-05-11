@@ -21,6 +21,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import arces.unibo.SEPA.commons.SPARQL.Bindings;
+import arces.unibo.SEPA.commons.request.UpdateRequest;
+import arces.unibo.SEPA.commons.response.ErrorResponse;
+import arces.unibo.SEPA.commons.response.Response;
 
 public class Producer extends Client implements IProducer {
 	protected String sparqlUpdate = null;
@@ -64,6 +67,10 @@ public class Producer extends Client implements IProducer {
 		 
 		 logger.debug("<UPDATE> "+ SPARQL_ID+" ==> "+sparql);
 		 
-		 return protocolClient.update(sparql);
+		 Response response = protocolClient.update(new UpdateRequest(sparql));
+		 logger.debug(response.toString());
+		 
+		 return !(response.getClass().equals(ErrorResponse.class));
+		 
 	 }
 }

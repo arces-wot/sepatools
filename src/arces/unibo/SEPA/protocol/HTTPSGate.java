@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package arces.unibo.SEPA.gates;
+package arces.unibo.SEPA.protocol;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -37,10 +37,11 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpsServer;
 
+import arces.unibo.SEPA.commons.response.ErrorResponse;
+import arces.unibo.SEPA.commons.response.Response;
+import arces.unibo.SEPA.scheduling.EngineProperties;
+import arces.unibo.SEPA.scheduling.SchedulerInterface;
 import arces.unibo.SEPA.security.AuthorizationManager;
-import arces.unibo.SEPA.security.SecurityManager;
-import arces.unibo.SEPA.server.EngineProperties;
-import arces.unibo.SEPA.server.SchedulerInterface;
 
 public class HTTPSGate extends HTTPGate {
 	protected Logger logger = LogManager.getLogger("HTTPSGate");	
@@ -49,10 +50,10 @@ public class HTTPSGate extends HTTPGate {
 	private static int httpsPort = 8443;
 	
 	//Security manager
-	private SecurityManager sManager = new SecurityManager();
+	//private SecurityManager sManager = new SecurityManager();
 		
 	//Authorization manager
-	private static AuthorizationManager am = new AuthorizationManager();
+	private static AuthorizationManager am = new AuthorizationManager("sepa.jks","*sepa.jks*","SepaKey","*SepaKey*","SepaCertificate");
 
 	/*
 	Error Code	Description (RFC 2616 Status codes) 
@@ -99,6 +100,8 @@ public class HTTPSGate extends HTTPGate {
 		
 		@Override
 		public void handle(HttpExchange exchange) throws IOException {
+			logger.info(">> HTTPS request (REGISTRATION)");
+			
 			if(!exchange.getRequestMethod().toUpperCase().equals("POST")) {
 				logger.error("Bad request: "+exchange.getRequestMethod().toUpperCase());
 				failureResponse(exchange,400,"Bad request: "+exchange.getRequestMethod().toUpperCase()+" Request must be a POST");
@@ -190,11 +193,12 @@ public class HTTPSGate extends HTTPGate {
 			//*****************************************
 			//Register client and retrieve credentials
 			//*****************************************
-			JsonObject cred = am.register(name);
+			Response cred = am.register(name);
 			
-			if (!cred.get("authorized").getAsBoolean()) {
+			if (cred.getClass().equals(ErrorResponse.class)) {
 				logger.error(cred.toString());
-				failureResponse(exchange,401,cred.toString());
+				ErrorResponse error = (ErrorResponse) cred;
+				failureResponse(exchange,error.getErrorCode(),error.getErrorMessage());
 				return;
 			}
 			
@@ -237,11 +241,16 @@ public class HTTPSGate extends HTTPGate {
 		 * 
 		 * Request body 
 		 * 
-		 * grant_type=client_credentials
+		 * { 
+		 * "client_identity": "68:a8:6d:1a:9c:04", 
+		 * "grant_types": ["client_credentials"] 
+		 * }
 		 * */
 		
 		@Override
 		public void handle(HttpExchange exchange) throws IOException {
+			logger.info(">> HTTPS request (TOKEN REQUEST)");
+			
 			if(!exchange.getRequestMethod().toUpperCase().equals("POST")) {
 				logger.error("Bad request: "+exchange.getRequestMethod().toUpperCase());
 				failureResponse(exchange,400,"Request must be a POST");
@@ -292,11 +301,12 @@ public class HTTPSGate extends HTTPGate {
 			//*************
 			//Get token
 			//*************
-			JsonObject token = am.getToken(basic.get(0).split(" ")[1]);
+			Response token = am.getToken(basic.get(0).split(" ")[1]);
 			
-			if (!token.get("authorized").getAsBoolean()) {
+			if (token.getClass().equals(ErrorResponse.class)) {
+				ErrorResponse error = (ErrorResponse) token;
 				logger.error(token.toString());
-				failureResponse(exchange,401,token.toString());
+				failureResponse(exchange,error.getErrorCode(),error.getErrorMessage());
 			}
 			else sendHTTPResponse(exchange,token.toString());
 		}
@@ -338,7 +348,9 @@ public class HTTPSGate extends HTTPGate {
 		 * *** Respond with 401 if not
 		 * */
 		@Override
-		public void handle(HttpExchange httpExchange) throws IOException {	
+		public void handle(HttpExchange httpExchange) throws IOException {
+			logger.info(">> HTTPS request");	
+			
 			//Check authorization header
 			if (!httpExchange.getRequestHeaders().containsKey("Authorization")) {
 				logger.error("Authorization is null");
@@ -364,9 +376,12 @@ public class HTTPSGate extends HTTPGate {
 			//******************
 			String jwt = bearer.get(0).split(" ")[1];
 			
-			JsonObject isValid = am.validateToken(jwt);
-			if(isValid.get("valid").getAsBoolean()) super.handle(httpExchange);
-			else failureResponse(httpExchange,401,isValid.get("message").getAsString());
+			Response valid = am.validateToken(jwt);
+			if(!valid.getClass().equals(ErrorResponse.class)) super.handle(httpExchange);
+			else {
+				ErrorResponse error = (ErrorResponse) valid;
+				failureResponse(httpExchange,error.getErrorCode(),error.getErrorMessage());
+			}
 		}
 	}
 	
@@ -382,8 +397,8 @@ public class HTTPSGate extends HTTPGate {
 			System.exit(1);
 		}
 		
-		// set security configuration
-		((HttpsServer)server).setHttpsConfigurator(sManager.getHttpsConfigurator());
+		// Set security configuration
+		((HttpsServer)server).setHttpsConfigurator(am.getHttpsConfigurator());
 		
 	    server.createContext("/sparql", new SecureSPARQLHandler());
 	    server.createContext("/echo", new EchoHandler());

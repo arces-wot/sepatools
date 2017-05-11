@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package arces.unibo.SEPA.gates;
+package arces.unibo.SEPA.protocol;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -27,7 +27,7 @@ import org.apache.commons.io.IOUtils;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-
+import com.google.gson.JsonPrimitive;
 import com.sun.net.httpserver.*;
 
 import org.apache.logging.log4j.Logger;
@@ -37,11 +37,13 @@ import arces.unibo.SEPA.beans.HTTPGateMBean;
 import arces.unibo.SEPA.beans.SEPABeans;
 import arces.unibo.SEPA.commons.request.QueryRequest;
 import arces.unibo.SEPA.commons.request.Request;
+import arces.unibo.SEPA.commons.response.ErrorResponse;
+import arces.unibo.SEPA.commons.response.QueryResponse;
 import arces.unibo.SEPA.commons.response.Response;
+import arces.unibo.SEPA.scheduling.EngineProperties;
+import arces.unibo.SEPA.scheduling.SchedulerInterface;
+import arces.unibo.SEPA.scheduling.RequestResponseHandler.ResponseAndNotificationListener;
 import arces.unibo.SEPA.commons.request.UpdateRequest;
-import arces.unibo.SEPA.server.EngineProperties;
-import arces.unibo.SEPA.server.SchedulerInterface;
-import arces.unibo.SEPA.server.RequestResponseHandler.ResponseAndNotificationListener;
 
 /**
  * This class implements the SPARQL 1.1 Protocol 
@@ -51,20 +53,43 @@ import arces.unibo.SEPA.server.RequestResponseHandler.ResponseAndNotificationLis
 * */
 
 public class HTTPGate extends Thread implements HTTPGateMBean {
+	
+	/** The scheduler of the SEPA engine. */
 	protected SchedulerInterface scheduler;
 	
+	/** The HTTP server */
 	protected static HttpServer server = null;
+	
+	/** The logger */
 	protected Logger logger = LogManager.getLogger("HTTPGate");	
+	
+	/** The m bean name */
 	protected static String mBeanName = "arces.unibo.SEPA.server:type=HTTPGate";
 	
+	/** The HTTP port */
 	private static int port = 8000; 
+	
+	/** The HTTP timeout */
 	private static int timeout = 2000;
 
-	//private Scheduler scheduler;
+	/** The number of current transactions */
 	protected long transactions  = 0; 
+	
+	/** The number of update transactions */
 	private long updateTransactions  = 0;
+	
+	/** The number of query transactions */
 	private long queryTransactions  = 0;
 	
+	/**
+	 * Instantiates a new HTTP gate.
+	 *
+	 * @param properties the properties 
+	 * @param scheduler the scheduler 
+	 * 
+	 * @see SchedulerInterface
+	 * @see EngineProperties
+	 */
 	public HTTPGate(EngineProperties properties,SchedulerInterface scheduler) {
 		if (properties == null) logger.error("Properties are null");
 		else {
@@ -78,6 +103,9 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 		SEPABeans.registerMBean(this,mBeanName);
 	}
 
+	/* (non-Javadoc)
+	 * @see java.lang.Thread#run()
+	 */
 	@Override
 	public void run() {
 		
@@ -89,6 +117,9 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 		
 	}
 	
+	/* (non-Javadoc)
+	 * @see java.lang.Thread#start()
+	 */
 	@Override
 	public void start(){	
 		this.setName("Starting...");
@@ -111,6 +142,9 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 	    logger.info("Started on port "+port);
 	}
 	
+	/* (non-Javadoc)
+	 * @see java.lang.Thread#interrupt()
+	 */
 	@Override
 	public void interrupt(){
 		logger.info("Kill signal received...stopping HTTP server...");
@@ -118,62 +152,78 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 		super.interrupt();
 	}
 	
+	/**
+	 * Builds the echo response.
+	 *
+	 * @param exchange the exchange
+	 * @return the json object
+	 */
+	private JsonObject buildEchoResponse(HttpExchange exchange) {
+		JsonObject json = new JsonObject();
+		
+		json.add("method", new JsonPrimitive(exchange.getRequestMethod().toUpperCase()));
+		json.add("protocol", new JsonPrimitive(exchange.getProtocol()));
+				
+		JsonObject headers = new JsonObject();		
+		for (String header : exchange.getRequestHeaders().keySet()) {
+			headers.add(header, new JsonPrimitive(exchange.getRequestHeaders().get(header).toString()));
+		}
+		json.add("headers", headers);
+
+		String body = "";
+		try {
+			body = IOUtils.toString(exchange.getRequestBody(),"UTF-8");
+		} catch (IOException e) {
+			logger.error(e.getMessage());
+			body = e.getMessage();
+		}
+		json.add("body", new JsonPrimitive(body));
+		
+		json.add("contextPath", new JsonPrimitive(exchange.getHttpContext().getPath()));
+		json.add("query", new JsonPrimitive(exchange.getRequestURI().getQuery()));
+		
+		return json;
+	}
+	
+	/**
+	 * Echo request.
+	 *
+	 * @param exchange the HTTP exchange information
+	 */
 	private void echoRequest(HttpExchange exchange) {
-		String response = 	"METHOD: " + exchange.getRequestMethod().toUpperCase() + "\n";
-		response += 	  	"PROTOCOL: " + exchange.getProtocol() + "\n";
+		JsonObject json = buildEchoResponse(exchange);
 		
-		String headerString = "";
-		for (String header : exchange.getRequestHeaders().keySet()) {
-			headerString += " " + header + ":" + exchange.getRequestHeaders().get(header).toString() +"\n";
-		}
-		response +=       	"HEADERS:\n" + headerString;
-		try {
-			response +=       	"BODY:\n" + IOUtils.toString(exchange.getRequestBody(),"UTF-8") +"\n";
-		} catch (IOException e) {
-			logger.error("Error on UTF-8 decoding "+e.getMessage());
-		}
-		response += 		"CONTEXT PATH: " + exchange.getHttpContext().getPath() + "\n";
-		response += 		"QUERY: " + exchange.getRequestURI().getQuery();
-		
-		try {
-			exchange.sendResponseHeaders(200, response.length());
-			OutputStream os = exchange.getResponseBody();
-			os.write(response.getBytes());
-			os.close();
-		} catch (IOException e) {
-			logger.error("Error on sending HTTP response "+e.getMessage());
-		}
-			
+		sendResponse(exchange,200,json.toString());		
 	}
 	
+	/**
+	 * Failure response.
+	 *
+	 * @param exchange the exchange
+	 * @param httpResponseCode the http response code
+	 * @param responseBody the response body
+	 */
 	protected void failureResponse(HttpExchange exchange,int httpResponseCode,String responseBody) {
-		String response = 	"Response\n"+responseBody + "\n\nRequest\nMETHOD: " + exchange.getRequestMethod().toUpperCase() + "\n";
-		response += 	  	"PROTOCOL: " + exchange.getProtocol() + "\n";
-		String headerString = "";
-		for (String header : exchange.getRequestHeaders().keySet()) {
-			headerString += " " + header + ":" + exchange.getRequestHeaders().get(header).toString() +"\n";
-		}
-		response +=       	"HEADERS:\n" + headerString;
-		try {
-			response +=       	"BODY:\n" + IOUtils.toString(exchange.getRequestBody(),"UTF-8") +"\n";
-		} catch (IOException e) {
-			logger.error("Error on UTF-8 decoding "+e.getMessage());
-		}
-		response += 		"CONTEXT PATH: " + exchange.getHttpContext().getPath() + "\n";
-		response += 		"QUERY: " + exchange.getRequestURI().getQuery();
+		JsonObject json = buildEchoResponse(exchange);
 		
-		sendResponse(exchange,httpResponseCode,response);
+		json .add("body", new JsonPrimitive(responseBody));
+		json .add("code", new JsonPrimitive(httpResponseCode));
+		
+		sendResponse(exchange,httpResponseCode,json.toString());
 	}
 	
+	/**
+	 * Send response.
+	 *
+	 * @param exchange the exchange
+	 * @param httpResponseCode the http response code
+	 * @param response the response
+	 */
 	protected void sendResponse(HttpExchange exchange,int httpResponseCode,String response){
-		//TODO: CORS to be checked
-		exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
-		exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "GET,POST,DELETE,PUT");
-		exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "X-Requested-With,Content-Type,Origin,Accept");
-		
+		logger.info("<< HTTP response ("+httpResponseCode+") "+response);
 		try {			
 			//UTF-8
-			byte[] out = response.getBytes();
+			byte[] out = response.getBytes("UTF-8");
 			exchange.sendResponseHeaders(httpResponseCode, out.length);
 			exchange.getResponseBody().write(out,0,out.length);
 			exchange.getResponseBody().close();
@@ -182,8 +232,14 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 		}	
 	}
 	
+	/**
+	 * The Class EchoHandler.
+	 */
 	public class EchoHandler implements HttpHandler {
 
+		/* (non-Javadoc)
+		 * @see com.sun.net.httpserver.HttpHandler#handle(com.sun.net.httpserver.HttpExchange)
+		 */
 		@Override
 		public void handle(HttpExchange exchange) throws IOException {
 			echoRequest(exchange);
@@ -191,37 +247,51 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 	}
 	
 	/**
-	 * This method parse the HTTP request according to SPARQL 1.1 Protocol (https://www.w3.org/TR/sparql11-protocol/)
+	 * This method parse the HTTP request according to <a href="https://www.w3.org/TR/sparql11-protocol/"> SPARQL 1.1 Protocol</a>
+	 *
+	 *	 * <pre>
+	 *                               HTTP Method   Query String Parameters           Request Content Type                Request Message Body
+	 *----------------------------------------------------------------------------------------------------------------------------------------
+	 * query via GET              |   GET          query (exactly 1)                 None                                None
+	 *                            |                default-graph-uri (0 or more)
+	 *                            |                named-graph-uri (0 or more)
+	 *----------------------------------------------------------------------------------------------------------------------------------------												
+	 * query via URL-encoded POST |   POST         None                              application/x-www-form-urlencoded   URL-encoded, ampersand-separated query parameters.
+	 *                            |                                                                                     query (exactly 1)
+	 *                            |                                                                                     default-graph-uri (0 or more)
+	 *                            |                                                                                     named-graph-uri (0 or more)
+	 *----------------------------------------------------------------------------------------------------------------------------------------																													
+	 * query via POST directly    |   POST         default-graph-uri (0 or more)
+	 *                            |                named-graph-uri (0 or more)       application/sparql-query            Unencoded SPARQL query string
+	 *----------------------------------------------------------------------------------------------------------------------------------------
+	 * update via URL-encoded POST|   POST         None                              application/x-www-form-urlencoded   URL-encoded, ampersand-separated query parameters.
+	 *                            |                                                                                     update (exactly 1)
+	 *                            |                                                                                     using-graph-uri (0 or more)
+	 *                            |                                                                                     using-named-graph-uri (0 or more)
+	 *----------------------------------------------------------------------------------------------------------------------------------------																													
+	 * update via POST directly   |    POST       using-graph-uri (0 or more)       application/sparql-update           Unencoded SPARQL update request string
+	 *                                            using-named-graph-uri (0 or more)
+	 * </pre>
 	 * 
+	 * @param httpExchange the HTTP exchange information
 	 * @return  the corresponding request (update or query), otherwise null
-	 * @throws IOException 
 	 * 
-	 * @see QueryRequest, UpdateRequest
-	 * 
-	 * /*
-	 								HTTP Method			Query String Parameters			Request Content Type				Request Message Body
-	 	----------------------------------------------------------------------------------------------------------------------------------------
-	 	query via GET				GET					query (exactly 1)				None								None
-	 													default-graph-uri (0 or more)
-	 													named-graph-uri (0 or more)
-	 	----------------------------------------------------------------------------------------------------------------------------------------												
-	 	query via URL-encoded POST	POST				None							application/x-www-form-urlencoded	URL-encoded, ampersand-separated query parameters.
-	 																														query (exactly 1)
-	 																														default-graph-uri (0 or more)
-	 																														named-graph-uri (0 or more)
-	 	----------------------------------------------------------------------------------------------------------------------------------------																													
-	 	query via POST directly		POST				default-graph-uri (0 or more)
-	 													named-graph-uri (0 or more)		application/sparql-query			Unencoded SPARQL query string
-		----------------------------------------------------------------------------------------------------------------------------------------
-		update via URL-encoded POST	POST				None							application/x-www-form-urlencoded	URL-encoded, ampersand-separated query parameters.
-																															update (exactly 1)
-																															using-graph-uri (0 or more)
-																															using-named-graph-uri (0 or more)
-		----------------------------------------------------------------------------------------------------------------------------------------																													
-		update via POST directly	POST				using-graph-uri (0 or more)		application/sparql-update			Unencoded SPARQL update request string
-														using-named-graph-uri (0 or more)		
-		 */
+	 * @see QueryRequest
+	 * @see UpdateRequest
+	 */
 	private Request parseSPARQL11(HttpExchange httpExchange) {
+    	//TODO: CORS to be checked
+		httpExchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
+		httpExchange.getResponseHeaders().add("Access-Control-Allow-Methods", "GET,POST,DELETE,PUT");
+		httpExchange.getResponseHeaders().add("Access-Control-Allow-Headers", "X-Requested-With,Content-Type,Origin,Accept");
+
+		//Response content-type
+		String contentType = "";
+		for (String type : httpExchange.getRequestHeaders().get("Accept")) {
+			contentType = type + ",";
+		}
+		contentType = contentType.substring(0, contentType.length()-1);
+		httpExchange.getResponseHeaders().add("Content-type", contentType);
 		
 		switch(httpExchange.getRequestMethod().toUpperCase()) {
 			case "GET":
@@ -244,6 +314,10 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 						}
 						Integer token = 0;
 						if (scheduler != null) token = scheduler.getToken();
+						if (token == -1) {
+							failureResponse(httpExchange,ErrorResponse.FORBIDDEN,"No more tokens");
+							return null;	
+						}
 						return new QueryRequest(token,sparql);
 					}
 				}
@@ -266,6 +340,10 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 					
 					Integer token = 0;
 					if (scheduler != null) token = scheduler.getToken();
+					if (token == -1) {
+						failureResponse(httpExchange,ErrorResponse.FORBIDDEN,"No more tokens");
+						return null;	
+					}
 					return new QueryRequest(token,body);
 				}
 				if(httpExchange.getRequestHeaders().get("Content-Type").contains("application/sparql-update")) {
@@ -274,6 +352,10 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 					
 					Integer token = 0;
 					if (scheduler != null) token = scheduler.getToken();
+					if (token == -1) {
+						failureResponse(httpExchange,ErrorResponse.FORBIDDEN,"No more tokens");
+						return null;	
+					}
 					return new UpdateRequest(token,body);
 				}
 				
@@ -296,6 +378,10 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 							
 							Integer token = 0;
 							if (scheduler != null) token = scheduler.getToken();
+							if (token == -1) {
+								failureResponse(httpExchange,ErrorResponse.FORBIDDEN,"No more tokens");
+								return null;	
+							}
 							return new QueryRequest(token,value[1]);
 						}
 						if (value[0].equals("update")) {
@@ -304,6 +390,10 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 							
 							Integer token = 0;
 							if (scheduler != null) token = scheduler.getToken();
+							if (token == -1) {
+								failureResponse(httpExchange,ErrorResponse.FORBIDDEN,"No more tokens");
+								return null;	
+							}
 							return new UpdateRequest(token,value[1]);
 						}
 					}
@@ -318,12 +408,7 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 				logger.debug("HTTP OPTIONS");
 				
 			    // ok, we are ready to send the response.
-			    try {
-			    	//TODO: CORS to be checked
-					httpExchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
-					httpExchange.getResponseHeaders().add("Access-Control-Allow-Methods", "GET,POST,DELETE,PUT");
-					httpExchange.getResponseHeaders().add("Access-Control-Allow-Headers", "X-Requested-With,Content-Type,Origin,Accept");
-					
+			    try {				
 			    	httpExchange.sendResponseHeaders(200, 0);
 			    	OutputStream os = httpExchange.getResponseBody();			    
 				    os.write(0);
@@ -341,32 +426,65 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 		return null;
 	}
 	
+	/**
+	 * Validate.
+	 *
+	 * @param request the request
+	 * @return true, if successful
+	 */
 	private boolean validate(Request request) {
 		// TODO to be implemented
 		return true;
 	}
 	
+	/**
+	 * The Class SPARQLHandler.
+	 */
 	public class SPARQLHandler implements HttpHandler  {		
+		
+		/**
+		 * The Class Running.
+		 */
 		class Running extends Thread implements ResponseAndNotificationListener {
+			
+			/** The HTTP exchange. */
 			private HttpExchange httpExchange;
+			
+			/** The response. */
 			private Response response = null;
 			
+			/**
+			 * Instantiates a new running.
+			 *
+			 * @param httpExchange the http exchange
+			 */
 			public Running(HttpExchange httpExchange) {
 				this.httpExchange = httpExchange;
 			}
 			
+			/* (non-Javadoc)
+			 * @see java.lang.Thread#run()
+			 */
 			public void run() {
 				
 				//Parsing SPARQL 1.1 request
 				Request request = parseSPARQL11(httpExchange);
 
+				//Parsing failed
+				if (request == null) {
+					logger.error("SPARQL 1.1 SE parsing failed");
+					failureResponse(httpExchange,ErrorResponse.BAD_REQUEST,"SPARQL 1.1 SE parsing failed");
+					return;	
+				}
+				
 				//Timestamp
 				long startTime = System.nanoTime();
 				
 				//Validate
 				if (!validate(request)) {
-					logger.error("SPARQL 1.1 validation failed "+request.getSPARQL());		
+					logger.error("SPARQL 1.1 SE validation failed "+request.getSPARQL());
 					failureResponse(httpExchange,400,"SPARQL 1.1 validation failed "+request.getSPARQL());
+					scheduler.releaseToken(request.getToken()); 
 					return;
 				}
 				
@@ -374,8 +492,13 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 				long validatedTime = System.nanoTime();
 				
 				//Add request
-				if (request != null & scheduler != null) scheduler.addRequest(request,this);
-				else return;
+				if (scheduler != null) scheduler.addRequest(request,this);
+				else {
+					logger.error("Scheduler is null");
+					failureResponse(httpExchange,500,"Scheduler is null");
+					scheduler.releaseToken(request.getToken()); 
+					return;
+				}
 								
 				//Waiting response
 				logger.debug("Waiting response in "+timeout+" ms...");
@@ -394,22 +517,29 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 				else {
 					// Check response status
 					JsonObject json = new JsonParser().parse(response.toString()).getAsJsonObject();
-					
-					//Query or update response
-					sendResponse(httpExchange,json.get("code").getAsInt(),json.get("body").toString());
-				}
+									
+					//Query response
+					if (response.getClass().equals(QueryResponse.class)) sendResponse(httpExchange,json.get("code").getAsInt(),json.get("body").toString());
+					else sendResponse(httpExchange,json.get("code").getAsInt(),json.toString());
+				}	
 				
 				scheduler.releaseToken(request.getToken()); 
 			}
 			
+			/* (non-Javadoc)
+			 * @see arces.unibo.SEPA.scheduling.RequestResponseHandler.ResponseAndNotificationListener#notify(arces.unibo.SEPA.commons.response.Response)
+			 */
 			@Override
 			public void notify(Response response) {
-				logger.info("Response #"+response.getToken());
+				logger.debug("Response #"+response.getToken());
 				this.response = response;
 				interrupt();
 			}
 		}
 		
+		/* (non-Javadoc)
+		 * @see com.sun.net.httpserver.HttpHandler#handle(com.sun.net.httpserver.HttpExchange)
+		 */
 		@Override
 		public void handle(HttpExchange httpExchange) throws IOException {
 			logger.info(">> HTTP request");
@@ -418,16 +548,25 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 		}
 	}
 
+	/* (non-Javadoc)
+	 * @see arces.unibo.SEPA.beans.HTTPGateMBean#getTransactions()
+	 */
 	@Override
 	public long getTransactions() {
 		return this.transactions;
 	}
 
+	/* (non-Javadoc)
+	 * @see arces.unibo.SEPA.beans.HTTPGateMBean#getQueryTransactions()
+	 */
 	@Override
 	public long getQueryTransactions() {
 		return this.queryTransactions;
 	}
 
+	/* (non-Javadoc)
+	 * @see arces.unibo.SEPA.beans.HTTPGateMBean#getUpdateTransactions()
+	 */
 	@Override
 	public long getUpdateTransactions() {
 		return this.updateTransactions;

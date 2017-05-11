@@ -1,4 +1,4 @@
-/* This class implements the LUTT part of the Semantic Event Processing Architecture (SEPA) Engine
+/* This class implements the processing of a SPARQL 1.1 UPDATE
     Copyright (C) 2016-2017 Luca Roffia (luca.roffia@unibo.it)
 
     This program is free software: you can redistribute it and/or modify
@@ -15,15 +15,20 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package arces.unibo.SEPA.server.SP;
+package arces.unibo.SEPA.processing;
 
-/**
- * This class represents the LUTT (LookUp Triples Table)
- * 
-* @author Luca Roffia (luca.roffia@unibo.it)
-* @version 0.1
-* */
+import arces.unibo.SEPA.client.api.SPARQL11Protocol;
+import arces.unibo.SEPA.commons.request.UpdateRequest;
+import arces.unibo.SEPA.commons.response.Response;
 
-public class LUTT {
+public class UpdateProcessor {
+	private SPARQL11Protocol endpoint;
+
+	public UpdateProcessor(SPARQL11Protocol endpoint) {
+		this.endpoint = endpoint;
+	}
 	
+	public Response process(UpdateRequest req) {		
+		return endpoint.update(req);
+	}
 }

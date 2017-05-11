@@ -17,7 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package arces.unibo.SEPA.commons.response;
 
-import com.google.gson.JsonParser;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 
 import arces.unibo.SEPA.commons.SPARQL.BindingsResults;
@@ -32,14 +32,22 @@ import arces.unibo.SEPA.commons.SPARQL.BindingsResults;
 
 public class QueryResponse extends Response {
 	
-	public QueryResponse(Integer token, String body) {
+	public QueryResponse(Integer token, JsonObject body) {
 		super(token);
 		
-		json.add("body", new JsonParser().parse(body).getAsJsonObject());
+		if (body != null) json.add("body", body);
+		json.add("code", new JsonPrimitive(200));
+	}
+	
+	public QueryResponse(JsonObject body) {
+		super();
+		
+		if (body != null) json.add("body", body);
 		json.add("code", new JsonPrimitive(200));
 	}
 	
 	public BindingsResults getBindingsResults() {
-		return new BindingsResults(json.get("body").getAsJsonObject());
+		if (json.get("body") != null) return new BindingsResults(json.get("body").getAsJsonObject());
+		return null;
 	}
 }

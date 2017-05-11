@@ -36,7 +36,7 @@ import com.google.gson.JsonPrimitive;
 public class Ping extends Response {
 	
 	public Ping() {
-		super(0);
+		super();
 		
 		json.add("ping", new JsonPrimitive(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(new Date())) );
 	}

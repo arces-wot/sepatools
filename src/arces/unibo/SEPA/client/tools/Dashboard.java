@@ -84,6 +84,7 @@ import arces.unibo.SEPA.commons.SPARQL.Bindings;
 import arces.unibo.SEPA.commons.SPARQL.BindingsResults;
 import arces.unibo.SEPA.commons.SPARQL.RDFTermLiteral;
 import arces.unibo.SEPA.commons.SPARQL.RDFTermURI;
+import arces.unibo.SEPA.commons.response.ErrorResponse;
 
 import javax.swing.border.TitledBorder;
 import java.awt.Checkbox;
@@ -161,6 +162,12 @@ public class Dashboard {
 		@Override
 		public void brokenSubscription() {
 			lblInfo.setText("Broken subscription! Waiting for automatic subscription recovery...");
+			
+		}
+
+		@Override
+		public void onError(ErrorResponse errorResponse) {
+			// TODO Auto-generated method stub
 			
 		}
 	}

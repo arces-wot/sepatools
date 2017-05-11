@@ -15,15 +15,19 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package arces.unibo.SEPA.server.SP;
+package arces.unibo.SEPA.processing;
 
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+
+import arces.unibo.SEPA.client.api.SPARQL11Protocol;
+
 import arces.unibo.SEPA.commons.SPARQL.ARBindingsResults;
 import arces.unibo.SEPA.commons.SPARQL.Bindings;
 import arces.unibo.SEPA.commons.SPARQL.BindingsResults;
-import arces.unibo.SEPA.commons.SPARQL.SPARQL11Protocol;
+
 import arces.unibo.SEPA.commons.request.SubscribeRequest;
+
 import arces.unibo.SEPA.commons.response.ErrorResponse;
 import arces.unibo.SEPA.commons.response.Notification;
 import arces.unibo.SEPA.commons.response.QueryResponse;
@@ -44,7 +48,7 @@ public class SPUNaive extends SPU{
 	public void init() {			
 		//Process the subscribe SPARQL query
 		Response ret = queryProcessor.process(subscribe);
-		if (ret.isError()) {
+		if (ret.getClass().equals(ErrorResponse.class)) {
 			logger.error(ret.toString());
 			setChanged();
 			notifyObservers(ret);
@@ -79,7 +83,7 @@ public class SPUNaive extends SPU{
 		//Query the SPARQL processing service
 		Response ret = queryProcessor.process(subscribe);
 		
-		if (ret.isError()) {
+		if (ret.getClass().equals(ErrorResponse.class)) {
 			logger.error(ret.toString());
 			return new Notification(getUUID(),null,0);	
 		}

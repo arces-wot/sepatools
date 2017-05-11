@@ -30,18 +30,31 @@ import arces.unibo.SEPA.commons.request.QueryRequest;
 public class SubscribeRequest extends QueryRequest {
 	private String alias = null;
 	
+	public SubscribeRequest(String sparql) {
+		super(sparql);
+	}
+
+	public SubscribeRequest(String sparql,String alias) {
+		super(sparql);
+		this.alias = alias;
+	}
+
+	public SubscribeRequest(Integer token, String sparql, String alias) {
+		super(token, sparql);
+		this.alias = alias;
+	}
+
 	public SubscribeRequest(Integer token, String sparql) {
 		super(token, sparql);
 	}
 
-	public SubscribeRequest(Integer token, String sparql,String alias) {
-		super(token, sparql);
-		this.alias = alias;
-	}
-	
 	public String toString() {
-		if (alias == null) return "SUBSCRIBE #"+token+" "+sparql;
-		return "SUBSCRIBE #"+token+" Alias: "+alias+" Query: "+sparql;
+		String str = "SUBSCRIBE";
+		if (token != -1) str += " #"+token;
+		if (alias != null) str += "("+alias+")";
+		str += " "+sparql;
+
+		return str;
 	}
 	
 	/**

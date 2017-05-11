@@ -31,8 +31,14 @@ public class QueryRequest extends Request {
 		super(token, sparql);
 	}
 	
+	public QueryRequest(String sparql) {
+		super(sparql);
+	}
+
 	public String toString() {
-		return "QUERY #"+token+" "+sparql;
+		if (token != -1) return "QUERY #"+token+" "+sparql;
+		return "QUERY "+sparql;
+		
 	}
 
 }

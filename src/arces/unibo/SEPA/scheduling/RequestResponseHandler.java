@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package arces.unibo.SEPA.server;
+package arces.unibo.SEPA.scheduling;
 
 import java.util.HashMap;
 
@@ -83,7 +83,7 @@ public class RequestResponseHandler {
 		ResponseAndNotificationListener listener = responseListeners.get(response.getToken());
 		
 		if (response.getClass().equals(SubscribeResponse.class)) {			
-			subscribers.put(((SubscribeResponse) response).getSPUID(),listener);
+			subscribers.put(((SubscribeResponse) response).getSpuid(),listener);
 		}
 		else if (response.getClass().equals(UpdateResponse.class)) {	
 			synchronized(updateResponseQueue) {
@@ -92,7 +92,7 @@ public class RequestResponseHandler {
 			}
 		}
 		else if (response.getClass().equals(UnsubscribeResponse.class)) {
-			subscribers.remove(((UnsubscribeResponse) response).getSPUID());
+			subscribers.remove(((UnsubscribeResponse) response).getSpuid());
 		}
 		
 		//Notify listener

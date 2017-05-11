@@ -27,6 +27,13 @@
     </plugins>
   </build>
   <dependencies>
+<!-- https://mvnrepository.com/artifact/org.glassfish.tyrus.bundles/tyrus-standalone-client -->
+<dependency>
+    <groupId>org.glassfish.tyrus.bundles</groupId>
+    <artifactId>tyrus-standalone-client</artifactId>
+    <version>1.13.1</version>
+</dependency>
+  
 <!-- https://mvnrepository.com/artifact/com.nimbusds/nimbus-jose-jwt -->
 <dependency>
     <groupId>com.nimbusds</groupId>
@@ -77,11 +84,6 @@
     <version>2.0.6</version>
 </dependency>
 <!-- https://mvnrepository.com/artifact/org.glassfish.tyrus.bundles/tyrus-standalone-client -->
-<dependency>
-    <groupId>org.glassfish.tyrus.bundles</groupId>
-    <artifactId>tyrus-standalone-client</artifactId>
-    <version>1.13.1</version>
-</dependency>
 <!-- https://mvnrepository.com/artifact/org.eclipse.paho/org.eclipse.paho.client.mqttv3 -->
 <dependency>
     <groupId>org.eclipse.paho</groupId>

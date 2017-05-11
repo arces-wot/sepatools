@@ -37,17 +37,36 @@ public class SubscribeResponse extends Response {
 	public SubscribeResponse(Integer token,String spuid) {
 		super(token);
 
-		json.add("subscribed",new JsonPrimitive(spuid));
+		if (spuid != null) json.add("subscribed",new JsonPrimitive(spuid));
 	}
 	
 	public SubscribeResponse(Integer token,String spuid,String alias) {
 		super(token);
 
-		json.add("subscribed",new JsonPrimitive(spuid));
+		if (spuid != null) json.add("subscribed",new JsonPrimitive(spuid));
 		if (alias != null) json.add("alias",new JsonPrimitive(alias));
 	}
 
-	public String getSPUID() {
+	public SubscribeResponse(String spuid) {
+		super();
+
+		if (spuid != null) json.add("subscribed",new JsonPrimitive(spuid));
+	}
+	
+	public SubscribeResponse(String spuid,String alias) {
+		super();
+
+		if (spuid != null) json.add("subscribed",new JsonPrimitive(spuid));
+		if (alias != null) json.add("alias",new JsonPrimitive(alias));
+	}
+	
+	public String getSpuid() {
+		if (json.get("subscribed") == null) return "";
 		return json.get("subscribed").getAsString();
+	}
+	
+	public String getAlias() {
+		if (json.get("alias") == null) return "";
+		return json.get("alias").getAsString();
 	}
 }

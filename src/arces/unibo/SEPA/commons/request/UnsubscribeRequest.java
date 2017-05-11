@@ -25,11 +25,16 @@ public class UnsubscribeRequest extends Request {
 		super(token, subId);
 	}
 	
+	public UnsubscribeRequest(String subID) {
+		super(subID);
+	}
+
 	public String getSubscribeUUID(){
 		return super.getSPARQL();
 	}
 
 	public String toString() {
-		return "UNSUBSCRIBE #"+token+" "+getSubscribeUUID();
+		if (token != -1) return "UNSUBSCRIBE #"+token+" "+getSubscribeUUID();
+		return "UNSUBSCRIBE "+getSubscribeUUID();
 	}
 }

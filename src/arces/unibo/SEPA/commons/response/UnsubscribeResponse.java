@@ -34,13 +34,20 @@ import arces.unibo.SEPA.commons.response.Response;
 
 public class UnsubscribeResponse extends Response {
 	
-	public UnsubscribeResponse(Integer token, String SPUID) {
+	public UnsubscribeResponse(Integer token, String spuid) {
 		super(token);
 		
-		json.add("unsubscribed", new JsonPrimitive(SPUID));
+		if (spuid != null) json.add("unsubscribed", new JsonPrimitive(spuid));
+	}
+
+	public UnsubscribeResponse(String spuid) {
+		super();
+		
+		if (spuid != null) json.add("unsubscribed", new JsonPrimitive(spuid));
 	}
 	
-	public String getSPUID() {
-		return super.getAsJsonObject().get("unsubscribed").getAsString();
+	public String getSpuid() {
+		if (json.get("unsubscribed") == null) return "";
+		return json.get("unsubscribed").getAsString();
 	}
 }

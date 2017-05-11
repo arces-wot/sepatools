@@ -29,51 +29,27 @@ import com.google.gson.JsonObject;
 
 public abstract class Response {
 	protected JsonObject json;
-	private Integer token = 0;
+	private int token = -1;
 
 	public Response(Integer token) {
 		this.token = token;
 		json = new JsonObject();
 	}
-
+	
 	public Response() {
-		this.token = 0;
 		json = new JsonObject();
 	}
 	
+	@Override
 	public String toString() {
 		return json.toString();
 	}
 	
-	public Integer getToken() {
+	public int getToken() {
 		return token;
 	}
 	
 	public JsonObject getAsJsonObject(){
 		return json;
-	}
-	
-	public boolean isError(){
-		return this.getClass() == ErrorResponse.class;
-	}
-	
-	public boolean isNotification(){
-		return this.getClass() == Notification.class;
-	}
-	
-	public boolean isQuery(){
-		return this.getClass() == QueryResponse.class;
-	}
-
-	public boolean isSubscribe(){
-		return this.getClass() == SubscribeResponse.class;
-	}
-	
-	public boolean isUnsubscribe(){
-		return this.getClass() == UnsubscribeResponse.class;
-	}
-	
-	public boolean isUpdate(){
-		return this.getClass() == UpdateResponse.class;
 	}
 }

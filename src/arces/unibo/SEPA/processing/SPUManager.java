@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package arces.unibo.SEPA.server.SP;
+package arces.unibo.SEPA.processing;
 
 import java.util.HashMap;
 import java.util.Observable;
@@ -23,9 +23,11 @@ import java.util.Observer;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 
-import arces.unibo.SEPA.commons.SPARQL.SPARQL11Protocol;
+import arces.unibo.SEPA.client.api.SPARQL11Protocol;
+
 import arces.unibo.SEPA.commons.request.SubscribeRequest;
 import arces.unibo.SEPA.commons.request.UnsubscribeRequest;
+
 import arces.unibo.SEPA.commons.response.Notification;
 import arces.unibo.SEPA.commons.response.UpdateResponse;
 

@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package arces.unibo.SEPA.server;
+package arces.unibo.SEPA.scheduling;
 
 import java.util.Observable;
 import java.util.Observer;
@@ -33,14 +33,15 @@ import arces.unibo.SEPA.commons.request.Request;
 import arces.unibo.SEPA.commons.request.SubscribeRequest;
 import arces.unibo.SEPA.commons.request.UnsubscribeRequest;
 import arces.unibo.SEPA.commons.request.UpdateRequest;
+
 import arces.unibo.SEPA.commons.response.ErrorResponse;
 import arces.unibo.SEPA.commons.response.Notification;
 import arces.unibo.SEPA.commons.response.QueryResponse;
-import arces.unibo.SEPA.commons.response.Response;
 import arces.unibo.SEPA.commons.response.SubscribeResponse;
 import arces.unibo.SEPA.commons.response.UnsubscribeResponse;
 import arces.unibo.SEPA.commons.response.UpdateResponse;
-import arces.unibo.SEPA.server.RequestResponseHandler.ResponseAndNotificationListener;
+import arces.unibo.SEPA.processing.Processor;
+import arces.unibo.SEPA.scheduling.RequestResponseHandler.ResponseAndNotificationListener;
 
 /**
  * This class represents the scheduler of the SUB Engine
@@ -163,39 +164,38 @@ public class Scheduler extends Thread implements Observer {
 
 	@Override
 	public void update(Observable o, Object arg) {
-		Response response = (Response) arg;
 		//Notification
-		if (response.isNotification()) {
+		if (arg.getClass().equals(Notification.class)) {
 			Notification notify = (Notification) arg;
 			requestHandler.addNotification(notify);
 			logger.debug("<< NOTIFICATION "+notify.toString());
 		}
 		//Query response
-		else if (response.isQuery()) {
+		else if (arg.getClass().equals(QueryResponse.class)) {
 			QueryResponse query = (QueryResponse) arg;
 			requestHandler.addResponse(query);
 			logger.debug("<< QUERY RESPONSE #"+query.getToken()+" "+query.toString());
 		}
 		//Update response
-		else if (response.isQuery()) {
+		else if (arg.getClass().equals(UpdateResponse.class)) {
 			UpdateResponse update = (UpdateResponse) arg;
 			requestHandler.addResponse(update);
 			logger.debug("<< UPDATE RESPONSE #"+update.getToken()+" "+update.toString());
 		}
 		//Subscribe response
-		else if (response.isSubscribe()) {
+		else if (arg.getClass().equals(SubscribeResponse.class)) {
 			SubscribeResponse subscribe = (SubscribeResponse) arg;
 			requestHandler.addResponse(subscribe);
 			logger.debug("<< SUBSCRIBE RESPONSE #"+subscribe.getToken()+" "+subscribe.toString());
 		}
 		//Unsubscribe response
-		else if (response.isUnsubscribe()) {
+		else if (arg.getClass().equals(UnsubscribeResponse.class)) {
 			UnsubscribeResponse unsubscribe = (UnsubscribeResponse) arg;
 			requestHandler.addResponse(unsubscribe);
 			logger.debug("<< UNSUBSCRIBE RESPONSE #"+unsubscribe.getToken()+" "+unsubscribe.toString());
 		}
 		//Error response
-		else if (response.isError()) {
+		else if (arg.getClass().equals(ErrorResponse.class)) {
 			ErrorResponse error = (ErrorResponse) arg;
 			requestHandler.addResponse(error);
 			logger.error("<< ERROR #"+error.getToken()+ " " +error.toString());
@@ -205,7 +205,7 @@ public class Scheduler extends Thread implements Observer {
 		}
 	}
 
-	public Integer getToken() {
+	public int getToken() {
 		return tokenHandler.getToken();
 	}
 
@@ -213,7 +213,8 @@ public class Scheduler extends Thread implements Observer {
 		requestHandler.addRequest(request, listener);
 	}
 
-	public void releaseToken(Integer token) {
+	public void releaseToken(int token) {
+		if (token == -1) return;
 		tokenHandler.releaseToken(token);
 	}
 

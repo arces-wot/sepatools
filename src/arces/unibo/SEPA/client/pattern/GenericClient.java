@@ -22,6 +22,10 @@ import org.apache.logging.log4j.Logger;
 
 import arces.unibo.SEPA.commons.SPARQL.Bindings;
 import arces.unibo.SEPA.commons.SPARQL.BindingsResults;
+import arces.unibo.SEPA.commons.request.QueryRequest;
+import arces.unibo.SEPA.commons.response.ErrorResponse;
+import arces.unibo.SEPA.commons.response.QueryResponse;
+import arces.unibo.SEPA.commons.response.Response;
 
 public abstract class GenericClient extends Aggregator {	
 	private static final Logger logger = LogManager.getLogger("GenericClient");
@@ -48,7 +52,12 @@ public abstract class GenericClient extends Aggregator {
 
 		logger.debug("SEPA","QUERY "+sparql);
 		
-		return protocolClient.query(sparql);
+		Response response = protocolClient.query(new QueryRequest(sparql));
+		logger.debug(response.toString());
+		 
+		if (response.getClass().equals(ErrorResponse.class)) return null;
+		
+		return ((QueryResponse)response).getBindingsResults();
 	}
 	
 	public String subscribe(String SPARQL_SUBSCRIBE,Bindings forced) {	

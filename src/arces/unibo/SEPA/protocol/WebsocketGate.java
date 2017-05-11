@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package arces.unibo.SEPA.gates;
+package arces.unibo.SEPA.protocol;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -39,7 +39,6 @@ import org.glassfish.grizzly.websockets.WebSocketListener;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
-import com.google.gson.JsonPrimitive;
 
 import arces.unibo.SEPA.commons.request.Request;
 import arces.unibo.SEPA.commons.request.SubscribeRequest;
@@ -50,11 +49,12 @@ import arces.unibo.SEPA.commons.response.Ping;
 import arces.unibo.SEPA.commons.response.Response;
 import arces.unibo.SEPA.commons.response.SubscribeResponse;
 import arces.unibo.SEPA.commons.response.UnsubscribeResponse;
+
+import arces.unibo.SEPA.scheduling.EngineProperties;
+import arces.unibo.SEPA.scheduling.Scheduler;
+import arces.unibo.SEPA.scheduling.RequestResponseHandler.ResponseAndNotificationListener;
+
 import arces.unibo.SEPA.security.AuthorizationManager;
-import arces.unibo.SEPA.security.SecurityManager;
-import arces.unibo.SEPA.server.EngineProperties;
-import arces.unibo.SEPA.server.Scheduler;
-import arces.unibo.SEPA.server.RequestResponseHandler.ResponseAndNotificationListener;
 
 /* SPARQL 1.1 Subscribe language 
  * 
@@ -62,16 +62,15 @@ import arces.unibo.SEPA.server.RequestResponseHandler.ResponseAndNotificationLis
  * 
  * {"unsubscribe":"SPUID", "authorization": "JWT"}
  * 
- * In not secure connections (ws), authorization key can be missing
+ * If security is not required (i.e., ws), authorization key MAY be missing
  * */
 public class WebsocketGate extends WebSocketApplication {
 	protected Logger logger = LogManager.getLogger("WebsocketGate");
 	protected EngineProperties properties;
 	protected Scheduler scheduler;
 	
-	//Security context and manager
-	private SecurityManager sManager = new SecurityManager();
-	private AuthorizationManager am = new AuthorizationManager();
+	//Authorization manager
+	private AuthorizationManager am = new AuthorizationManager("sepa.jks","*sepa.jks*","SepaKey","*SepaKey*","SepaCertificate");
 	private ArrayList<WebSocket> secureSockets = new ArrayList<WebSocket>();
 	
 	//Collection of active sockets
@@ -79,12 +78,14 @@ public class WebsocketGate extends WebSocketApplication {
 	
 	@Override
 	public WebSocket createSocket(ProtocolHandler handler, HttpRequestPacket requestPacket,WebSocketListener... listeners) {
-	    logger.debug("@createSocket");
+		WebSocket ret = super.createSocket(handler, requestPacket, listeners);
+		
+		logger.debug("@createSocket");
 	    logger.debug("Protocol : " + requestPacket.getProtocol().getProtocolString());
 	    logger.debug("Local port : " + requestPacket.getLocalPort());
-	    WebSocket ret = super.createSocket(handler, requestPacket, listeners);
+	    
 	    if (requestPacket.getLocalPort() == properties.getWssPort()) {
-	    	//Add the websocket to the secure set 
+	    	//Add the WebSocket to the secure set 
 	    	secureSockets.add(ret);
 	    }
 		return ret;
@@ -92,8 +93,9 @@ public class WebsocketGate extends WebSocketApplication {
 
 	@Override
 	public void onClose(WebSocket socket, DataFrame frame) {
-		logger.debug("@onClose");
 		super.onClose(socket, frame);
+		
+		logger.debug("@onClose");
 		
 		secureSockets.remove(socket);
 		if (properties.getKeepAlivePeriod() == 0) activeSockets.get(socket).unsubscribeAll();
@@ -101,48 +103,52 @@ public class WebsocketGate extends WebSocketApplication {
 
 	@Override
 	public void onConnect(WebSocket socket) {
-		logger.debug("@onConnect");
 		super.onConnect(socket);
+		
+		logger.debug("@onConnect");
 		
 		if (secureSockets.contains(socket)) logger.debug("Secure socket");
 		SEPAResponseListener listener = new SEPAResponseListener(socket);
 		
 		synchronized(activeSockets) {
 			activeSockets.put(socket, listener);
-		}
-	    
+		}    
 	}
 	
 	@Override
 	public void onMessage(WebSocket socket, String text) {
-		logger.debug("@onMessage "+text);
 		super.onMessage(socket, text);
 		
+		logger.debug("@onMessage "+text);
+		
 		if (secureSockets.contains(socket)) logger.debug("Secure socket");
-		Integer token = scheduler.getToken();
 		
-		Request request = parseRequest(token,text);
+		int token = scheduler.getToken();
+		if (token == -1) {
+			ErrorResponse response = new ErrorResponse(token,405,"No more tokens");			
+			socket.send(response.toString());			
+			return;
+		}
 		
+		Request request = parseRequest(token,text);		
 		if(request == null) {
 			logger.debug("Not supported request: "+text);
-			
-			ErrorResponse response = new ErrorResponse(token,"Not supported request: "+text,400);
-			
+			ErrorResponse response = new ErrorResponse(token,400,"Not supported request: ");		
 			socket.send(response.toString());
 			
 			scheduler.releaseToken(token);
-			
 			return;
 		}
 		
 		//JWT Validation
 		if (secureSockets.contains(socket)) {
-			if (!validateToken(text)) {
+			Response validation = validateToken(text);
+			if (validation.getClass().equals(ErrorResponse.class)) {
 				//Not authorized
 				logger.warn("NOT AUTHORIZED");
-				JsonObject error = new JsonObject();
-				error.add("error", new JsonPrimitive("Authorization missing or token not valid"));
-				socket.send(error.toString());
+				socket.send(validation.toString());
+				
+				scheduler.releaseToken(token);
 			}
 		}
 		else {
@@ -172,19 +178,20 @@ public class WebsocketGate extends WebSocketApplication {
 		return null;
 	}
 
-	private boolean validateToken(String request) {
+	private Response validateToken(String request) {
 		JsonObject req;
 		try{
 			req = new JsonParser().parse(request).getAsJsonObject();
 		}
 		catch(JsonParseException | IllegalStateException e) {
-			return false;
+			
+			return new ErrorResponse(500,e.getMessage());
 		}
 		
-		if (req.get("authorization") == null) return false;
+		if (req.get("authorization") == null) return new ErrorResponse(400,"authorization key is missing");;
 		
 		//Token validation
-		 return am.validateToken(req.get("authorization").getAsString()).get("valid").getAsBoolean();
+		return 	am.validateToken(req.get("authorization").getAsString());
 	}
 	
 	public WebsocketGate(EngineProperties properties,Scheduler scheduler) {
@@ -202,18 +209,17 @@ public class WebsocketGate extends WebSocketApplication {
 		this.scheduler = scheduler;
 	}
 	
-	public boolean start(){
-		
+	public boolean start(){	
 		//Create an HTTP server to which attach the websocket
 		final HttpServer server = HttpServer.createSimpleServer(null, properties.getWsPort());
 		final HttpServer secureServer = HttpServer.createSimpleServer(null, properties.getWssPort());
 		
 		// Register the WebSockets add on with the HttpServer
         server.getListener("grizzly").registerAddOn(new WebSocketAddOn());
-        secureServer.getListener("grizzly").registerAddOn(new WebSocketAddOn());
-		
+        
         // Security settings
-        secureServer.getListener("grizzly").setSSLEngineConfig(sManager.getWssConfigurator());
+        secureServer.getListener("grizzly").registerAddOn(new WebSocketAddOn());
+        secureServer.getListener("grizzly").setSSLEngineConfig(am.getWssConfigurator());
 		secureServer.getListener("grizzly").setSecure(true);
 		
         // register the application
@@ -255,7 +261,11 @@ public class WebsocketGate extends WebSocketApplication {
 				Iterator<String> it = spuIds.iterator();
 				
 				while(it.hasNext()) {
-					Integer token = scheduler.getToken();
+					int token = scheduler.getToken();
+					if (token == -1) {
+						logger.error("No more tokens");
+						continue;
+					}
 					logger.debug(">> Scheduling UNSUBSCRIBE request #"+token);
 					scheduler.addRequest(new UnsubscribeRequest(token,it.next()),this);		
 				}
@@ -268,14 +278,14 @@ public class WebsocketGate extends WebSocketApplication {
 				logger.debug("<< SUBSCRIBE response #"+response.getToken());
 				
 				synchronized(spuIds) {
-					spuIds.add(((SubscribeResponse)response).getSPUID());
+					spuIds.add(((SubscribeResponse)response).getSpuid());
 				}
 			
 			}else if(response.getClass().equals(UnsubscribeResponse.class)) {
 				logger.debug("<< UNSUBSCRIBE response #"+response.getToken()+" ");
 				
 				synchronized(spuIds) {
-					spuIds.remove(((UnsubscribeResponse)response).getSPUID());
+					spuIds.remove(((UnsubscribeResponse)response).getSpuid());
 				
 					synchronized(activeSockets) {
 						if (spuIds.isEmpty()) activeSockets.remove(socket);
@@ -290,23 +300,16 @@ public class WebsocketGate extends WebSocketApplication {
 			if (!response.getClass().equals(Notification.class)) scheduler.releaseToken(response.getToken());
 		}
 		
-		public Set<String> getSPUIDs() {
-			return spuIds;
-		}
+		public Set<String> getSPUIDs() {return spuIds;}
 		
-		public SEPAResponseListener(WebSocket socket) {
-			this.socket = socket;
-		}
+		public SEPAResponseListener(WebSocket socket) {this.socket = socket;}
 	}
 	
 	public class KeepAlive extends Thread {
 		public void run() {
 			while(true) {
-				try {
-					Thread.sleep(properties.getKeepAlivePeriod());
-				} catch (InterruptedException e) {
-					return;
-				}
+				try {Thread.sleep(properties.getKeepAlivePeriod());} 
+				catch (InterruptedException e) {return;}
 				
 				//Send heart beat on each active socket to detect broken sockets				
 				synchronized(activeSockets) {
@@ -318,9 +321,8 @@ public class WebsocketGate extends WebSocketApplication {
 							Ping ping = new Ping();
 							socket.send(ping.toString());
 						}
-						else {
-							activeSockets.get(socket).unsubscribeAll();
-						}
+						else activeSockets.get(socket).unsubscribeAll();
+						
 					}
 				}					
 			}

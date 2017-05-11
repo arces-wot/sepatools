@@ -26,15 +26,20 @@ package arces.unibo.SEPA.commons.request;
 * */
 
 public abstract class Request {
-	protected Integer token;
+	protected int token = -1;
 	protected String sparql;
 
-	public Request(Integer token,String sparql) {
+	public Request(int token,String sparql) {
 		this.token = token;
 		this.sparql = sparql;
 	}
 	
-	public Integer getToken() {
+	public Request(String sparql) {
+		this.token = -1;
+		this.sparql = sparql;
+	}
+	
+	public int getToken() {
 		return token;
 	}
 	

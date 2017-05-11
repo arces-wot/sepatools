@@ -24,8 +24,14 @@ import arces.unibo.SEPA.commons.SPARQL.ARBindingsResults;
 import arces.unibo.SEPA.commons.SPARQL.Bindings;
 import arces.unibo.SEPA.commons.SPARQL.BindingsResults;
 import arces.unibo.SEPA.commons.SPARQL.RDFTermURI;
+import arces.unibo.SEPA.commons.request.SubscribeRequest;
+import arces.unibo.SEPA.commons.request.UnsubscribeRequest;
+import arces.unibo.SEPA.commons.response.ErrorResponse;
 import arces.unibo.SEPA.commons.response.Notification;
 import arces.unibo.SEPA.commons.response.NotificationHandler;
+import arces.unibo.SEPA.commons.response.Response;
+import arces.unibo.SEPA.commons.response.SubscribeResponse;
+import arces.unibo.SEPA.commons.response.UnsubscribeResponse;
 
 public abstract class Consumer extends Client implements IConsumer,NotificationHandler {
 	protected String sparqlSubscribe = null;
@@ -82,14 +88,14 @@ public abstract class Consumer extends Client implements IConsumer,NotificationH
 	}
 
 	@Override
-	public void subscribeConfirmed(String spuid) {
-		logger.debug("Subscribe confirmed "+spuid);
-		subConfirm.notifySubscribeConfirm(spuid);
+	public void subscribeConfirmed(SubscribeResponse response) {
+		logger.debug("Subscribe confirmed "+response.getSpuid()+ " alias: "+response.getAlias());
+		subConfirm.notifySubscribeConfirm(response.getSpuid());
 	}
 
 	@Override
-	public void unsubscribeConfirmed(String spuid) {
-		logger.debug("Unsubscribe confirmed "+spuid);
+	public void unsubscribeConfirmed(UnsubscribeResponse response) {
+		logger.debug("Unsubscribe confirmed "+response.getSpuid());
 	}
 
 	@Override
@@ -155,7 +161,10 @@ public abstract class Consumer extends Client implements IConsumer,NotificationH
 		
 		subConfirm = new SubcribeConfirmSync();
 		
-		if(!protocolClient.subscribe(sparql, this)) return null;
+		Response response = protocolClient.subscribe(new SubscribeRequest(sparql), this);
+		logger.debug(response.toString());
+		
+		if(response.getClass().equals(ErrorResponse.class)) return null;
 		
 		logger.debug("Wait for subscribe confirm...");
 		
@@ -173,6 +182,9 @@ public abstract class Consumer extends Client implements IConsumer,NotificationH
 			 return false;
 		 }
 		
-		return protocolClient.unsubscribe(subID);
+		Response response = protocolClient.unsubscribe(new UnsubscribeRequest(subID));
+		logger.debug(response.toString());
+		
+		return !(response.getClass().equals(ErrorResponse.class));
 	}
 }

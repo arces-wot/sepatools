@@ -32,7 +32,12 @@ public class UpdateRequest extends Request {
 		super(token, sparql);
 	}
 
+	public UpdateRequest(String sparql) {
+		super(sparql);
+	}
+
 	public String toString() {
-		return "UPDATE #"+token+" "+sparql;
+		if (token != -1) return "UPDATE #"+token+" "+sparql;
+		return "UPDATE "+sparql;
 	}
 }

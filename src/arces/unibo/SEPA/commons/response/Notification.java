@@ -43,8 +43,8 @@ public class Notification extends Response {
 		super();
 
 		if (results != null) json.add("results",results.toJson());
+		if (spuid != null) json.add("spuid",new JsonPrimitive(spuid));
 		json.add("sequence", new JsonPrimitive(sequence));
-		json.add("spuid",new JsonPrimitive(spuid));
 	}
 	
 	public Notification(JsonObject notify) {
@@ -54,11 +54,13 @@ public class Notification extends Response {
 	}
 	
 	public String getSPUID() {
-		return json.get("spuid").getAsString();
+		if (json.get("spuid")!=null) return json.get("spuid").getAsString();
+		return "";
 	}
 
 	public ARBindingsResults getARBindingsResults() {
-		return new ARBindingsResults(json.getAsJsonObject("results"));
+		if (json.getAsJsonObject("results")!=null) return new ARBindingsResults(json.getAsJsonObject("results"));
+		return null;
 	}
 
 	public Integer getSequence() {

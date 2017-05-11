@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package arces.unibo.SEPA.server.SP;
+package arces.unibo.SEPA.processing;
 
 import java.util.Observable;
 import java.util.UUID;
@@ -24,12 +24,11 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import arces.unibo.SEPA.commons.SPARQL.SPARQL11Protocol;
+import arces.unibo.SEPA.client.api.SPARQL11Protocol;
+
 import arces.unibo.SEPA.commons.request.SubscribeRequest;
 import arces.unibo.SEPA.commons.response.Notification;
 import arces.unibo.SEPA.commons.response.UpdateResponse;
-
-import arces.unibo.SEPA.server.QueryProcessor;
 
 /**
  * This class represents a Semantic Processing Unit (SPU)

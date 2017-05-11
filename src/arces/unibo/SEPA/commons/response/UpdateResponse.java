@@ -37,4 +37,11 @@ public class UpdateResponse extends Response {
 		json.add("body", new JsonPrimitive(body));
 		json.add("code", new JsonPrimitive(200));
 	}
+	
+	public UpdateResponse(String body) {
+		super();
+		
+		json.add("body", new JsonPrimitive(body));
+		json.add("code", new JsonPrimitive(200));
+	}
 }

@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package arces.unibo.SEPA.server;
+package arces.unibo.SEPA.processing;
 
 import java.util.Observable;
 import java.util.Observer;
@@ -27,16 +27,17 @@ import javax.management.NotCompliantMBeanException;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 
-import arces.unibo.SEPA.commons.SPARQL.SPARQL11Protocol;
-import arces.unibo.SEPA.commons.SPARQL.EndpointProperties;
+import arces.unibo.SEPA.client.api.SPARQL11Properties;
+import arces.unibo.SEPA.client.api.SPARQL11Protocol;
+
 import arces.unibo.SEPA.commons.request.QueryRequest;
 import arces.unibo.SEPA.commons.request.SubscribeRequest;
 import arces.unibo.SEPA.commons.request.UnsubscribeRequest;
 import arces.unibo.SEPA.commons.request.UpdateRequest;
+
 import arces.unibo.SEPA.commons.response.Response;
 import arces.unibo.SEPA.commons.response.UnsubscribeResponse;
 import arces.unibo.SEPA.commons.response.UpdateResponse;
-import arces.unibo.SEPA.server.SP.SPUManager;
 
 public class Processor extends Observable implements Observer {
 	
@@ -46,7 +47,7 @@ public class Processor extends Observable implements Observer {
 	private SPARQL11Protocol endpoint;
 	private static final Logger logger = LogManager.getLogger("Processor");
 	
-	public Processor(EndpointProperties properties) throws MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException {	
+	public Processor(SPARQL11Properties properties) throws MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException {	
 		//Create SPARQL 1.1 interface
 		endpoint = new SPARQL11Protocol(properties);
 		logger.info(endpoint.toString());
@@ -81,7 +82,7 @@ public class Processor extends Observable implements Observer {
 				
 		//Subscriptions processing
 		logger.debug("*** Process subscriptions ***");
-		if (UpdateResponse.class.equals(res.getClass())) spuManager.processUpdate((UpdateResponse)res);	
+		if (res.getClass().equals(UpdateResponse.class)) spuManager.processUpdate((UpdateResponse)res);	
 	}
 	
 	public void processSubscribe(SubscribeRequest req){

@@ -14,7 +14,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-package arces.unibo.SEPA.server;
+package arces.unibo.SEPA.scheduling;
 
 import java.util.Date;
 
@@ -28,12 +28,13 @@ import org.apache.logging.log4j.LogManager;
 
 import arces.unibo.SEPA.beans.EngineMBean;
 import arces.unibo.SEPA.beans.SEPABeans;
-import arces.unibo.SEPA.commons.SPARQL.EndpointProperties;
+import arces.unibo.SEPA.client.api.SPARQL11Properties;
 import arces.unibo.SEPA.commons.request.Request;
-import arces.unibo.SEPA.gates.HTTPGate;
-import arces.unibo.SEPA.gates.HTTPSGate;
-import arces.unibo.SEPA.gates.WebsocketGate;
-import arces.unibo.SEPA.server.RequestResponseHandler.ResponseAndNotificationListener;
+import arces.unibo.SEPA.processing.Processor;
+import arces.unibo.SEPA.protocol.HTTPGate;
+import arces.unibo.SEPA.protocol.HTTPSGate;
+import arces.unibo.SEPA.protocol.WebsocketGate;
+import arces.unibo.SEPA.scheduling.RequestResponseHandler.ResponseAndNotificationListener;
 
 /**
  * This class represents the SPARQL Subscription (SUB) Engine of the Semantic Event Processing Architecture (SEPA)
@@ -46,11 +47,11 @@ public class Engine extends Thread implements EngineMBean,SchedulerInterface {
 
 	//Properties, logging and JMX
 	private EngineProperties engineProperties = new EngineProperties("engine.properties");
-	private EndpointProperties endpointProperties = new EndpointProperties("endpoint.properties");
+	private SPARQL11Properties endpointProperties = new SPARQL11Properties("endpoint.properties");
 	
 	private final Date startDate = new Date(); 
 	private static final Logger logger = LogManager.getLogger("Engine");
-	protected static String mBeanName = "arces.unibo.SEPA.server:type=Engine";
+	protected static String mBeanName = "arces.unibo.SEPA.scheduling:type=Engine";
 	
 	//Primitives scheduler/dispatcher
 	private Scheduler scheduler = null;
@@ -155,9 +156,9 @@ public class Engine extends Thread implements EngineMBean,SchedulerInterface {
 	}
 
 	@Override
-	public Integer getToken() {
+	public int getToken() {
 		if (scheduler != null) return scheduler.getToken();
-		return 0;
+		return -1;
 	}
 
 	@Override
