@@ -25,7 +25,7 @@ public class GarbageCollector extends Aggregator {
 
 	@Override
 	public void notify(ARBindingsResults notify, String spuid, Integer sequence) {
-		// TODO Auto-generated method stub
+		
 		
 	}
 
@@ -41,7 +41,7 @@ public class GarbageCollector extends Aggregator {
 
 	@Override
 	public void notifyRemoved(BindingsResults bindingsResults, String spuid, Integer sequence) {
-		// TODO Auto-generated method stub
+		
 		
 	}
 
@@ -76,13 +76,13 @@ public class GarbageCollector extends Aggregator {
 
 	@Override
 	public void brokenSubscription() {
-		// TODO Auto-generated method stub
+		
 		
 	}
 
 	@Override
 	public void onError(ErrorResponse errorResponse) {
-		// TODO Auto-generated method stub
+		
 		
 	}
 

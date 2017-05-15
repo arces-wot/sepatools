@@ -1,5 +1,6 @@
-/* This class implements the API of the SPARQL 1.1 SE Protocol (an extension of the W3C SPARQL 1.1 Protocol)
-Copyright (C) 2016-2017 Luca Roffia (luca.roffia@unibo.it)
+/* This class is part of the SPARQL 1.1 SE Protocol (an extension of the W3C SPARQL 1.1 Protocol) API
+ * 
+ * Author: Luca Roffia (luca.roffia@unibo.it)
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Lesser General Public License as published by
@@ -55,15 +56,18 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 
-import arces.unibo.SEPA.client.api.SPARQL11Properties.QueryResultsFormat;
-import arces.unibo.SEPA.client.api.SPARQL11Properties.SPARQLPrimitive;
 import arces.unibo.SEPA.client.api.SPARQL11SEProperties.SPARQL11SEPrimitive;
+
+import arces.unibo.SEPA.commons.protocol.SPARQL11Protocol;
+import arces.unibo.SEPA.commons.protocol.SPARQL11Properties.QueryResultsFormat;
+import arces.unibo.SEPA.commons.protocol.SPARQL11Properties.SPARQLPrimitive;
 
 import arces.unibo.SEPA.commons.request.QueryRequest;
 import arces.unibo.SEPA.commons.request.RegistrationRequest;
 import arces.unibo.SEPA.commons.request.SubscribeRequest;
 import arces.unibo.SEPA.commons.request.UnsubscribeRequest;
 import arces.unibo.SEPA.commons.request.UpdateRequest;
+
 import arces.unibo.SEPA.commons.response.JWTResponse;
 import arces.unibo.SEPA.commons.response.ErrorResponse;
 import arces.unibo.SEPA.commons.response.NotificationHandler;
@@ -156,46 +160,55 @@ public class SPARQL11SEProtocol extends SPARQL11Protocol {
 
 	//SPARQL 1.1 Update Primitive
 	public Response update(UpdateRequest request) {
+		logger.debug(request.toString());
 		return super.update(request);
 	}
 	
 	//SPARQL 1.1 Query Primitive
 	public Response query(QueryRequest request) {
+		logger.debug(request.toString());
 		return super.query(request);
 	}
 	
 	//SPARQL 1.1 SE Subscribe Primitive
-	public Response subscribe(SubscribeRequest sub,NotificationHandler handler) {
-		return executeSPARQL11SEPrimitive(SPARQL11SEPrimitive.SUBSCRIBE, sub,handler);		
+	public Response subscribe(SubscribeRequest request,NotificationHandler handler) {
+		logger.debug(request.toString());
+		return executeSPARQL11SEPrimitive(SPARQL11SEPrimitive.SUBSCRIBE, request,handler);		
 	}
 	
 	//SPARQL 1.1 SE Unsubscribe Primitive
-	public Response unsubscribe(UnsubscribeRequest subID) {
-		return executeSPARQL11SEPrimitive(SPARQL11SEPrimitive.UNSUBSCRIBE, subID);
+	public Response unsubscribe(UnsubscribeRequest request) {
+		logger.debug(request.toString());
+		return executeSPARQL11SEPrimitive(SPARQL11SEPrimitive.UNSUBSCRIBE, request);
 	}
 	
 	//SPARQL 1.1 SE SECURE Subscribe Primitive
-	public Response secureSubscribe(SubscribeRequest sub, NotificationHandler handler) {
-		return executeSPARQL11SEPrimitive(SPARQL11SEPrimitive.SECURESUBSCRIBE, sub,handler);
+	public Response secureSubscribe(SubscribeRequest request, NotificationHandler handler) {
+		logger.debug("SECURE "+request.toString());
+		return executeSPARQL11SEPrimitive(SPARQL11SEPrimitive.SECURESUBSCRIBE, request,handler);
 	}	
 	
 	//SPARQL 1.1 SE SECURE Unsubscribe Primitive
-	public Response secureUnsubscribe(UnsubscribeRequest subID) {
-		return executeSPARQL11SEPrimitive(SPARQL11SEPrimitive.SECUREUNSUBSCRIBE, subID);	
+	public Response secureUnsubscribe(UnsubscribeRequest request) {
+		logger.debug("SECURE "+request.toString());
+		return executeSPARQL11SEPrimitive(SPARQL11SEPrimitive.SECUREUNSUBSCRIBE, request);	
 	}
 	
 	//SPARQL 1.1 SE SECURE Update Primitive
 	public Response secureUpdate(UpdateRequest request) {
+		logger.debug("SECURE "+request.toString());
 		return executeSPARQL11SEPrimitive(SPARQL11SEPrimitive.SECUREUPDATE, request);
 	}
 	
 	//SPARQL 1.1 SE SECURE Query Primitive
-	public Response secureQuery(QueryRequest query) {
-		return executeSPARQL11SEPrimitive(SPARQL11SEPrimitive.SECUREQUERY, query);
+	public Response secureQuery(QueryRequest request) {
+		logger.debug("SECURE "+request.toString());
+		return executeSPARQL11SEPrimitive(SPARQL11SEPrimitive.SECUREQUERY, request);
 	}
 	
 	//Registration to the Authorization Server (AS)
 	public Response register(String identity) {
+		logger.debug("REGISTER "+identity);
 		return executeSPARQL11SEPrimitive(SPARQL11SEPrimitive.REGISTER, identity);
 	}
 	
@@ -228,7 +241,8 @@ public class SPARQL11SEProtocol extends SPARQL11Protocol {
 			
 			if (op.equals(SPARQL11SEPrimitive.SUBSCRIBE)) {
 				logger.debug("SUBSCRIBE");
-				if(wsClient.subscribe(((SubscribeRequest) request).getSPARQL(),((SubscribeRequest) request).getAlias(),null,handler)){
+				SubscribeRequest subscribe = (SubscribeRequest) request;
+ 				if(wsClient.subscribe(subscribe.getSPARQL(),subscribe.getAlias(),null,handler)){
 					return new SubscribeResponse(0,null);
 				}
 					else return new ErrorResponse(0,500);
@@ -263,7 +277,8 @@ public class SPARQL11SEProtocol extends SPARQL11Protocol {
 			
 			if (op.equals(SPARQL11SEPrimitive.SECURESUBSCRIBE)) {
 				logger.debug("SECURE SUBSCRIBE");
-				if(wsClient.subscribe(((SubscribeRequest) request).getSPARQL(),((SubscribeRequest) request).getAlias(),properties.getAccessToken(),handler)) {
+				SubscribeRequest subscribe = (SubscribeRequest) request;
+				if(wsClient.subscribe(subscribe.getSPARQL(),subscribe.getAlias(),properties.getAccessToken(),handler)) {
 					return new SubscribeResponse(0,null);
 				 }
 				 else return new ErrorResponse(0,500);

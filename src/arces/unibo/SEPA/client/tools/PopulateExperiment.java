@@ -17,12 +17,12 @@ public class PopulateExperiment extends SmartLightingBenchmark {
 	
 	@Override
 	public void reset() {
-		// TODO Auto-generated method stub	
+			
 	}
 
 	@Override
 	public void runExperiment() {
-		// TODO Auto-generated method stub		
+				
 	}
 
 	@Override
@@ -38,7 +38,7 @@ public class PopulateExperiment extends SmartLightingBenchmark {
 
 	@Override
 	public void subscribe() {
-		// TODO Auto-generated method stub
+		
 		
 	}
 	

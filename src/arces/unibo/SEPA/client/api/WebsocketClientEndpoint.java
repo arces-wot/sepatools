@@ -1,3 +1,21 @@
+/* This class is part of the SPARQL 1.1 SE Protocol (an extension of the W3C SPARQL 1.1 Protocol) API
+ * 
+ * Author: Luca Roffia (luca.roffia@unibo.it)
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 package arces.unibo.SEPA.client.api;
 
 import java.io.IOException;
@@ -26,7 +44,6 @@ import arces.unibo.SEPA.commons.response.NotificationHandler;
 import arces.unibo.SEPA.commons.response.SubscribeResponse;
 import arces.unibo.SEPA.commons.response.UnsubscribeResponse;
 
-
 public class WebsocketClientEndpoint extends Endpoint implements MessageHandler.Whole<String> {
 	protected Logger logger = LogManager.getLogger("WebsocketClientEndpoint");
 	
@@ -36,6 +53,8 @@ public class WebsocketClientEndpoint extends Endpoint implements MessageHandler.
 	
 	private String sparql;
 	private String wsUrl;
+	private String jwt;
+	private String alias;
 	
 	private NotificationHandler handler;
 	private WebsocketWatchdog watchDog = null;
@@ -44,16 +63,32 @@ public class WebsocketClientEndpoint extends Endpoint implements MessageHandler.
 		this.wsUrl = wsUrl;
 	}
 	
-	@Override
-	public void onOpen(Session session, EndpointConfig config) {
-		wsClientSession = session;
-    	wsClientSession.addMessageHandler(this);	
-    	try {
+	private void sendSubscribeRequest() {
+		if (wsClientSession == null) {
+			logger.error("Session is null");
+			return;
+		}
+		try {
     		JsonObject request = new JsonObject();
 			request.add("subscribe", new JsonPrimitive(sparql));
+			if (alias != null) request.add("alias", new JsonPrimitive(alias));
+			else logger.debug("Alias is null");
+			if (jwt != null) request.add("authorization", new JsonPrimitive(jwt));
+			else logger.debug("Authorization is null");
+			logger.debug(request.toString());
 			wsClientSession.getBasicRemote().sendText(request.toString());
 		} 
-		catch (IOException e) {}
+		catch (IOException e) {
+			logger.error(e.getMessage());
+		}	
+	}
+	
+	@Override
+	public void onOpen(Session session, EndpointConfig config) {
+		logger.debug("@onOpen");
+		wsClientSession = session;
+    	wsClientSession.addMessageHandler(this);	
+    	sendSubscribeRequest();
 	}
 	
 	private boolean connect() {
@@ -74,20 +109,12 @@ public class WebsocketClientEndpoint extends Endpoint implements MessageHandler.
 	public boolean subscribe(String sparql,String alias,String jwt,NotificationHandler handler) {
 		this.handler = handler;
 		this.sparql = sparql;
-		if (isConnected())
-			try {
-				JsonObject request = new JsonObject();
-				request.add("subscribe", new JsonPrimitive(sparql));
-				if (alias != null) request.add("alias", new JsonPrimitive(alias));
-				if (jwt != null) request.add("authorization", new JsonPrimitive(jwt));
-				wsClientSession.getBasicRemote().sendText(request.toString());
-			} 
-			catch (IOException e) {
-				return false;
-			}
-		else {
-			return connect();	
-		}
+		this.alias = alias;
+		this.jwt = jwt;
+		
+		if (!isConnected()) return connect();
+		
+		sendSubscribeRequest();
 		
 		//Start watchdog
 		if (watchDog == null) watchDog = new WebsocketWatchdog(handler,this,sparql); 

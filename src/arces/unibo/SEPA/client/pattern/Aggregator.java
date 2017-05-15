@@ -1,5 +1,6 @@
 /* This class abstracts the aggregator client of the SEPA Application Design Pattern
-Copyright (C) 2016-2017 Luca Roffia (luca.roffia@unibo.it)
+ * 
+ * Author: Luca Roffia (luca.roffia@unibo.it)
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Lesser General Public License as published by

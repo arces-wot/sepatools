@@ -2,9 +2,9 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>SEPATools</groupId>
   <artifactId>SEPATools</artifactId>
-  <version>0.0.1-SNAPSHOT</version>
+  <version>0.6.0-SNAPSHOT</version>
   <name>SEPATools</name>
-  <description>A Semantic Event Processing Architecture for the Web of Things</description>
+  <description>A Semantic Event Processing Architecture for the Web of Things. The project includes the client and server classes</description>
   <build>
     <sourceDirectory>src</sourceDirectory>
     <resources>
@@ -123,4 +123,9 @@
   		<version>1.4.9</version>
   	</dependency>
   </dependencies>
+  <organization>
+  	<name>Web of Things ARCES interest group</name>
+  	<url>wot.arces.unibo.it</url>
+  </organization>
+  <url>https://github.com/vaimee/sepatools</url>
 </project>

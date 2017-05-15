@@ -85,37 +85,37 @@ public class StressTest {
 
 		@Override
 		public void notify(ARBindingsResults notify, String spuid, Integer sequence) {
-			// TODO Auto-generated method stub
+			
 			
 		}
 
 		@Override
 		public void notifyAdded(BindingsResults bindingsResults, String spuid, Integer sequence) {
-			// TODO Auto-generated method stub
+			
 			
 		}
 
 		@Override
 		public void notifyRemoved(BindingsResults bindingsResults, String spuid, Integer sequence) {
-			// TODO Auto-generated method stub
+			
 			
 		}
 
 		@Override
 		public void onSubscribe(BindingsResults bindingsResults, String spuid) {
-			// TODO Auto-generated method stub
+			
 			
 		}
 
 		@Override
 		public void brokenSubscription() {
-			// TODO Auto-generated method stub
+			
 			
 		}
 
 		@Override
 		public void onError(ErrorResponse errorResponse) {
-			// TODO Auto-generated method stub
+			
 			
 		}
 	}

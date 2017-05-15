@@ -180,13 +180,13 @@ public abstract class SmartLightingBenchmark {
 
 		@Override
 		public void brokenSubscription() {
-			// TODO Auto-generated method stub
+			
 			
 		}
 
 		@Override
 		public void onError(ErrorResponse errorResponse) {
-			// TODO Auto-generated method stub
+			
 			
 		}
 		
@@ -253,13 +253,13 @@ public abstract class SmartLightingBenchmark {
 
 		@Override
 		public void brokenSubscription() {
-			// TODO Auto-generated method stub
+			
 			
 		}
 
 		@Override
 		public void onError(ErrorResponse errorResponse) {
-			// TODO Auto-generated method stub
+			
 			
 		}
 		

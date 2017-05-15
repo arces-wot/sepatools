@@ -1,5 +1,6 @@
 /* This GUI can be used for debugging SEPA applications
-Copyright (C) 2016-2017 Luca Roffia (luca.roffia@unibo.it)
+ * 
+ * Author: Luca Roffia (luca.roffia@unibo.it)
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Lesser General Public License as published by
@@ -145,13 +146,13 @@ public class Dashboard {
 
 		@Override
 		public void notifyAdded(BindingsResults bindingsResults, String spuid, Integer sequence) {
-			// TODO Auto-generated method stub
+			
 			
 		}
 
 		@Override
 		public void notifyRemoved(BindingsResults bindingsResults, String spuid, Integer sequence) {
-			// TODO Auto-generated method stub
+			
 			
 		}
 
@@ -167,7 +168,7 @@ public class Dashboard {
 
 		@Override
 		public void onError(ErrorResponse errorResponse) {
-			// TODO Auto-generated method stub
+			
 			
 		}
 	}
