@@ -43,25 +43,25 @@ import arces.unibo.SEPA.commons.response.SubscribeResponse;
 import arces.unibo.SEPA.commons.response.UnsubscribeResponse;
 
 public class SEPATest {
-	private static final Logger logger = LogManager.getLogger("SEPATest");
-	private static Results results = new SEPATest().new Results();
-	private static TestNotificationHandler handler = new TestNotificationHandler();
+	protected static final Logger logger = LogManager.getLogger("SEPATest");
+	protected static Results results = new SEPATest().new Results();
+	protected static TestNotificationHandler handler = new TestNotificationHandler();
 	
 	//Subscription variables
-	private static boolean subscribeConfirmReceived = false;
-	private static boolean unsubscriptionConfirmReceived = false;
-	private static String spuid = null;
-	private static boolean pingReceived = false;
-	private static boolean notificationReceived = false;
-	private static Object sync = new Object();
+	protected static boolean subscribeConfirmReceived = false;
+	protected static boolean unsubscriptionConfirmReceived = false;
+	protected static String spuid = null;
+	protected static boolean pingReceived = false;
+	protected static boolean notificationReceived = false;
+	protected static Object sync = new Object();
 	
-	private static SPARQL11SEProtocol client;
-	private static SPARQL11SEProperties properties;
+	protected static SPARQL11SEProtocol client;
+	protected static SPARQL11SEProperties properties;
 	
-	private static final long subscribeConfirmDelay = 2000;
-	private static final long pingDelay = 5000;
+	protected static final long subscribeConfirmDelay = 2000;
+	protected static final long pingDelay = 5000;
 	
-	private class Results {
+	protected class Results {
 		private long failed;
 		private ArrayList<Result> results = new  ArrayList<Result>();
 		
@@ -80,7 +80,7 @@ public class SEPATest {
 		}
 	}
 	
-	private class Result {
+	protected class Result {
 		private String title;
 		private boolean success;
 		
@@ -100,7 +100,8 @@ public class SEPATest {
 			else logger.error(index + " " +toString());
 		}
 	}
-	public static class TestNotificationHandler implements NotificationHandler {
+	
+	protected static class TestNotificationHandler implements NotificationHandler {
 
 		@Override
 		public void semanticEvent(Notification notify) {
@@ -153,7 +154,7 @@ public class SEPATest {
 		}
 	}
 	
-	private static boolean updateTest(String sparql,boolean secure) {
+	protected static boolean updateTest(String sparql,boolean secure) {
 		notificationReceived = false;
 		
 		UpdateRequest update = new UpdateRequest(sparql);
@@ -170,7 +171,7 @@ public class SEPATest {
 		return !response.getClass().equals(ErrorResponse.class);
 	}
 	
-	private static boolean queryTest(String sparql,String utf8,boolean secure) {
+	protected static boolean queryTest(String sparql,String utf8,boolean secure) {
 		QueryRequest query = new QueryRequest(sparql);
 		
 		if (!secure) logger.info(query.toString());
@@ -201,7 +202,7 @@ public class SEPATest {
 		return !error;
 	}
 	
-	private static boolean subscribeTest(String sparql,boolean secure) {
+	protected static boolean subscribeTest(String sparql,boolean secure) {
 		subscribeConfirmReceived = false;
 		notificationReceived = false;
 		
@@ -220,7 +221,7 @@ public class SEPATest {
 		return !response.getClass().equals(ErrorResponse.class);
 	}
 	
-	private static boolean waitSubscribeConfirm(){	
+	protected static boolean waitSubscribeConfirm(){	
 		synchronized(sync) {
 			if (subscribeConfirmReceived) return true;
 			try {
@@ -239,7 +240,7 @@ public class SEPATest {
 		return (subscribeConfirmReceived);
 	}
 	
-	private static boolean waitPing() {		
+	protected static boolean waitPing() {		
 		long delay = pingDelay+(pingDelay/2);
 		synchronized(sync) {
 			pingReceived = false;
@@ -254,7 +255,7 @@ public class SEPATest {
 		return pingReceived;
 	}
 			
-	private static boolean waitNotification() {	
+	protected static boolean waitNotification() {	
 		synchronized(sync) {
 			if (notificationReceived) return true;
 			try {
@@ -267,7 +268,7 @@ public class SEPATest {
 		return notificationReceived;
 	}
 	
-	private static boolean unsubscribeTest(String spuid,boolean secure) {	
+	protected static boolean unsubscribeTest(String spuid,boolean secure) {	
 		unsubscriptionConfirmReceived = false;
 		
 		UnsubscribeRequest unsub = new UnsubscribeRequest(spuid);
@@ -281,7 +282,7 @@ public class SEPATest {
 		return !response.getClass().equals(ErrorResponse.class);
 	}
 	
-	private static boolean waitUnsubscribeConfirm() {
+	protected static boolean waitUnsubscribeConfirm() {
 		synchronized(sync) {
 			if (unsubscriptionConfirmReceived) return true;
 			try {
@@ -294,13 +295,13 @@ public class SEPATest {
 		return unsubscriptionConfirmReceived;
 	}
 	
-	private static boolean registrationTest(String id){		
+	protected static boolean registrationTest(String id){		
 		Response response;
 		response = client.register(id);		
 		return !response.getClass().equals(ErrorResponse.class);
 	}
 		
-	private static boolean requestAccessTokenTest() {
+	protected static boolean requestAccessTokenTest() {
 		Response response;
 		response = client.requestToken();
 		

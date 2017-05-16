@@ -1,159 +1,97 @@
 package arces.unibo.SEPA.client.tools;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.Date;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-import arces.unibo.SEPA.client.pattern.ApplicationProfile;
-import arces.unibo.SEPA.client.pattern.GenericClient;
-import arces.unibo.SEPA.client.pattern.Producer;
-import arces.unibo.SEPA.commons.SPARQL.ARBindingsResults;
-import arces.unibo.SEPA.commons.SPARQL.Bindings;
-import arces.unibo.SEPA.commons.SPARQL.BindingsResults;
-import arces.unibo.SEPA.commons.SPARQL.RDFTermURI;
+import arces.unibo.SEPA.client.api.SPARQL11SEProperties;
+import arces.unibo.SEPA.client.api.SPARQL11SEProtocol;
+import arces.unibo.SEPA.commons.request.SubscribeRequest;
+import arces.unibo.SEPA.commons.request.UpdateRequest;
 import arces.unibo.SEPA.commons.response.ErrorResponse;
+import arces.unibo.SEPA.commons.response.Notification;
+import arces.unibo.SEPA.commons.response.NotificationHandler;
+import arces.unibo.SEPA.commons.response.SubscribeResponse;
+import arces.unibo.SEPA.commons.response.UnsubscribeResponse;
 
-//INSERT_LAMP
-public class StressTest {
-	static long NUPDATE = 5;
-	static long NQUERY = 3;
+public class StressTest extends SEPATest {
 	
-	static List<UpdateThread> updateThreads = new ArrayList<UpdateThread>();
-	static List<QueryThread> queryThreads = new ArrayList<QueryThread>();
-	static List<Thread> activeThreads = new ArrayList<Thread>();
-	
-	private static final Logger logger = LogManager.getLogger("StressTest");
-	
-	static class UpdateThread extends Producer implements Runnable {
-		
-		
-		public UpdateThread(ApplicationProfile appProfile) {
-			super(appProfile, "INSERT_LAMP");
+	public static void main(String[] args) {
+		properties = new SPARQL11SEProperties("client.properties");
+		if (!properties.loaded()) {
+			logger.fatal("Properties file is null");
+			System.exit(-1);
 		}
-
-		private boolean running = true;
-
-		public void run() {
-			while(running) {
-				double rnd = Math.random() * 3000;
-				long sleep = Math.round(rnd);
-				try {
-					Thread.sleep(sleep);
-				} catch (InterruptedException e) {
-					return ;
-				}
-				Bindings bindings = new Bindings();
-				bindings.addBinding("lamp", new RDFTermURI("bench:Lamp_"+UUID.randomUUID().toString()));
-								
-				long timing = System.nanoTime();
-		    	
-				update(bindings);
-		    	
-				timing = System.nanoTime() - timing;
-				
-				logger.info("Timing(ns) "+timing);
+		client = new SPARQL11SEProtocol(properties);	
+		
+		Consumer consumer = new StressTest().new Consumer();
+		client.subscribe(new SubscribeRequest("select * where {?s ?p ?o}"),consumer);
+		Producer producer = new StressTest().new Producer();
+		Thread th = new Thread(producer);
+		th.start();
+		synchronized(th){
+			try {
+				th.wait();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
 		}
 	}
 	
-	static class QueryThread extends GenericClient implements Runnable {
+	protected class Consumer implements NotificationHandler {
+		Date previous = null;
 		
-		public QueryThread(ApplicationProfile appProfile) {
-			super(appProfile);
-		}
-			
-		private boolean running = true;
-
-		public void run() {
-			while(running) {
-				double rnd = Math.random() * 3000;
-				long sleep = Math.round(rnd);
-				try {
-					Thread.sleep(sleep);
-				} catch (InterruptedException e) {
-					return;
-				}
-		
-				query("select * where {?x ?y ?z}",null);
-		    
+		@Override
+		public void semanticEvent(Notification notify) {
+			if (previous == null) previous = new Date();
+			else {
+				Date now = new Date();
+				logger.info("Notification period "+(now.getTime()-previous.getTime())+" ms");
+				previous = now;
 			}
-		}
-
-		@Override
-		public void notify(ARBindingsResults notify, String spuid, Integer sequence) {
-			
 			
 		}
 
 		@Override
-		public void notifyAdded(BindingsResults bindingsResults, String spuid, Integer sequence) {
-			
-			
-		}
-
-		@Override
-		public void notifyRemoved(BindingsResults bindingsResults, String spuid, Integer sequence) {
-			
+		public void subscribeConfirmed(SubscribeResponse response) {
+			// TODO Auto-generated method stub
 			
 		}
 
 		@Override
-		public void onSubscribe(BindingsResults bindingsResults, String spuid) {
+		public void unsubscribeConfirmed(UnsubscribeResponse response) {
+			// TODO Auto-generated method stub
 			
+		}
+
+		@Override
+		public void ping() {
+			// TODO Auto-generated method stub
 			
 		}
 
 		@Override
 		public void brokenSubscription() {
-			
+			// TODO Auto-generated method stub
 			
 		}
 
 		@Override
 		public void onError(ErrorResponse errorResponse) {
-			
+			// TODO Auto-generated method stub
 			
 		}
+		
 	}
-	
-	public static void main(String[] args) {
-		ApplicationProfile appProfile =  new ApplicationProfile();
-		appProfile.load("LightingBenchmark.sap");
-		
-		//SEPALogger.setVerbosityLevel(VERBOSITY.INFO);
-		//SEPALogger.enableConsoleLog();
-		//SEPALogger.registerTag("*");
-		
-		for (int i=0; i < NUPDATE ; i++) {
-			updateThreads.add(new UpdateThread(appProfile));
+	protected class Producer implements Runnable {
+		@Override
+		public void run() {
+			int i=0;
+			while(i<1000) {
+				Date start = new Date();
+				client.update(new UpdateRequest("prefix test:<http://www.vaimee.com/test#> delete {?s ?p ?o} insert {test:Sub test:Pred \""+String.format("%d", i++)+"\"} where {?s ?p ?o}"));
+				Date stop = new Date();
+				logger.info("Update "+(stop.getTime()-start.getTime())+" ms");
+			}	
 		}
-		
-		for (int i=0; i < NQUERY ; i++) {
-			queryThreads.add(new QueryThread(appProfile));
-		}
-		
-		for (UpdateThread th: updateThreads) {
-			Thread run = new Thread(th);
-			activeThreads.add(run);
-			run.start();
-		}
-		for (QueryThread th: queryThreads) {
-			Thread run = new Thread(th);
-			activeThreads.add(run);
-			run.start();
-		}
-		
-		try {
-			System.in.read();
-		} catch (IOException e) {
-			logger.debug(e.getMessage());
-		}
-		
-		for(Thread th : activeThreads) while(!th.isInterrupted()) th.interrupt();
-		
 	}
 }

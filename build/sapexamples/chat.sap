@@ -5,7 +5,7 @@
     "subscribePort": 9000,
     "updateSecurePort": 8443,
     "updatePort": 8000,
-    "host": "localhost"
+    "host": "www.vaimee.com"
   },
   "namespaces": {
     "chat": "http://www.arces.unibo.it/chat#",
