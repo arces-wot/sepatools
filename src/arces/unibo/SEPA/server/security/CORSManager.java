@@ -60,13 +60,8 @@ public class CORSManager {
 		List<String> origins = httpExchange.getRequestHeaders().get("Origin");
 		if (origins.size() != 1) return false;
 		
-		allowOrigin = origins.get(0);
-
-		/*
-		 * If the value of the Origin header is not a case-sensitive match for any of the values in list of origins do not set any additional headers and terminate this set of steps.
-		 */
-		
-		//TODO check origin against a list of allowed origins
+		allowOrigin = origins.get(0);	
+		if(!allowedOrigin(allowOrigin)) return false;
 		
 		/*
 		 * Let method be the value as result of parsing the Access-Control-Request-Method header.
@@ -79,13 +74,8 @@ public class CORSManager {
 		List<String> methods = httpExchange.getRequestHeaders().get("Access-Control-Request-Method");
 		if (methods.size() != 1) return false;
 		
-		allowMethod = methods.get(0);
-		
-		/*
-		 * If method is not a case-sensitive match for any of the values in list of methods do not set any additional headers and terminate this set of steps.
-		 */
-		
-		//TODO check method against a list of allowed methods
+		allowMethod = methods.get(0);		
+		if(!allowedMethod(allowMethod)) return false;
 		
 		/*
 		 * Let header field-names be the values as result of parsing the Access-Control-Request-Headers headers.
@@ -99,13 +89,8 @@ public class CORSManager {
 		for (String temp : headers) {
 			if (allowHeaders.equals("")) allowHeaders = temp;
 			else allowHeaders = allowHeaders +","+temp;
-		}
-		
-		/*
-		 * If any of the header field-names is not a ASCII case-insensitive match for any of the values in list of headers do not set any additional headers and terminate this set of steps.
-		 */
-		
-		//TODO check headers
+		}		
+		if(!allowedHeaders(allowHeaders)) return false;
 		
 		/*
 		 * If the resource supports credentials add a single Access-Control-Allow-Origin header, with the value of the Origin header as value, 
@@ -118,8 +103,6 @@ public class CORSManager {
 		 * If method is a simple method this step may be skipped.
 		 * Add one or more Access-Control-Allow-Methods headers consisting of (a subset of) the list of methods.
 		 */
-		
-		//TODO returns only allowed methods
 		if (allowMethod != null) httpExchange.getResponseHeaders().add("Access-Control-Allow-Methods", allowMethod);
 		
 		/*
@@ -141,7 +124,44 @@ public class CORSManager {
 	    	return false;
 	    }
 		    		
-		return false;
+		return true;
+	}
+	
+	/*
+	 * If any of the header field-names is not a ASCII case-insensitive match for any of the values in list of headers do not set any additional headers and terminate this set of steps.
+	 */	
+	private static boolean allowedHeaders(String allowHeaders) {
+		//TODO check headers
+		return true;
+	}
+
+	/*
+	 * If method is not a case-sensitive match for any of the values in list of methods do not set any additional headers and terminate this set of steps.
+	 */
+	private static boolean allowedMethod(String allowMethod) {
+		//TODO check method against a list of allowed methods
+		return true;
+	}
+
+	/*
+	 * If the value of the Origin header is not a case-sensitive match for any of the values in list of origins do not set any additional headers and terminate this set of steps.
+	 */
+	private static boolean allowedOrigin(String allowOrigin) {
+		//TODO check origin against a list of allowed origins
+		return true;
+	}
+
+	public static boolean accessControlAllowOrigin(HttpExchange httpExchange){
+		String allowOrigin = null;
+		if (!httpExchange.getRequestHeaders().containsKey("Origin")) return true;
+		List<String> origins = httpExchange.getRequestHeaders().get("Origin");
+		if (origins.size() != 1) return true;
+		
+		allowOrigin = origins.get(0);	
+		
+		httpExchange.getResponseHeaders().add("Access-Control-Allow-Origin", allowOrigin);
+		
+		return allowedOrigin(allowOrigin);
 	}
 	
 	public static boolean processCORSPreFlightRequest(HttpExchange httpExchange){

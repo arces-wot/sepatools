@@ -201,7 +201,8 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 		
 		if (CORSManager.processCORSPreFlightRequest(exchange,json.toString())) return;
 		
-		sendResponse(exchange,200,json.toString());		
+		if(CORSManager.accessControlAllowOrigin(exchange)) sendResponse(exchange,200,json.toString());
+		else failureResponse(exchange,ErrorResponse.NOT_ALLOWED,"CORS origin not allowed");
 	}
 	
 	/**
@@ -289,7 +290,7 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 	 */
 	private Request parseSPARQL11(HttpExchange httpExchange) {
 		//Response content-type
-		//TODO set content-type based on request
+		//TODO set content-type based on request (is it right?)
 		String contentType = "";
 		for (String type : httpExchange.getRequestHeaders().get("Accept")) {
 			contentType = type + ",";
@@ -457,13 +458,20 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 				//CORS pre-flight request
 				if (CORSManager.processCORSPreFlightRequest(httpExchange)) return;
 				
-				//Parsing SPARQL 1.1 request
+				//CORS
+				if(!CORSManager.accessControlAllowOrigin(httpExchange)) {
+					logger.error("CORS origin not allowed");
+					failureResponse(httpExchange,ErrorResponse.NOT_ALLOWED,"CORS origin not allowed");
+					return;
+				}
+				
+				//Parsing SPARQL 1.1 request and attach a token
 				Request request = parseSPARQL11(httpExchange);
 
 				//Parsing failed
 				if (request == null) {
-					logger.warn("SPARQL 1.1 SE parsing failed or OPTIONS");
-					//failureResponse(httpExchange,ErrorResponse.BAD_REQUEST,"SPARQL 1.1 SE parsing failed");
+					logger.warn("SPARQL 1.1 SE parsing failed");
+					failureResponse(httpExchange,ErrorResponse.BAD_REQUEST,"SPARQL 1.1 SE parsing failed");
 					return;	
 				}
 				
@@ -501,7 +509,7 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 				
 				//Logging
 				logger.trace("Request validated in " + (startTime-validatedTime) + " and processed in " + (validatedTime-processedTime) + " ns");
-				
+
 				//Send HTTP response
 				if (response == null) sendResponse(httpExchange,408,"Timeout");
 				else {

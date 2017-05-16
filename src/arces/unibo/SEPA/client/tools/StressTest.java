@@ -16,20 +16,26 @@ public class StressTest extends SEPATest {
 	static Consumer consumer;
 	static Producer producer;
 	
+	static int nConsumers = 1;
+	static int nProducers = 1;
+	static int producerUpdates = 100;
+	
 	public static void main(String[] args) {
 		properties = new SPARQL11SEProperties("client.json");
 		if (!properties.loaded()) {
 			logger.fatal("Properties file is null");
 			System.exit(-1);
 		}
-		client = new SPARQL11SEProtocol(properties);	
 		
+		client = new SPARQL11SEProtocol(properties);			
 		consumer = new StressTest().new Consumer();
 		client.subscribe(new SubscribeRequest("select * where {?s ?p ?o}"),consumer);
 		
 		producer = new StressTest().new Producer();
 		Thread th = new Thread(producer);
+		th.setName("Producer");
 		th.start();
+
 		
 		synchronized(th){
 			try {
@@ -42,9 +48,9 @@ public class StressTest extends SEPATest {
 	}
 	
 	protected class Consumer implements NotificationHandler {
-		Date previous = null;
-		public float meanNotificationPeriod = 0;
-		public long notifications = 0;
+		private Date previous = null;
+		private float meanNotificationPeriod = 0;
+		private long notifications = 0; 
 		
 		@Override
 		public void semanticEvent(Notification notify) {
@@ -53,8 +59,8 @@ public class StressTest extends SEPATest {
 			else {
 				Date now = new Date();
 				logger.info("Notification period "+(now.getTime()-previous.getTime())+" ms");
+				meanNotificationPeriod = (meanNotificationPeriod*(notifications-1) + (now.getTime()-previous.getTime()))/notifications;
 				previous = now;
-				meanNotificationPeriod = (meanNotificationPeriod + (now.getTime()-previous.getTime()))/notifications;
 			}
 			
 		}
@@ -87,19 +93,21 @@ public class StressTest extends SEPATest {
 		public void onError(ErrorResponse errorResponse) {
 			// TODO Auto-generated method stub
 			
-		}
-		
+		}	
 	}
+	
 	protected class Producer implements Runnable {
 		public float meanUpdatePeriod = 0;
 		public int nUpdate = 0;
+		public long totalTime = 0;
+		
 		@Override
 		public void run() {
-			while(nUpdate<1000) {
+			while(nUpdate<producerUpdates) {
 				Date start = new Date();
 				client.update(new UpdateRequest("prefix test:<http://www.vaimee.com/test#> delete {?s ?p ?o} insert {test:Sub test:Pred \""+String.format("%d", ++nUpdate)+"\"} where {?s ?p ?o}"));
 				Date stop = new Date();
-				meanUpdatePeriod = (meanUpdatePeriod + (start.getTime()-stop.getTime()))/nUpdate;
+				meanUpdatePeriod = (meanUpdatePeriod*(nUpdate-1) + (stop.getTime()-start.getTime()))/nUpdate;
 				
 				logger.info("Update "+(stop.getTime()-start.getTime())+" ms Mean: "+meanUpdatePeriod);
 			}

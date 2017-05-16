@@ -99,12 +99,17 @@ public class HTTPSGate extends HTTPGate {
 		public void handle(HttpExchange exchange) throws IOException {
 			logger.info(">> HTTPS request (REGISTRATION)");
 			
-			if (CORSManager.processCORSPreFlightRequest(exchange)) return;
-			
 			if(!exchange.getRequestMethod().toUpperCase().equals("POST")) {
+				if (CORSManager.processCORSPreFlightRequest(exchange)) return;
 				logger.error("Bad request: "+exchange.getRequestMethod().toUpperCase());
 				failureResponse(exchange,400,"Bad request: "+exchange.getRequestMethod().toUpperCase()+" Request must be a POST");
 				return;
+			}
+			
+			if(!CORSManager.accessControlAllowOrigin(exchange)) {
+				logger.error("Origin now allowed");
+				failureResponse(exchange,ErrorResponse.NOT_ALLOWED,"Origin now allowed");
+				return;	
 			}
 			
 			//Parsing and validating request headers
@@ -250,13 +255,18 @@ public class HTTPSGate extends HTTPGate {
 		public void handle(HttpExchange exchange) throws IOException {
 			logger.info(">> HTTPS request (TOKEN REQUEST)");
 			
-			if (CORSManager.processCORSPreFlightRequest(exchange)) return;
-			
 			if(!exchange.getRequestMethod().toUpperCase().equals("POST")) {
+				if (CORSManager.processCORSPreFlightRequest(exchange)) return;
 				logger.error("Bad request: "+exchange.getRequestMethod().toUpperCase());
 				failureResponse(exchange,400,"Request must be a POST");
 				return;
-			}	
+			}
+			
+			if(!CORSManager.accessControlAllowOrigin(exchange)) {
+				logger.error("Origin now allowed");
+				failureResponse(exchange,ErrorResponse.NOT_ALLOWED,"Origin now allowed");
+				return;	
+			}
 			
 			if (!exchange.getRequestHeaders().containsKey("Content-Type")) {
 				logger.error("Content-Type is null");
@@ -380,7 +390,9 @@ public class HTTPSGate extends HTTPGate {
 			String jwt = bearer.get(0).split(" ")[1];
 			
 			Response valid = am.validateToken(jwt);
-			if(!valid.getClass().equals(ErrorResponse.class)) super.handle(httpExchange);
+			if(!valid.getClass().equals(ErrorResponse.class)) 
+				//Handle the request as a normal HTTP request
+				super.handle(httpExchange);
 			else {
 				ErrorResponse error = (ErrorResponse) valid;
 				failureResponse(httpExchange,error.getErrorCode(),error.getErrorMessage());
