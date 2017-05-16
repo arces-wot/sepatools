@@ -59,7 +59,7 @@ import arces.unibo.SEPA.server.scheduling.RequestResponseHandler.ResponseAndNoti
 
 /* SPARQL 1.1 Subscribe language 
  * 
- * {"subscribe":"SPARQL Query 1.1", "authorization": "JWT"}
+ * {"subscribe":"SPARQL Query 1.1", "authorization": "JWT", "alias":"an alias for the subscription"}
  * 
  * {"unsubscribe":"SPUID", "authorization": "JWT"}
  * 
@@ -69,10 +69,6 @@ public class WSGate extends WebSocketApplication {
 	protected Logger logger = LogManager.getLogger("WebsocketGate");
 	protected EngineProperties properties;
 	protected Scheduler scheduler;
-	
-	//Authorization manager
-	//private AuthorizationManager am = new AuthorizationManager("sepa.jks","*sepa.jks*","SepaKey","*SepaKey*","SepaCertificate");
-	//private ArrayList<WebSocket> secureSockets = new ArrayList<WebSocket>();
 	
 	//Collection of active sockets
 	protected HashMap<WebSocket,SEPAResponseListener> activeSockets = new HashMap<WebSocket,SEPAResponseListener>();
@@ -85,11 +81,6 @@ public class WSGate extends WebSocketApplication {
 	    logger.debug("Protocol : " + requestPacket.getProtocol().getProtocolString());
 	    logger.debug("Local port : " + requestPacket.getLocalPort());
 	    
-	    /*if (requestPacket.getLocalPort() == properties.getWssPort()) {
-	    	//Add the WebSocket to the secure set 
-	    	secureSockets.add(ret);
-	    }*/
-	    
 		return ret;
 	}
 
@@ -98,8 +89,7 @@ public class WSGate extends WebSocketApplication {
 		super.onClose(socket, frame);
 		
 		logger.debug("@onClose");
-		
-		//secureSockets.remove(socket);
+
 		if (properties.getKeepAlivePeriod() == 0) activeSockets.get(socket).unsubscribeAll();
 	}
 
@@ -109,7 +99,6 @@ public class WSGate extends WebSocketApplication {
 		
 		logger.debug("@onConnect");
 		
-		//if (secureSockets.contains(socket)) logger.debug("Secure socket");
 		SEPAResponseListener listener = new SEPAResponseListener(socket);
 		
 		synchronized(activeSockets) {
@@ -119,12 +108,10 @@ public class WSGate extends WebSocketApplication {
 	
 	@Override
 	public void onMessage(WebSocket socket, String text) {
-		super.onMessage(socket, text);
+		//super.onMessage(socket, text);
 		
 		logger.debug("@onMessage "+text);
-		
-		//if (secureSockets.contains(socket)) logger.debug("Secure socket");
-		
+
 		int token = scheduler.getToken();
 		if (token == -1) {
 			ErrorResponse response = new ErrorResponse(token,405,"No more tokens");			
@@ -141,25 +128,11 @@ public class WSGate extends WebSocketApplication {
 			scheduler.releaseToken(token);
 			return;
 		}
-		
-		//JWT Validation
-		/*if (secureSockets.contains(socket)) {
-			Response validation = validateToken(text);
-			if (validation.getClass().equals(ErrorResponse.class)) {
-				//Not authorized
-				logger.warn("NOT AUTHORIZED");
-				socket.send(validation.toString());
-				
-				scheduler.releaseToken(token);
-			}
+			
+		synchronized(activeSockets) {
+			logger.debug(">> Scheduling request: "+request.toString());
+			scheduler.addRequest(request,activeSockets.get(socket));	
 		}
-		else {
-		*/
-			synchronized(activeSockets) {
-				logger.debug(">> Scheduling request: "+request.toString());
-				scheduler.addRequest(request,activeSockets.get(socket));	
-			}
-		//}		
 	}
 	
 	protected Request parseRequest(Integer token,String request) {
@@ -179,23 +152,6 @@ public class WSGate extends WebSocketApplication {
 		
 		return null;
 	}
-
-	/*
-	private Response validateToken(String request) {
-		JsonObject req;
-		try{
-			req = new JsonParser().parse(request).getAsJsonObject();
-		}
-		catch(JsonParseException | IllegalStateException e) {
-			
-			return new ErrorResponse(500,e.getMessage());
-		}
-		
-		if (req.get("authorization") == null) return new ErrorResponse(400,"authorization key is missing");;
-		
-		//Token validation
-		return 	am.validateToken(req.get("authorization").getAsString());
-	}*/
 	
 	public WSGate(EngineProperties properties,Scheduler scheduler) {
 		if (scheduler == null) {
@@ -215,17 +171,10 @@ public class WSGate extends WebSocketApplication {
 	public boolean start(){	
 		//Create an HTTP server to which attach the websocket
 		final HttpServer server = HttpServer.createSimpleServer(null, properties.getWsPort());
-		//final HttpServer secureServer = HttpServer.createSimpleServer(null, properties.getWssPort());
-		
+
 		// Register the WebSockets add on with the HttpServer
         server.getListener("grizzly").registerAddOn(new WebSocketAddOn());
-        
-        // Security settings
-       // secureServer.getListener("grizzly").registerAddOn(new WebSocketAddOn());
-       // secureServer.getListener("grizzly").setSSLEngineConfig(am.getWssConfigurator());
-		//secureServer.getListener("grizzly").setSecure(true);
-		
-		//TODO read path from properties
+        		
         // register the application
         WebSocketEngine.getEngine().register("", properties.getWsPath(), this);
 		
@@ -236,17 +185,8 @@ public class WSGate extends WebSocketApplication {
 			logger.fatal("Failed to start WebSocket gate on port "+properties.getWsPort()+ " "+e.getMessage());
 			System.exit(1);
 		}
-        /*
-        try {
-			secureServer.start();
-		} catch (IOException e) {
-			logger.fatal("Failed to start Secure WebSocket gate on port "+properties.getWssPort()+ " "+e.getMessage());
-			System.exit(1);
-		}
-		*/
         
 		logger.info("Started on port "+properties.getWsPort()+properties.getWsPath());
-		//logger.info("Started on secure port "+properties.getWssPort());
 		
 		//Start the keep alive thread
 		if (properties.getKeepAlivePeriod() > 0) new KeepAlive().start();

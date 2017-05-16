@@ -1,0 +1,3 @@
+{"ports":{"ws":9000,"wss":9443,"http":8000,"https":8443},
+"timeouts":{"token":0,"maxtokens":1000,"keepalive":5000,"http":5000},
+"paths":{"http":"/sparql","https":"/sparql","ws":"/sparql","wss":"/secure/sparql","register":"/oauth/register","token":"/oauth/token"}}

@@ -63,7 +63,7 @@ public abstract class Client implements IClient {
 	
 	public Client(String url,int updatePort,int subscribePort,String path){
 		logger.debug("Opening connection to SEPA engine:"+url+" Update port:"+updatePort+" Subscribe port:"+subscribePort+ " Path: "+path);
-		SPARQL11SEProperties properties = new SPARQL11SEProperties("client.properties");
+		SPARQL11SEProperties properties = new SPARQL11SEProperties("client.json");
 		protocolClient = new SPARQL11SEProtocol(properties);	
 		logger.info(protocolClient.toString());
 	}

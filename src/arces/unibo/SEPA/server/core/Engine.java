@@ -55,8 +55,8 @@ public class Engine extends Thread implements EngineMBean,SchedulerInterface {
 	private static final Logger logger = LogManager.getLogger("Engine");
 	
 	//Properties, logging and JMX
-	private EngineProperties engineProperties = new EngineProperties("engine.properties");
-	private SPARQL11Properties endpointProperties = new SPARQL11Properties("endpoint.properties");
+	private EngineProperties engineProperties = new EngineProperties("engine.json");
+	private SPARQL11Properties endpointProperties = new SPARQL11Properties("endpoint.json");
 	
 	private final Date startDate = new Date(); 
 	

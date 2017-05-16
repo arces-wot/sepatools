@@ -97,6 +97,9 @@ public class SPUNaive extends SPU{
 		BindingsResults added = new BindingsResults(currentBindings.getVariables(),null);
 		BindingsResults removed = new BindingsResults(currentBindings.getVariables(),null);
 		
+		//Create empty bindings if null
+		if (lastBindings == null) lastBindings = new BindingsResults(null,null);
+		
 		//Find removed bindings
 		for(Bindings solution : lastBindings.getBindings()) {
 			if(!currentBindings.contains(solution) && !solution.isEmpty()) removed.add(solution);

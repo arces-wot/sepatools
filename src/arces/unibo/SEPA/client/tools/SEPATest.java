@@ -336,7 +336,7 @@ public class SEPATest {
 		}
 		scanner.close();
 		
-		properties = new SPARQL11SEProperties("client.properties");
+		properties = new SPARQL11SEProperties("client.json");
 		if (!properties.loaded()) {
 			logger.fatal("Properties file is null");
 			System.exit(-1);
@@ -414,7 +414,7 @@ public class SEPATest {
 		// Enable security
 		//**********************
 		logger.info("Switch to secure mode");
-		properties = new SPARQL11SEProperties("secureclient.properties");
+		properties = new SPARQL11SEProperties("secureclient.json");
 		client = new SPARQL11SEProtocol(properties);	
 		logger.info("SPARQL 1.1 SE Protocol Service properties: "+client.toString());
 		

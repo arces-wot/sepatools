@@ -46,17 +46,14 @@ public class WSSGate extends WSGate {
 	public boolean start(){	
 		//Create an HTTP server to which attach the websocket
 		final HttpServer server = HttpServer.createSimpleServer(null, properties.getWssPort());
-		//final HttpServer secureServer = HttpServer.createSimpleServer(null, properties.getWssPort());
 		
 		// Register the WebSockets add on with the HttpServer
         server.getListener("grizzly").registerAddOn(new WebSocketAddOn());
         
         // Security settings
-       // secureServer.getListener("grizzly").registerAddOn(new WebSocketAddOn());
         server.getListener("grizzly").setSSLEngineConfig(am.getWssConfigurator());
         server.getListener("grizzly").setSecure(true);
 		
-		//TODO read path from properties
         // register the application
         WebSocketEngine.getEngine().register("", properties.getWssPath(), this);
 		
@@ -64,20 +61,11 @@ public class WSSGate extends WSGate {
         try {
 			server.start();
 		} catch (IOException e) {
-			logger.fatal("Failed to start SECURE WebSocket gate on port "+properties.getWsPort()+ " "+e.getMessage());
+			logger.fatal("Failed to start SECURE WebSocket gate on port "+properties.getWssPort()+ " "+e.getMessage());
 			System.exit(1);
 		}
-        /*
-        try {
-			secureServer.start();
-		} catch (IOException e) {
-			logger.fatal("Failed to start Secure WebSocket gate on port "+properties.getWssPort()+ " "+e.getMessage());
-			System.exit(1);
-		}
-		*/
         
 		logger.info("Started on port "+properties.getWssPort()+properties.getWssPath());
-		//logger.info("Started on secure port "+properties.getWssPort());
 		
 		//Start the keep alive thread
 		if (properties.getKeepAlivePeriod() > 0) new KeepAlive().start();

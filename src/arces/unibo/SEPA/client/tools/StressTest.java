@@ -13,20 +13,24 @@ import arces.unibo.SEPA.commons.response.SubscribeResponse;
 import arces.unibo.SEPA.commons.response.UnsubscribeResponse;
 
 public class StressTest extends SEPATest {
+	static Consumer consumer;
+	static Producer producer;
 	
 	public static void main(String[] args) {
-		properties = new SPARQL11SEProperties("client.properties");
+		properties = new SPARQL11SEProperties("client.json");
 		if (!properties.loaded()) {
 			logger.fatal("Properties file is null");
 			System.exit(-1);
 		}
 		client = new SPARQL11SEProtocol(properties);	
 		
-		Consumer consumer = new StressTest().new Consumer();
+		consumer = new StressTest().new Consumer();
 		client.subscribe(new SubscribeRequest("select * where {?s ?p ?o}"),consumer);
-		Producer producer = new StressTest().new Producer();
+		
+		producer = new StressTest().new Producer();
 		Thread th = new Thread(producer);
 		th.start();
+		
 		synchronized(th){
 			try {
 				th.wait();
@@ -39,14 +43,18 @@ public class StressTest extends SEPATest {
 	
 	protected class Consumer implements NotificationHandler {
 		Date previous = null;
+		public float meanNotificationPeriod = 0;
+		public long notifications = 0;
 		
 		@Override
 		public void semanticEvent(Notification notify) {
+			notifications++;
 			if (previous == null) previous = new Date();
 			else {
 				Date now = new Date();
 				logger.info("Notification period "+(now.getTime()-previous.getTime())+" ms");
 				previous = now;
+				meanNotificationPeriod = (meanNotificationPeriod + (now.getTime()-previous.getTime()))/notifications;
 			}
 			
 		}
@@ -83,15 +91,20 @@ public class StressTest extends SEPATest {
 		
 	}
 	protected class Producer implements Runnable {
+		public float meanUpdatePeriod = 0;
+		public int nUpdate = 0;
 		@Override
 		public void run() {
-			int i=0;
-			while(i<1000) {
+			while(nUpdate<1000) {
 				Date start = new Date();
-				client.update(new UpdateRequest("prefix test:<http://www.vaimee.com/test#> delete {?s ?p ?o} insert {test:Sub test:Pred \""+String.format("%d", i++)+"\"} where {?s ?p ?o}"));
+				client.update(new UpdateRequest("prefix test:<http://www.vaimee.com/test#> delete {?s ?p ?o} insert {test:Sub test:Pred \""+String.format("%d", ++nUpdate)+"\"} where {?s ?p ?o}"));
 				Date stop = new Date();
-				logger.info("Update "+(stop.getTime()-start.getTime())+" ms");
-			}	
+				meanUpdatePeriod = (meanUpdatePeriod + (start.getTime()-stop.getTime()))/nUpdate;
+				
+				logger.info("Update "+(stop.getTime()-start.getTime())+" ms Mean: "+meanUpdatePeriod);
+			}
+			logger.info("Updates [Mean period: "+meanUpdatePeriod+" ms] [Number: "+nUpdate+"]");
+			logger.info("Notifications [Mean period: "+consumer.meanNotificationPeriod+" ms] [Number: "+consumer.notifications+"]");
 		}
 	}
 }

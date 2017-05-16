@@ -31,6 +31,9 @@ import javax.crypto.spec.SecretKeySpec;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
+
 import arces.unibo.SEPA.commons.protocol.SPARQL11Properties;
 
 import sun.misc.*;
@@ -39,6 +42,12 @@ import sun.misc.*;
  * The Class SPARQL11SEProperties.
  */
 public class SPARQL11SEProperties extends SPARQL11Properties {
+	private long expires = 0;
+	private String jwt = null;
+	private String tokenType = null;
+	private String authorization = null;
+	private String id = null;
+	private String secret = null;
 	
 	/** The Constant logger. */
 	private static final Logger logger = LogManager.getLogger("SPARQL11SEProperties");
@@ -68,10 +77,7 @@ public class SPARQL11SEProperties extends SPARQL11Properties {
 		REQUESTTOKEN, 
 		 /** A secure query primitive. */
 		 SECUREQUERY};
-	
-	/** The header. */
-	protected String header = "---SPARQL 1.1 SE Service properties file ---";
-	
+		
 	/**
 	 * Instantiates a new SPARQL 11 SE properties.
 	 *
@@ -98,11 +104,53 @@ public class SPARQL11SEProperties extends SPARQL11Properties {
 	@Override
 	protected void defaults() {
 		super.defaults();
-		properties.setProperty("wsPort", "9000");
-		properties.setProperty("subscribePath", "/sparql");
-		properties.setProperty("wsScheme", "ws");
-		properties.setProperty("registrationPath","/oauth/register");
-		properties.setProperty("requestTokenPath","/oauth/token");
+		
+		JsonObject subscribe = new JsonObject();
+		subscribe.add("port", new JsonPrimitive(9000));
+		subscribe.add("scheme", new JsonPrimitive("ws"));
+		subscribe.add("path", new JsonPrimitive("/sparql"));
+		properties.add("subscribe", subscribe);
+		
+		JsonObject security = new JsonObject();
+		security.add("register", new JsonPrimitive("/oauth/register"));
+		security.add("token", new JsonPrimitive("/oauth/token"));
+		properties.add("security", security);
+	}
+	
+	protected boolean loadProperties(){
+		boolean ret = super.loadProperties();
+		
+		if (properties.get("security").getAsJsonObject().get("expires") != null) 
+			expires = Long.decode(SEPAEncryption.decrypt(properties.get("security").getAsJsonObject().get("expires").getAsString()));
+		else
+			expires = 0;
+		
+		if (properties.get("security").getAsJsonObject().get("jwt") != null) 
+			jwt = SEPAEncryption.decrypt(properties.get("security").getAsJsonObject().get("jwt").getAsString());
+		else
+			jwt = null;
+		
+		if (properties.get("security").getAsJsonObject().get("type") != null) 
+			tokenType =  SEPAEncryption.decrypt(properties.get("security").getAsJsonObject().get("type").getAsString());
+		else
+			tokenType = null;
+		
+		if (properties.get("security").getAsJsonObject().get("client_id") != null && properties.get("security").getAsJsonObject().get("client_secret") != null ) {
+			id = SEPAEncryption.decrypt(properties.get("security").getAsJsonObject().get("client_id").getAsString());
+			secret = SEPAEncryption.decrypt(properties.get("security").getAsJsonObject().get("client_secret").getAsString());
+			try {
+				authorization = new BASE64Encoder().encode((id + ":" + secret).getBytes("UTF-8"));
+				
+				//TODO need a "\n", why?
+				authorization = authorization.replace("\n", "");
+			} catch (UnsupportedEncodingException e) {
+				logger.error(e.getMessage());
+			}	
+		}
+		else
+			authorization = null;
+		
+		return ret;
 	}
 	
 	/**
@@ -111,7 +159,7 @@ public class SPARQL11SEProperties extends SPARQL11Properties {
 	 * @return the ws port
 	 */
 	public int getWsPort() {
-		return Integer.decode(properties.getProperty("wsPort", "9000"));
+		return properties.get("subscribe").getAsJsonObject().get("port").getAsInt();
 	}
 	
 	/**
@@ -120,7 +168,7 @@ public class SPARQL11SEProperties extends SPARQL11Properties {
 	 * @return the subscribe path
 	 */
 	public String getSubscribePath() {
-		return properties.getProperty("subscribePath", "/sparql");
+		return properties.get("subscribe").getAsJsonObject().get("path").getAsString();
 	}
 	
 	/**
@@ -129,7 +177,7 @@ public class SPARQL11SEProperties extends SPARQL11Properties {
 	 * @return the ws scheme
 	 */
 	public String getWsScheme() {
-		return properties.getProperty("wsScheme", "ws");
+		return properties.get("subscribe").getAsJsonObject().get("scheme").getAsString();
 	}
 	
 	/**
@@ -138,7 +186,7 @@ public class SPARQL11SEProperties extends SPARQL11Properties {
 	 * @return the registration path
 	 */
 	public String getRegistrationPath() {
-		return properties.getProperty("registrationPath","/oauth/register");
+		return properties.get("security").getAsJsonObject().get("register").getAsString();
 	}
 
 	/**
@@ -147,7 +195,7 @@ public class SPARQL11SEProperties extends SPARQL11Properties {
 	 * @return the request token path
 	 */
 	public String getRequestTokenPath() {
-		return properties.getProperty("requestTokenPath","/oauth/token");
+		return properties.get("security").getAsJsonObject().get("token").getAsString();
 	}
 	
 	/**
@@ -156,8 +204,6 @@ public class SPARQL11SEProperties extends SPARQL11Properties {
 	 * @return true, if is token expired
 	 */
 	public boolean isTokenExpired() {
-		long expires = 0;
-		if (properties.getProperty("expires") != null) expires = Long.decode(SEPAEncryption.decrypt(properties.getProperty("expires")));
 		return (new Date().getTime() >= expires);
 	}
 	
@@ -167,8 +213,6 @@ public class SPARQL11SEProperties extends SPARQL11Properties {
 	 * @return the expiring seconds
 	 */
 	public long getExpiringSeconds() {
-		long expires = 0;
-		if (properties.getProperty("expires") != null) expires = Long.decode(SEPAEncryption.decrypt(properties.getProperty("expires")));
 		long seconds = ((expires - new Date().getTime())/1000);
 		if (seconds < 0) seconds = 0;
 		return seconds;
@@ -180,8 +224,7 @@ public class SPARQL11SEProperties extends SPARQL11Properties {
 	 * @return the access token
 	 */
 	public String getAccessToken() {
-		if (properties.getProperty("jwt") != null) return SEPAEncryption.decrypt(properties.getProperty("jwt"));
-		return null;	
+		return jwt;	
 	}
 
 	/**
@@ -190,8 +233,7 @@ public class SPARQL11SEProperties extends SPARQL11Properties {
 	 * @return the token type
 	 */
 	public String getTokenType() {
-		if (properties.getProperty("type") != null) return SEPAEncryption.decrypt(properties.getProperty("type"));
-		return null;
+		return tokenType;
 	}
 	
 	/**
@@ -199,17 +241,8 @@ public class SPARQL11SEProperties extends SPARQL11Properties {
 	 *
 	 * @return the basic authorization
 	 */
-	public String getBasicAuthorization() {
-		if (properties.getProperty("client_id") == null || properties.getProperty("client_id") == null ) return null;
-		
-		try {
-			String authorization = new BASE64Encoder().encode((SEPAEncryption.decrypt(properties.getProperty("client_id")) + ":" + SEPAEncryption.decrypt(properties.getProperty("client_secret"))).getBytes("UTF-8"));
-			//TODO need a "\n", why?
-			return authorization.replace("\n", "");
-		} catch (UnsupportedEncodingException e) {
-			logger.error(e.getMessage());
-		}	
-		return null;
+	public String getBasicAuthorization() {	
+		return authorization;
 	}
 	
 	/**
@@ -221,9 +254,22 @@ public class SPARQL11SEProperties extends SPARQL11Properties {
 	public void setCredentials(String id,String secret) {	
 		logger.debug("Set credentials Id: "+id+" Secret:"+secret);
 		
+		this.id = id;
+		this.secret = secret;
+		
+		try {
+			authorization = new BASE64Encoder().encode((id + ":" + secret).getBytes("UTF-8"));
+			
+			//TODO need a "\n", why?
+			authorization = authorization.replace("\n", "");
+		} catch (UnsupportedEncodingException e) {
+			logger.error(e.getMessage());
+		}
+		
 		//Save on file the encrypted version
-		properties.setProperty("client_id", SEPAEncryption.encrypt(id));
-		properties.setProperty("client_secret", SEPAEncryption.encrypt(secret));
+		properties.get("security").getAsJsonObject().add("client_id",new JsonPrimitive(SEPAEncryption.encrypt(id)));
+		properties.get("security").getAsJsonObject().add("client_secret",new JsonPrimitive(SEPAEncryption.encrypt(secret)));
+		
 		storeProperties(propertiesFile);
 	}
 	
@@ -234,11 +280,17 @@ public class SPARQL11SEProperties extends SPARQL11Properties {
 	 * @param expires the date when the token will expire
 	 * @param type the token type (e.g., bearer)
 	 */
-	public void setJWT(String jwt, Date expires,String type) {		
+	public void setJWT(String jwt, Date expires,String type) {	
+		
+		this.jwt = jwt;
+		this.expires = expires.getTime();
+		this.tokenType = type;
+		
 		//Save on file the encrypted version
-		properties.setProperty("jwt", SEPAEncryption.encrypt(jwt));
-		properties.setProperty("expires",SEPAEncryption.encrypt(String.format("%d", expires.getTime())));
-		properties.setProperty("type", SEPAEncryption.encrypt(type));
+		properties.get("security").getAsJsonObject().add("jwt",new JsonPrimitive(SEPAEncryption.encrypt(jwt)));
+		properties.get("security").getAsJsonObject().add("expires",new JsonPrimitive(SEPAEncryption.encrypt(String.format("%d", expires.getTime()))));
+		properties.get("security").getAsJsonObject().add("type",new JsonPrimitive(SEPAEncryption.encrypt(type)));
+		
 		storeProperties(propertiesFile);
 	}
 	

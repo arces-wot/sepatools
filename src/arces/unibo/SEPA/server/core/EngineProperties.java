@@ -17,24 +17,25 @@
 */
 package arces.unibo.SEPA.server.core;
 
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 
-import java.util.Properties;
-
 import org.apache.logging.log4j.Logger;
+
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
 
 import org.apache.logging.log4j.LogManager;
 
 public class EngineProperties {
 	private static final Logger logger = LogManager.getLogger("EngineProperties");
 	
-	private String defaultsFileName = "engine.defaults";
-	private String propertiesFile = "engine.properties";
+	private String defaultsFileName = "enginedefaults.json";
+	private String propertiesFile = "engine.json";
 		
-	private Properties properties = new Properties();
+	private JsonObject properties = new JsonObject();
 	private boolean loaded;
 	
 	public EngineProperties(String propertiesFile) {
@@ -48,38 +49,45 @@ public class EngineProperties {
 	}
 	
 	protected void defaults() {
-		properties.setProperty("httpTimeout","2000");
+		JsonObject port = new JsonObject();
+		port.add("ws", new JsonPrimitive(9000));
+		port.add("wss", new JsonPrimitive(9443));
+		port.add("http", new JsonPrimitive(8000));
+		port.add("https", new JsonPrimitive(8443));
+		properties.add("ports", port);
 		
-		properties.setProperty("wsPort","9000");
-		properties.setProperty("httpsPort","8443");
-		properties.setProperty("wssPort","9443");
-		properties.setProperty("httpPort","8000");
+		JsonObject timeouts = new JsonObject();
+		timeouts.add("token", new JsonPrimitive(0));
+		timeouts.add("maxtokens", new JsonPrimitive(1000));
+		timeouts.add("keepalive", new JsonPrimitive(5000));
+		timeouts.add("http", new JsonPrimitive(5000));
+		properties.add("timeouts", timeouts);
 		
-		properties.setProperty("tokenTimeout","0");
-		properties.setProperty("maxTokens","100");
-		properties.setProperty("keepAlivePeriod","5000");
-		
-		properties.setProperty("httpPath","/sparql");
-		properties.setProperty("httpsPath","/sparql");
-		properties.setProperty("wsPath","/sparql");
-		properties.setProperty("wssPath","/sparql");
-		
-		properties.setProperty("registerPath","/oauth/register");
-		properties.setProperty("tokenRequestPath","/oauth/token");
+		JsonObject path = new JsonObject();
+		path.add("http",new JsonPrimitive("/sparql"));
+		path.add("https",new JsonPrimitive("/sparql"));
+		path.add("ws",new JsonPrimitive("/sparql"));
+		path.add("wss",new JsonPrimitive("/secure/sparql"));
+		path.add("register",new JsonPrimitive("/oauth/register"));
+		path.add("token",new JsonPrimitive("/oauth/token"));
+		properties.add("paths",path);
 		
 		//Add new properties here...
 	}
 		
 	private boolean loadProperties(){
-		FileInputStream in = null;
+		FileReader in = null;
 		try {
-			in = new FileInputStream(propertiesFile);
-			if (in != null) properties.load(in);
+			in = new FileReader(propertiesFile);
+			if (in != null) {
+				properties = new JsonParser().parse(in).getAsJsonObject();
+			}
 			if (in != null) in.close();
 		} catch (IOException e) {
 			logger.warn(e.getMessage());
 			
 			defaults();
+			
 			if(storeProperties(defaultsFileName)) {
 				logger.warn("USING DEFAULTS. Edit \""+defaultsFileName+"\" and rename it to \""+propertiesFile+"\"");
 			}
@@ -88,54 +96,45 @@ public class EngineProperties {
 		return true;
 	}
 	
-	private boolean storeProperties(String propertiesFile) {		
-		FileOutputStream out;
+	private boolean storeProperties(String propertiesFile) {
+		FileWriter out;
 		try {
-			out = new FileOutputStream(propertiesFile);
-		} catch (FileNotFoundException e) {
-			logger.error("Open properties file FAILED "+propertiesFile);
-			return false;
-		}
-		try {
-			properties.store(out, "---SUB Engine properties file ---");
-		} catch (IOException e) {
-			logger.error("Store properties file FAILED "+propertiesFile);
-			return false;
-		}
-		try {
+			out = new FileWriter(propertiesFile);
+			out.write(properties.toString());
 			out.close();
 		} catch (IOException e) {
-			logger.error("Close properties file FAILED "+propertiesFile);
+			logger.error("Write properties file FAILED "+propertiesFile);
 			return false;
 		}
+
 		return true;
 	}
 	
-	public int getHttpTimeout() {return Integer.parseInt(properties.getProperty("httpTimeout", "2000"));}
+	public int getHttpTimeout() {return properties.get("timeouts").getAsJsonObject().get("http").getAsInt();}
 	
-	public int getWsPort() {return Integer.parseInt(properties.getProperty("wsPort", "9000"));}
+	public int getWsPort() {return properties.get("ports").getAsJsonObject().get("ws").getAsInt();}
 
-	public int getHttpsPort() {return Integer.parseInt(properties.getProperty("httpsPort", "8443"));}
+	public int getHttpsPort() {return properties.get("ports").getAsJsonObject().get("https").getAsInt();}
 
-	public int getWssPort() {return Integer.parseInt(properties.getProperty("wssPort", "9443"));}
+	public int getWssPort() {return properties.get("ports").getAsJsonObject().get("wss").getAsInt();}
 
-	public int getHttpPort() {return Integer.parseInt(properties.getProperty("httpPort", "8000"));}
+	public int getHttpPort() {return properties.get("ports").getAsJsonObject().get("http").getAsInt();}
 
-	public long getTokenTimeout() {return Integer.parseInt(properties.getProperty("tokenTimeout", "0"));}
+	public long getTokenTimeout() {return properties.get("timeouts").getAsJsonObject().get("token").getAsInt();}
 
-	public int getMaxTokens() {return Integer.parseInt(properties.getProperty("maxTokens", "1000"));}
+	public int getMaxTokens() {return properties.get("timeouts").getAsJsonObject().get("maxtokens").getAsInt();}
 
-	public int getKeepAlivePeriod() {return Integer.parseInt(properties.getProperty("keepAlivePeriod", "5000"));}
+	public int getKeepAlivePeriod() {return properties.get("timeouts").getAsJsonObject().get("keepalive").getAsInt();}
 
-	public String getHttpPath() {return properties.getProperty("httpPath", "/sparql");}
+	public String getHttpPath() {return properties.get("paths").getAsJsonObject().get("http").getAsString();}
 	
-	public String getHttpsPath() {return properties.getProperty("httpsPath", "/sparql");}
+	public String getHttpsPath() {return properties.get("paths").getAsJsonObject().get("https").getAsString();}
 	
-	public String getWsPath() {return properties.getProperty("wsPath", "/sparql");}
+	public String getWsPath() {return properties.get("paths").getAsJsonObject().get("ws").getAsString();}
 	
-	public String getWssPath() {return properties.getProperty("wssPath", "/sparql");}
+	public String getWssPath() {return properties.get("paths").getAsJsonObject().get("wss").getAsString();}
 
-	public String getRegisterPath() {return properties.getProperty("registerPath", "/oauth/register");}
+	public String getRegisterPath() {return properties.get("paths").getAsJsonObject().get("register").getAsString();}
 	
-	public String getTokenRequestPath() {return properties.getProperty("tokenRequestPath", "/oauth/token");}
+	public String getTokenRequestPath() {return properties.get("paths").getAsJsonObject().get("token").getAsString();}
 }

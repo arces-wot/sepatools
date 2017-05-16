@@ -18,18 +18,19 @@
 
 package arces.unibo.SEPA.commons.protocol;
 
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
-import java.util.Properties;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
+
 public class SPARQL11Properties {
 	private static final Logger logger = LogManager.getLogger("SPARQL11ProtocolProperties");
-	protected String header = "---SPARQL 1.1 Service properties file ---";
 	
 	public enum SPARQLPrimitive {QUERY,UPDATE};
 	public enum HTTPMethod {GET,POST,URL_ENCODED_POST};
@@ -37,9 +38,9 @@ public class SPARQL11Properties {
 	public enum UpdateResultsFormat {HTML,JSON};
 	
 	//Properties file
-	protected String defaultsFileName = "endpoint.defaults";
-	protected String propertiesFile = "endpoint.properties";
-	protected Properties properties = new Properties();
+	protected String defaultsFileName = "endpointdefaults.json";
+	protected String propertiesFile = "endpoint.json";
+	protected JsonObject properties = new JsonObject();
 	private boolean loaded = false;
 	
 	public SPARQL11Properties(String propertiesFile) {
@@ -53,27 +54,36 @@ public class SPARQL11Properties {
 	}
 	
 	protected void defaults() {
-		properties.setProperty("host", "localhost");
-		properties.setProperty("httpPort", "8000");
-		properties.setProperty("queryPath", "/sparql");
-		properties.setProperty("updatePath", "/sparql");
-		properties.setProperty("queryMethod", "POST");
-		properties.setProperty("updateMethod", "POST");
-		properties.setProperty("queryResultsFormat", "JSON");
-		properties.setProperty("updateResultsFormat", "HTML");
-		properties.setProperty("httpScheme", "http");
+		properties.add("host", new JsonPrimitive("localhost"));
+		properties.add("port", new JsonPrimitive(9999));
+		properties.add("scheme", new JsonPrimitive("http"));
+		
+		JsonObject query = new JsonObject();
+		query.add("path", new JsonPrimitive("/blazegraph/namespace/kb/sparql"));
+		query.add("method", new JsonPrimitive("POST"));
+		query.add("format", new JsonPrimitive("JSON"));
+		properties.add("query", query);
+		
+		JsonObject update = new JsonObject();
+		update.add("path", new JsonPrimitive("/blazegraph/namespace/kb/sparql"));
+		update.add("method", new JsonPrimitive("URL_ENCODED_POST"));
+		update.add("format", new JsonPrimitive("HTML"));
+		properties.add("update", update);
 	}
 	
-	private boolean loadProperties(){
-		FileInputStream in = null;
+	protected boolean loadProperties(){
+		FileReader in = null;
 		try {
-			in = new FileInputStream(propertiesFile);
-			if (in != null) properties.load(in);
+			in = new FileReader(propertiesFile);
+			if (in != null) {
+				properties = new JsonParser().parse(in).getAsJsonObject();
+			}
 			if (in != null) in.close();
 		} catch (IOException e) {
 			logger.warn(e.getMessage());
 			
 			defaults();
+			
 			if(storeProperties(defaultsFileName)) {
 				logger.warn("USING DEFAULTS. Edit \""+defaultsFileName+"\" and rename it to \""+propertiesFile+"\"");
 			}
@@ -82,51 +92,42 @@ public class SPARQL11Properties {
 		return true;
 	}
 	
-	protected boolean storeProperties(String propertiesFile) {		
-		FileOutputStream out;
+	protected boolean storeProperties(String propertiesFile) {
+		FileWriter out;
 		try {
-			out = new FileOutputStream(propertiesFile);
-		} catch (FileNotFoundException e) {
-			logger.error("Error on opening properties file: "+propertiesFile);
-			return false;
-		}
-		try {
-			properties.store(out, header);
-		} catch (IOException e) {
-			logger.error("Error on storing properties file: "+propertiesFile);
-			return false;
-		}
-		try {
+			out = new FileWriter(propertiesFile);
+			out.write(properties.toString());
 			out.close();
 		} catch (IOException e) {
-			logger.error("Error on closing properties file: "+propertiesFile);
+			logger.error("Write properties file FAILED "+propertiesFile);
 			return false;
 		}
+
 		return true;
 	}
 	
 	public String getHost() {
-		return properties.getProperty("host", "localhost");
+		return properties.get("host").getAsString();
 	}
 	
 	public String getHttpScheme() {
-		return properties.getProperty("httpScheme", "http");
+		return properties.get("scheme").getAsString();
 	}
 	
 	public int getHttpPort() {
-		return Integer.decode(properties.getProperty("httpPort", "9999"));
+		return properties.get("port").getAsInt();
 	}
 	
 	public String getQueryPath() {
-		return properties.getProperty("queryPath", "/blazegraph/namespace/kb/sparql");
+		return properties.get("query").getAsJsonObject().get("path").getAsString();
 	}
 	
 	public String getUpdatePath() {
-		return properties.getProperty("updatePath",  "/blazegraph/namespace/kb/sparql");
+		return properties.get("update").getAsJsonObject().get("path").getAsString();
 	}
 	
 	public HTTPMethod getQueryMethod() {
-		switch(properties.getProperty("queryMethod", "POST").toUpperCase()){
+		switch(properties.get("query").getAsJsonObject().get("method").getAsString()){
 			case "POST": return HTTPMethod.POST;
 			case "GET": return HTTPMethod.GET;
 			case "URL_ENCODED_POST": return HTTPMethod.URL_ENCODED_POST;
@@ -135,19 +136,27 @@ public class SPARQL11Properties {
 	}
 	
 	public QueryResultsFormat getQueryResultsFormat() {
-		if(properties.getProperty("queryResultsFormat", "JSON").equals("JSON")) return QueryResultsFormat.JSON;
-		else if(properties.getProperty("queryResultsFormat", "JSON").equals("XML")) return QueryResultsFormat.XML;
-		else return QueryResultsFormat.CSV;
+		switch(properties.get("query").getAsJsonObject().get("format").getAsString()) {
+			case "JSON" : return QueryResultsFormat.JSON;
+			case "XML" : return QueryResultsFormat.XML;
+			case "CSV": return QueryResultsFormat.CSV;
+			default: return QueryResultsFormat.JSON;
+		}
 	}
 	
 	public HTTPMethod getUpdateMethod() {
-		if(properties.getProperty("updateMethod", "POST").equals("POST")) return HTTPMethod.POST;
-		return HTTPMethod.URL_ENCODED_POST;	
+		switch(properties.get("update").getAsJsonObject().get("method").getAsString()){
+			case "POST": return HTTPMethod.POST;
+			case "URL_ENCODED_POST": return HTTPMethod.URL_ENCODED_POST;
+			default: return HTTPMethod.POST;
+		}	
 	}
 	
-/*				
-				if(getProperty("updateResultsFormat", "HTML").equals("HTML")) updateResultsFormat = UpdateResultsFormat.HTML;
-				else updateResultsFormat = UpdateResultsFormat.JSON;
-
-	*/
+	public UpdateResultsFormat getUpdateResultsFormat() {
+		switch(properties.get("update").getAsJsonObject().get("format").getAsString()) {
+			case "JSON" : return UpdateResultsFormat.JSON;
+			case "HTML" : return UpdateResultsFormat.HTML;
+			default: return UpdateResultsFormat.JSON;
+		}
+	}
 }
