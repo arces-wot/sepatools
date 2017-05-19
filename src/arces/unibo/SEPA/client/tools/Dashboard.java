@@ -700,12 +700,12 @@ public class Dashboard {
 				subscribeListDM.add(subscribe);
 			}
 			
-			textFieldIP.setText(appProfile.getParameters().getUrl());
-			textFieldUPort.setText(String.format("%d", appProfile.getParameters().getUpdatePort()));
-			textFieldSPort.setText(String.format("%d", appProfile.getParameters().getSubscribePort()));
-			txtFieldPath.setText(appProfile.getParameters().getPath());
-			textFieldUPortSecure.setText(String.format("%d", appProfile.getParameters().getUpdateSecurePort()));
-			textFieldSPortSecure.setText(String.format("%d", appProfile.getParameters().getSubscribeSecurePort()));
+			textFieldIP.setText(appProfile.getHost());
+			textFieldUPort.setText(String.format("%d", appProfile.getPort()));
+			textFieldSPort.setText(String.format("%d", appProfile.getSubscribePort()));
+			txtFieldPath.setText(appProfile.getPath());
+			textFieldUPortSecure.setText(String.format("%d", appProfile.getSecurePort()));
+			textFieldSPortSecure.setText(String.format("%d", appProfile.getSecureSubscribePort()));
 			
 			//Enable all the buttons
 			btnUpdate.setEnabled(true);

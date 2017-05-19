@@ -22,7 +22,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.Reader;
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map.Entry;
 import java.util.Set;
 
@@ -66,227 +66,240 @@ import arces.unibo.SEPA.commons.SPARQL.RDFTermURI;
 */
 public class ApplicationProfile {	
 	protected Logger logger = LogManager.getLogger("SAP");	
-	
-	protected HashMap<String,String> updateMap = new HashMap<>();
-	protected HashMap<String,String> subscribeMap = new HashMap<>();
-	
-	protected HashMap<String,Bindings> updateBindingsMap = new HashMap<>();
-	protected HashMap<String,Bindings> subscribeBindingsMap = new HashMap<>();
-	
-	protected HashMap<String,String> namespaceMap = new HashMap<>();
-	
-	protected Parameters params = new Parameters();
-	
+
 	protected boolean loaded = false;
+	private JsonObject doc = null;
 	
-	public class Parameters {
-		private String url = "mml.arces.unibo.it";
-		private int updatePort = 8000;
-		private int subscribePort = 9000;
-		private String path = "/sparql";
-		private int updateSecurePort = 8443;
-		private int subscribeSecurePort = 9443;
-		
-		public String getUrl() {
-			return url;
-		}
-		public void setUrl(String url) {
-			this.url = url;
-		}
-		public int getUpdatePort() {
-			return updatePort;
-		}
-		public void setUpdatePort(int port) {
-			this.updatePort = port;
-		}
-		public String getPath() {
-			return path;
-		}
-		public void setPath(String path) {
-			this.path = path;
-		}
-		public void setSubscribePort(int port) {
-			this.subscribePort = port;
-		}
-		public int getSubscribePort() {
-			return subscribePort;
-		}
-		public int getUpdateSecurePort() {
-			return updateSecurePort;
-		}
-		public void setUpdateSecurePort(int updateSecurePort) {
-			this.updateSecurePort = updateSecurePort;
-		}
-		public int getSubscribeSecurePort() {
-			return subscribeSecurePort;
-		}
-		public void setSubscribeSecurePort(int subscribeSecurePort) {
-			this.subscribeSecurePort = subscribeSecurePort;
-		}
+	/**
+	  "updates": {
+		"ADD_PERSON":{
+	    "sparql":"INSERT DATA { ?person rdf:type iot:Person . ?person iot:hasName ?name }",
+	    "forcedBindings": {
+		"person" : {"type":"uri", "value":""},
+		"name" : {"type":"literal", "value":""}}}
+    }, 
+	 */
+	public String update(String updateID) {
+		JsonElement elem = null;
+		if ((elem = doc.get("updates")) != null) 
+			if ((elem = elem.getAsJsonObject().get(updateID))!=null)
+				if ((elem = elem.getAsJsonObject().get("sparql"))!=null) return elem.getAsString();
+		return null;
 	}
 	
-	public String qName(String uri){
-		if (uri == null) return null;
-		for (String prefix : namespaceMap.keySet()) {
-			if (uri.startsWith(namespaceMap.get(prefix))) return uri.replace(namespaceMap.get(prefix), prefix+":");
-		}
-		return uri;
+	public String subscribe(String subscribeID) {
+		JsonElement elem = null;
+		if ((elem = doc.get("subscribes")) != null) 
+			if ((elem = elem.getAsJsonObject().get(subscribeID))!=null)
+				if ((elem = elem.getAsJsonObject().get("sparql"))!=null) return elem.getAsString();
+		return null;
 	}
 	
-	public Set<String> getSubscribeIds() {return subscribeMap.keySet();}
-	public Set<String> getUpdateIds() {return updateMap.keySet();}
-	public Set<String> getPrefixes() {return namespaceMap.keySet();}
-	public Parameters getParameters() {return params;}
-	
-	public String getNamespaceURI(String prefix) {
-		String ret = namespaceMap.get(prefix);
-		if (ret == null) logger.error("Prefix " + prefix + " NOT FOUND");
+	public Set<String> getUpdateIds() {
+		JsonElement elem;
+		HashSet<String> ret = new HashSet<String>();
+		if((elem = doc.get("updates"))!=null)
+			for (Entry<String, JsonElement> key :elem.getAsJsonObject().entrySet()){
+				ret.add(key.getKey());
+			}
 		return ret;
 	}
-	public Bindings subscribeBindings(String id) {
-		return subscribeBindingsMap.get(id);
+	
+	public Set<String> getSubscribeIds() {
+		JsonElement elem;
+		HashSet<String> ret = new HashSet<String>();
+		if((elem = doc.get("subscribes"))!=null)
+			for (Entry<String, JsonElement> key :elem.getAsJsonObject().entrySet()){
+				ret.add(key.getKey());
+			}
+		return ret;
 	}
 	
-	public Bindings updateBindings(String id) {
-		return updateBindingsMap.get(id);
-	}
-	
-	public String subscribe(String id) {
-		if (!subscribeMap.containsKey(id)) {
-			logger.error("SUBSCRIBE ID <" + id + "> NOT FOUND");
-			return null;
-		}
-		return subscribeMap.get(id);
-	}
-	
-	public String update(String id) {
-		if (!updateMap.containsKey(id)) {
-			logger.error("UPDATE ID <" + id + "> NOT FOUND");
-			return null;
-		}
-		return updateMap.get(id);
-	}
+	/**
+	 * "forcedBindings": {
+		"person" : {"type":"uri", "value":""},
+		"name" : {"type":"literal", "value":""}}}
 		
+	 * @param selectedValue
+	 * @return
+	 */
+	public Bindings updateBindings(String selectedValue) {
+		JsonElement elem;
+		Bindings ret = new Bindings();
+		if ((elem = doc.get("updates")) !=null)
+			if((elem = elem.getAsJsonObject().get(selectedValue))!=null)
+				if((elem = elem.getAsJsonObject().get("forcedBindings"))!=null) {
+					for (Entry<String, JsonElement> binding : elem.getAsJsonObject().entrySet()) {
+						JsonObject value = binding.getValue().getAsJsonObject();
+						RDFTerm bindingValue = null;
+				
+						if (value.get("type")!=null){
+							if(value.get("type").getAsString().equals("uri")) {
+								bindingValue = new RDFTermURI(value.get("value").getAsString());
+							}
+							else {
+								bindingValue = new RDFTermLiteral(value.get("value").getAsString());
+							}
+						}
+						ret.addBinding(binding.getKey(), bindingValue);
+					}
+				}
+		return ret;
+	}
+	
+	public Bindings subscribeBindings(String selectedValue) {
+		JsonElement elem;
+		Bindings ret = new Bindings();
+		if ((elem = doc.get("subscribes")) !=null)
+			if((elem = elem.getAsJsonObject().get(selectedValue))!=null)
+				if((elem = elem.getAsJsonObject().get("forcedBindings"))!=null) {
+					for (Entry<String, JsonElement> binding : elem.getAsJsonObject().entrySet()) {
+						JsonObject value = binding.getValue().getAsJsonObject();
+						RDFTerm bindingValue = null;
+				
+						if (value.get("type")!=null){
+							if(value.get("type").getAsString().equals("uri")) {
+								bindingValue = new RDFTermURI(value.get("value").getAsString());
+							}
+							else {
+								bindingValue = new RDFTermLiteral(value.get("value").getAsString());
+							}
+						}
+						ret.addBinding(binding.getKey(), bindingValue);
+					}
+				}
+		return ret;
+	}
+	
+	/**
+	"parameters":{
+	  	"ports":{"ws":9000,"wss":9443,"http":8000,"https":8443},
+		"paths":{"http":"/sparql","https":"/sparql","ws":"/sparql","wss":"/secure/sparql","register":"/oauth/register","token":"/oauth/token"},
+	    "host": "localhost"
+	   }
+	*/
+	
+	public String getHost() {
+		JsonElement elem = null;
+		if ((elem = doc.get("parameters")) != null) 
+			if ((elem = elem.getAsJsonObject().get("host"))!=null) return elem.getAsString();
+		return null;
+	}
+
+	public int getPort() {
+		JsonElement elem = null;
+		if ((elem = doc.get("parameters")) != null) 
+			if ((elem = elem.getAsJsonObject().get("ports"))!=null) 
+				if ((elem = elem.getAsJsonObject().get("http"))!=null) return elem.getAsInt();
+		return -1;
+	}
+	
+	public int getSecurePort() {
+		JsonElement elem = null;
+		if ((elem = doc.get("parameters")) != null) 
+			if ((elem = elem.getAsJsonObject().get("ports"))!=null) 
+				if ((elem = elem.getAsJsonObject().get("https"))!=null) return elem.getAsInt();
+		return -1;
+	}
+
+	public int getSubscribePort() {
+		JsonElement elem = null;
+		if ((elem = doc.get("parameters")) != null) 
+			if ((elem = elem.getAsJsonObject().get("ports"))!=null) 
+				if ((elem = elem.getAsJsonObject().get("ws"))!=null) return elem.getAsInt();
+		return -1;
+	}
+	
+	public int getSecureSubscribePort() {
+		JsonElement elem = null;
+		if ((elem = doc.get("parameters")) != null) 
+			if ((elem = elem.getAsJsonObject().get("ports"))!=null) 
+				if ((elem = elem.getAsJsonObject().get("wss"))!=null) return elem.getAsInt();
+		return -1;
+	}
+
+	public String getPath() {
+		JsonElement elem = null;
+		if ((elem = doc.get("parameters")) != null) 
+			if ((elem = elem.getAsJsonObject().get("paths"))!=null) 
+				if ((elem = elem.getAsJsonObject().get("http"))!=null) return elem.getAsString();
+		return null;
+	}
+	
+	public String getSecurePath() {
+		JsonElement elem = null;
+		if ((elem = doc.get("parameters")) != null) 
+			if ((elem = elem.getAsJsonObject().get("paths"))!=null) 
+				if ((elem = elem.getAsJsonObject().get("https"))!=null) return elem.getAsString();
+		return null;
+	}
+	
+	public String getSecureSubscribePath() {
+		JsonElement elem = null;
+		if ((elem = doc.get("parameters")) != null) 
+			if ((elem = elem.getAsJsonObject().get("paths"))!=null) 
+				if ((elem = elem.getAsJsonObject().get("wss"))!=null) return elem.getAsString();
+		return null;
+	}
+	
+	public String getSubscribePath() {
+		JsonElement elem = null;
+		if ((elem = doc.get("parameters")) != null) 
+			if ((elem = elem.getAsJsonObject().get("paths"))!=null) 
+				if ((elem = elem.getAsJsonObject().get("ws"))!=null) return elem.getAsString();
+		return null;
+	}
+
+	/**
+	 * "namespaces" : { "iot":"http://www.arces.unibo.it/iot#","rdf":"http://www.w3.org/1999/02/22-rdf-syntax-ns#"},
+	 */
+	     	
+	public Set<String> getPrefixes() {
+		JsonElement elem;
+		HashSet<String> ret = new HashSet<String>();
+		if((elem = doc.get("namespaces"))!=null)
+			for (Entry<String, JsonElement> key :elem.getAsJsonObject().entrySet()){
+				ret.add(key.getKey());
+			}
+		return ret;
+	}
+	
+	public String getNamespaceURI(String prefix) {
+		JsonElement elem;
+		String ret = null;
+		if((elem = doc.get("namespaces"))!=null)
+			if((elem = elem.getAsJsonObject().get(prefix))!= null)
+				return elem.getAsString();
+		return ret;
+	}
+	
 	public synchronized boolean load(String fileName){
 		
 		loaded = false;
 		
-		subscribeMap.clear();
-		subscribeBindingsMap.clear();
-		updateMap.clear();
-		updateBindingsMap.clear();
-		namespaceMap.clear();
+		logger.debug("Loading: "+fileName);
 		
-		File inputFile = new File(fileName);
-		Reader reader = null;
 		try {
-			reader = new FileReader(inputFile);
+			File inputFile = new File(fileName);
+			Reader reader = new FileReader(inputFile);
+			doc = new JsonParser().parse(reader).getAsJsonObject();
+			if (doc == null) {
+				logger.error("Failed to parse "+fileName);
+				return false;
+			}
 		} catch (FileNotFoundException e) {
 			logger.error(e.getMessage());
 			return false;
 		}
-		JsonObject doc = new JsonParser().parse(reader).getAsJsonObject();
 		
-		if (doc == null) {
-			logger.error("Failed to parse "+fileName);
-			return false;
-		}
-
-		/*		
-		"parameters" : { "path":"sparql",
-		     "subscribeSecurePort":9443, "subscribePort":9000,
-		     "updateSecurePort":8443, "updatePort":8000,
-		     "host":"localhost"},
-		*/
-		JsonElement elem;
-		JsonObject obj;
-		if ((obj = doc.get("parameters").getAsJsonObject()) !=null){
-			if ((elem = obj.get("path")) != null) params.setPath(elem.getAsString());
-			if ((elem = obj.get("subscribeSecurePort")) != null) params.setSubscribeSecurePort(elem.getAsInt());
-			if ((elem = obj.get("subscribePort")) != null) params.setSubscribePort(elem.getAsInt());
-			if ((elem = obj.get("updateSecurePort")) != null) params.setUpdateSecurePort(elem.getAsInt());
-			if ((elem = obj.get("updatePort")) != null) params.setUpdatePort(elem.getAsInt());
-			if ((elem = obj.get("host")) != null) params.setUrl(elem.getAsString());
-		}
-		else logger.warn("Parameters key not found...using defaults");
-
-		/* "namespaces" : { "iot":"http://www.arces.unibo.it/iot#",
-		     "rdf":"http://www.w3.org/1999/02/22-rdf-syntax-ns#"},
-		*/
-		if ((obj = doc.get("namespaces").getAsJsonObject()) !=null){
-			for(Entry<String, JsonElement> entry :obj.entrySet()) namespaceMap.put(entry.getKey(), entry.getValue().getAsString());
-		}
-		else logger.warn("Namespaces key not found");
-		
-		/*
-   		"updates": {
-			"ADD_PERSON":{
-	    		"sparql":"INSERT DATA { ?person rdf:type iot:Person . ?person iot:hasName ?name }",
-	    		"forcedBindings": {
-					"person" : {"type":"uri", "value":""},
-					"name" : {"type":"literal", "value":""}}}
-   		},    
-		 */
-		if ((obj = doc.get("updates").getAsJsonObject()) !=null){
-			for(Entry<String, JsonElement> entry :obj.entrySet()) {
-				JsonObject update = entry.getValue().getAsJsonObject();
-				if (update.get("sparql")!=null) updateMap.put(entry.getKey(), update.get("sparql").getAsString());
-				if (update.get("forcedBindings")!=null) {
-					Bindings bindings = new Bindings();
-					for(Entry<String, JsonElement> binding : update.get("forcedBindings").getAsJsonObject().entrySet()) {
-						JsonObject bindingValue = binding.getValue().getAsJsonObject();
-						if (bindingValue.get("type") == null) continue;
-						if (bindingValue.get("value") == null) continue;
-						RDFTerm value = null;
-						if (bindingValue.get("type").getAsString().equals("uri")) value = new RDFTermURI(bindingValue.get("value").getAsString());
-						else if (bindingValue.get("type").getAsString().equals("literal")) value = new RDFTermLiteral(bindingValue.get("value").getAsString());
-						
-						if (value != null) bindings.addBinding(binding.getKey(), value);
-						else logger.warn("Binding type must be uri or literal");
-					}
-					updateBindingsMap.put(entry.getKey(), bindings);
-				}
-			}
-		}
-		
-		/*
-   		"subscribes": {
-			"CLASS_INSTANCES":{
-	    		"sparql":"SELECT ?s WHERE { ?s rdf:type ?class }",
-	    		"forcedBindings": {
-					"class" : {"type":"uri", "value":""}}},
-		"EVERYTHING":{	
-	    	"sparql":"SELECT ?s ?p ?o WHERE  { ?s ?p ?o }",
-	    	"forcedBindings": {}}
-		 */
-		if ((obj = doc.get("subscribes").getAsJsonObject()) !=null){
-			for(Entry<String, JsonElement> entry :obj.entrySet()) {
-				JsonObject subscribe = entry.getValue().getAsJsonObject();
-				if (subscribe.get("sparql")!=null) subscribeMap.put(entry.getKey(), subscribe.get("sparql").getAsString());
-				if (subscribe.get("forcedBindings")!=null) {
-					Bindings bindings = new Bindings();
-					for(Entry<String, JsonElement> binding : subscribe.get("forcedBindings").getAsJsonObject().entrySet()) {
-						JsonObject bindingValue = binding.getValue().getAsJsonObject();
-						if (bindingValue.get("type") == null) continue;
-						if (bindingValue.get("value") == null) continue;
-						RDFTerm value = null;
-						if (bindingValue.get("type").getAsString().equals("uri")) value = new RDFTermURI(bindingValue.get("value").getAsString());
-						else if (bindingValue.get("type").getAsString().equals("literal")) value = new RDFTermLiteral(bindingValue.get("value").getAsString());
-						
-						if (value != null) bindings.addBinding(binding.getKey(), value);
-						else logger.warn("Binding type must be uri or literal");
-					}
-					subscribeBindingsMap.put(entry.getKey(), bindings);
-				}
-			}
-		}
-
 		loaded = true;
-		
+				
 		return true;
 	}
-	
+
 	public boolean isLoaded() {
 		return loaded;
 	}
+
+	
 }

@@ -199,10 +199,13 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 	private void echoRequest(HttpExchange exchange) {
 		JsonObject json = buildEchoResponse(exchange);
 		
-		if (CORSManager.processCORSPreFlightRequest(exchange,json.toString())) return;
+		if (!CORSManager.processCORSRequest(exchange)) {
+			failureResponse(exchange,ErrorResponse.UNAUTHORIZED,"CORS origin not allowed");
+			return;
+		}
 		
-		if(CORSManager.accessControlAllowOrigin(exchange)) sendResponse(exchange,200,json.toString());
-		else failureResponse(exchange,ErrorResponse.NOT_ALLOWED,"CORS origin not allowed");
+		if (CORSManager.isPreFlightRequest(exchange)) sendResponse(exchange,204,null);
+		else sendResponse(exchange,200,json.toString());
 	}
 	
 	/**
@@ -230,15 +233,38 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 	 */
 	protected void sendResponse(HttpExchange exchange,int httpResponseCode,String response){
 		logger.info("<< HTTP response ("+httpResponseCode+") "+response);
-		try {			
-			//UTF-8
-			byte[] out = response.getBytes("UTF-8");
-			exchange.sendResponseHeaders(httpResponseCode, out.length);
-			exchange.getResponseBody().write(out,0,out.length);
+					
+		//UTF-8
+		byte[] out = null;
+		if (response != null) {			
+			try {
+				out = response.getBytes("UTF-8");
+			} catch (UnsupportedEncodingException e) {
+				logger.error(e.getMessage());
+			}
+		}
+		
+		try {
+			if (out != null) exchange.sendResponseHeaders(httpResponseCode, out.length);
+			else exchange.sendResponseHeaders(httpResponseCode, -1);
+			} 
+		catch (IOException e) {
+				logger.error(e.getMessage());
+		}
+			
+				
+		try {
+			if (out != null) exchange.getResponseBody().write(out,0,out.length);
+			//else exchange.getResponseBody().write(new byte[]{0},0,1);
+		} catch (IOException e) {
+			logger.error(e.getMessage());
+		}
+			
+		try {
 			exchange.getResponseBody().close();
 		} catch (IOException e) {
-			logger.error("Error on sending HTTP response "+e.getMessage());
-		}	
+			logger.error(e.getMessage());
+		}
 	}
 	
 	/**
@@ -455,13 +481,13 @@ public class HTTPGate extends Thread implements HTTPGateMBean {
 			 * @see java.lang.Thread#run()
 			 */
 			public void run() {
-				//CORS pre-flight request
-				if (CORSManager.processCORSPreFlightRequest(httpExchange)) return;
+				if (!CORSManager.processCORSRequest(httpExchange)) {
+					failureResponse(httpExchange,ErrorResponse.UNAUTHORIZED,"CORS origin not allowed");
+					return;
+				}
 				
-				//CORS
-				if(!CORSManager.accessControlAllowOrigin(httpExchange)) {
-					logger.error("CORS origin not allowed");
-					failureResponse(httpExchange,ErrorResponse.NOT_ALLOWED,"CORS origin not allowed");
+				if (CORSManager.isPreFlightRequest(httpExchange)) {
+					sendResponse(httpExchange,204,null);
 					return;
 				}
 				

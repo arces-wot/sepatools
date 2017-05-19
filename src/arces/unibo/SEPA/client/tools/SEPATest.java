@@ -445,7 +445,7 @@ public class SEPATest {
 		else logger.error("Access token (not expired) FAILED");
 		
 		// REQUEST ACCESS TOKEN (expired);
-		logger.info("Waiting token expiring in "+properties.getExpiringSeconds()+" +1 seconds...");
+		logger.info("Waiting token expiring in "+properties.getExpiringSeconds()+" + 1 seconds...");
 		try {
 			Thread.sleep((properties.getExpiringSeconds()+1)*1000);
 		} catch (InterruptedException e) {
@@ -570,7 +570,7 @@ public class SEPATest {
 		if (ret) logger.warn("Secure unsubscribe - ping PASSED");
 		else logger.error("Secure unsubscribe - ping FAILED");
 		
-		// SECURE SUBSCRIBE
+		// SECURE SUBSCRIBE (expired)
 		logger.info("Wait token expiring in "+properties.getExpiringSeconds()+" +1 seconds...");
 		try {
 			Thread.sleep((properties.getExpiringSeconds()+1)*1000);

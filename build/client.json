@@ -1,4 +1,4 @@
-{"host":"localhost","port":8000,"scheme":"http",
+{"host":"www.vaimee.com","port":8000,"scheme":"http",
 "query":{"path":"/sparql","method":"POST","format":"JSON"},
 "update":{"path":"/sparql","method":"URL_ENCODED_POST","format":"HTML"},
 "subscribe":{"port":9000,"scheme":"ws","path":"/sparql"},

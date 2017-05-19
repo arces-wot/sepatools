@@ -442,8 +442,9 @@ public class SPARQL11SEProtocol extends SPARQL11Protocol {
 	
 	@Override
 	protected Response parseEndpointResponse(int token,String jsonResponse,SPARQLPrimitive op,QueryResultsFormat format) {
-		logger.debug("Parse endpoint response #"+token+" "+jsonResponse);
-		
+		if (token != -1) logger.debug("Parse endpoint response #"+token+" "+jsonResponse);
+		else logger.debug("Parse endpoint response "+jsonResponse);
+			
 		JsonObject json = null;
 		try {
 			json = new JsonParser().parse(jsonResponse).getAsJsonObject();

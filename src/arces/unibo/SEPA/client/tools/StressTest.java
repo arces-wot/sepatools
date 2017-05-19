@@ -51,6 +51,11 @@ public class StressTest extends SEPATest {
 		private Date previous = null;
 		private float meanNotificationPeriod = 0;
 		private long notifications = 0; 
+		private long subscribe = 0; 
+		private long unsubscribe = 0; 
+		private long ping = 0; 
+		private long broken = 0;
+		private long error = 0;
 		
 		@Override
 		public void semanticEvent(Notification notify) {
@@ -67,31 +72,31 @@ public class StressTest extends SEPATest {
 
 		@Override
 		public void subscribeConfirmed(SubscribeResponse response) {
-			// TODO Auto-generated method stub
+			subscribe++;
 			
 		}
 
 		@Override
 		public void unsubscribeConfirmed(UnsubscribeResponse response) {
-			// TODO Auto-generated method stub
+			unsubscribe++;
 			
 		}
 
 		@Override
 		public void ping() {
-			// TODO Auto-generated method stub
+			ping++;
 			
 		}
 
 		@Override
 		public void brokenSubscription() {
-			// TODO Auto-generated method stub
+			broken++;
 			
 		}
 
 		@Override
 		public void onError(ErrorResponse errorResponse) {
-			// TODO Auto-generated method stub
+			error++;
 			
 		}	
 	}
@@ -103,16 +108,27 @@ public class StressTest extends SEPATest {
 		
 		@Override
 		public void run() {
-			while(nUpdate<producerUpdates) {
+			int nUpdate;
+			for(nUpdate = 1; nUpdate < producerUpdates; nUpdate++) {
 				Date start = new Date();
-				client.update(new UpdateRequest("prefix test:<http://www.vaimee.com/test#> delete {?s ?p ?o} insert {test:Sub test:Pred \""+String.format("%d", ++nUpdate)+"\"} where {?s ?p ?o}"));
+				client.update(new UpdateRequest("prefix test:<http://www.vaimee.com/test#> delete {?s ?p ?o} insert {test:Sub test:Pred \""+String.format("%d", nUpdate)+"\"} where {?s ?p ?o}"));
 				Date stop = new Date();
 				meanUpdatePeriod = (meanUpdatePeriod*(nUpdate-1) + (stop.getTime()-start.getTime()))/nUpdate;
 				
 				logger.info("Update "+(stop.getTime()-start.getTime())+" ms Mean: "+meanUpdatePeriod);
 			}
+			try {
+				Thread.sleep(3000);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 			logger.info("Updates [Mean period: "+meanUpdatePeriod+" ms] [Number: "+nUpdate+"]");
 			logger.info("Notifications [Mean period: "+consumer.meanNotificationPeriod+" ms] [Number: "+consumer.notifications+"]");
+			logger.info("Error [Number: "+consumer.error+"]");
+			logger.info("Subscribes [Number: "+consumer.subscribe+"]");
+			logger.info("Unsubscribes [Number: "+consumer.unsubscribe+"]");
+			logger.info("Ping [Number: "+consumer.ping+"]");
 		}
 	}
 }

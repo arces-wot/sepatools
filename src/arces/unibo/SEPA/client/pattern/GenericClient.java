@@ -32,10 +32,10 @@ public abstract class GenericClient extends Aggregator {
 	private static final Logger logger = LogManager.getLogger("GenericClient");
 	
 	public GenericClient(ApplicationProfile appProfile){
-		super(appProfile.getParameters().getUrl(),
-				appProfile.getParameters().getUpdatePort(),
-				appProfile.getParameters().getSubscribePort(),
-				appProfile.getParameters().getPath(),"","");	
+		super(appProfile.getHost(),
+				appProfile.getPort(),
+				appProfile.getSubscribePort(),
+				appProfile.getPath(),"","");	
 	}
 	
 	public boolean update(String SPARQL_UPDATE,Bindings forced) {

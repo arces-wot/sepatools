@@ -38,9 +38,9 @@ public class Explorer {
 				String rangeURI = "";
 				String comment = "";
 				
-				if (binding.getBindingValue("property") != null) propertyURI = appProfile.qName(binding.getBindingValue("property"));
-				if (binding.getBindingValue("domain") != null) domainURI = appProfile.qName(binding.getBindingValue("domain"));	
-				if (binding.getBindingValue("range") != null) rangeURI = appProfile.qName(binding.getBindingValue("range"));
+				if (binding.getBindingValue("property") != null) propertyURI =(binding.getBindingValue("property"));
+				if (binding.getBindingValue("domain") != null) domainURI = (binding.getBindingValue("domain"));	
+				if (binding.getBindingValue("range") != null) rangeURI = (binding.getBindingValue("range"));
 				if (binding.getBindingValue("comment") != null) comment = binding.getBindingValue("comment");
 				
 				if (propertyURI.equals("")) continue; 
@@ -66,9 +66,9 @@ public class Explorer {
 				String rangeURI = "";
 				String comment = "";
 				
-				if (binding.getBindingValue("property") != null) propertyURI = appProfile.qName(binding.getBindingValue("property"));
-				if (binding.getBindingValue("domain") != null) domainURI = appProfile.qName(binding.getBindingValue("domain"));	
-				if (binding.getBindingValue("range") != null) rangeURI = appProfile.qName(binding.getBindingValue("range"));
+				if (binding.getBindingValue("property") != null) propertyURI = (binding.getBindingValue("property"));
+				if (binding.getBindingValue("domain") != null) domainURI = (binding.getBindingValue("domain"));	
+				if (binding.getBindingValue("range") != null) rangeURI = (binding.getBindingValue("range"));
 				if (binding.getBindingValue("comment") != null) comment = binding.getBindingValue("comment");
 				
 				if (propertyURI.equals("")) continue; 
@@ -110,8 +110,8 @@ public class Explorer {
 				String classComment = null;
 				String subclassURI = null;
 				
-				if (binding.getBindingValue("class") != null) classURI = appProfile.qName(binding.getBindingValue("class"));
-				if (binding.getBindingValue("subclass") != null) subclassURI = appProfile.qName(binding.getBindingValue("subclass"));	
+				if (binding.getBindingValue("class") != null) classURI = (binding.getBindingValue("class"));
+				if (binding.getBindingValue("subclass") != null) subclassURI = (binding.getBindingValue("subclass"));	
 				if (binding.getBindingValue("label") != null) classLabel = binding.getBindingValue("label");
 				if (binding.getBindingValue("comment") != null) classComment = binding.getBindingValue("comment");
 				

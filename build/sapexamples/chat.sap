@@ -1,11 +1,8 @@
 {
-  "parameters": {
-    "path": "/sparql",
-    "subscribeSecurePort": 9443,
-    "subscribePort": 9000,
-    "updateSecurePort": 8443,
-    "updatePort": 8000,
-    "host": "www.vaimee.com"
+  "parameters":{
+	  	"ports":{"ws":9000,"wss":9443,"http":8000,"https":8443},
+		"paths":{"http":"/sparql","https":"/sparql","ws":"/sparql","wss":"/secure/sparql","register":"/oauth/register","token":"/oauth/token"},
+	    "host": "www.vaimee.com"
   },
   "namespaces": {
     "chat": "http://www.arces.unibo.it/chat#",

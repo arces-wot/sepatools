@@ -41,11 +41,11 @@ public class Producer extends Client implements IProducer {
 		super(appProfile);
 		if (appProfile == null) {
 			logger.fatal("Cannot be initialized with UPDATE ID: "+updateID+" (application profile is null)");
-			return;
+			System.exit(-1);
 		}
 		if (appProfile.update(updateID) == null) {
 			logger.fatal("Cannot find UPDATE ID: "+updateID);
-			return;
+			System.exit(-1);
 		}
 		
 		SPARQL_ID = updateID;
@@ -56,12 +56,12 @@ public class Producer extends Client implements IProducer {
 	public boolean update(Bindings forcedBindings){	 
 		 if (sparqlUpdate == null) {
 			 logger.fatal("SPARQL UPDATE not defined");
-			 return false;
+			 System.exit(-1);
 		 }
 		 
 		 if (protocolClient == null) {
 			 logger.fatal("Client not initialized");
-			 return false;
+			 System.exit(-1);
 		 }
 
 		 String sparql = prefixes() + replaceBindings(sparqlUpdate,forcedBindings);

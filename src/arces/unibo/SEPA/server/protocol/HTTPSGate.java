@@ -99,17 +99,14 @@ public class HTTPSGate extends HTTPGate {
 		public void handle(HttpExchange exchange) throws IOException {
 			logger.info(">> HTTPS request (REGISTRATION)");
 			
-			if(!exchange.getRequestMethod().toUpperCase().equals("POST")) {
-				if (CORSManager.processCORSPreFlightRequest(exchange)) return;
-				logger.error("Bad request: "+exchange.getRequestMethod().toUpperCase());
-				failureResponse(exchange,400,"Bad request: "+exchange.getRequestMethod().toUpperCase()+" Request must be a POST");
+			if (!CORSManager.processCORSRequest(exchange)) {
+				failureResponse(exchange,ErrorResponse.UNAUTHORIZED,"CORS origin not allowed");
 				return;
 			}
 			
-			if(!CORSManager.accessControlAllowOrigin(exchange)) {
-				logger.error("Origin now allowed");
-				failureResponse(exchange,ErrorResponse.NOT_ALLOWED,"Origin now allowed");
-				return;	
+			if (CORSManager.isPreFlightRequest(exchange)) {
+				sendResponse(exchange,204,null);
+				return;
 			}
 			
 			//Parsing and validating request headers
@@ -255,17 +252,14 @@ public class HTTPSGate extends HTTPGate {
 		public void handle(HttpExchange exchange) throws IOException {
 			logger.info(">> HTTPS request (TOKEN REQUEST)");
 			
-			if(!exchange.getRequestMethod().toUpperCase().equals("POST")) {
-				if (CORSManager.processCORSPreFlightRequest(exchange)) return;
-				logger.error("Bad request: "+exchange.getRequestMethod().toUpperCase());
-				failureResponse(exchange,400,"Request must be a POST");
+			if (!CORSManager.processCORSRequest(exchange)) {
+				failureResponse(exchange,ErrorResponse.UNAUTHORIZED,"CORS origin not allowed");
 				return;
 			}
 			
-			if(!CORSManager.accessControlAllowOrigin(exchange)) {
-				logger.error("Origin now allowed");
-				failureResponse(exchange,ErrorResponse.NOT_ALLOWED,"Origin now allowed");
-				return;	
+			if (CORSManager.isPreFlightRequest(exchange)) {
+				sendResponse(exchange,204,null);
+				return;
 			}
 			
 			if (!exchange.getRequestHeaders().containsKey("Content-Type")) {
@@ -362,12 +356,13 @@ public class HTTPSGate extends HTTPGate {
 		public void handle(HttpExchange httpExchange) throws IOException {
 			logger.info(">> HTTPS request");	
 			
-			if (CORSManager.processCORSPreFlightRequest(httpExchange)) return;
+			if (!CORSManager.processCORSRequest(httpExchange)) {
+				failureResponse(httpExchange,ErrorResponse.UNAUTHORIZED,"CORS origin not allowed");
+				return;
+			}
 			
-			//Check authorization header
-			if (!httpExchange.getRequestHeaders().containsKey("Authorization")) {
-				logger.error("Authorization is null");
-				failureResponse(httpExchange,401,"Authorization is null");
+			if (CORSManager.isPreFlightRequest(httpExchange)) {
+				sendResponse(httpExchange,204,null);
 				return;
 			}
 			

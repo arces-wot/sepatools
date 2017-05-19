@@ -26,7 +26,6 @@ import org.apache.logging.log4j.Logger;
 
 import arces.unibo.SEPA.client.api.SPARQL11SEProperties;
 import arces.unibo.SEPA.client.api.SPARQL11SEProtocol;
-import arces.unibo.SEPA.client.pattern.ApplicationProfile.Parameters;
 import arces.unibo.SEPA.commons.SPARQL.Bindings;
 
 public abstract class Client implements IClient {	
@@ -83,8 +82,7 @@ public abstract class Client implements IClient {
 		}
 		if (!appProfile.isLoaded()) logger.warn("Running with default parameters. No application profile loaded");
 		
-		Parameters args = appProfile.getParameters();
-		logger.debug("Created Authority:"+args.getUrl()+" Update port:"+args.getUpdatePort()+" Subscribe port:"+args.getSubscribePort()+ " Path: "+args.getPath());
+		logger.debug("SEPA parameters Update["+appProfile.getHost()+" Update port:"+appProfile.getPort()+" Subscribe port:"+appProfile.getSubscribePort()+ " Path: "+appProfile.getPath());
 		
 		SPARQL11SEProperties properties = new SPARQL11SEProperties("client.properties");
 		protocolClient = new SPARQL11SEProtocol(properties);
