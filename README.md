@@ -34,36 +34,30 @@ The SEPA engine is designed to run on top of a [SPARQL 1.1 Processing Service](h
 
 There are several implementations SPARQL endpoints and the number of public available ones is increasing. The SEPA can be locally evaluated using one of them, like [Virtuoso](https://virtuoso.openlinksw.com/dataspace/doc/dav/wiki/Main/VOSSparqlProtocol), [Fuseki](https://jena.apache.org/documentation/serving_data/) or [Blazegraph](https://wiki.blazegraph.com/wiki/index.php/Main_Page) just to name a few. The current implementation has been tested on Blazegraph. 
 
-:coffee: [SEPA Engine](build/SEPAengine.jar)
+:coffee: [SEPA Engine](build/SEPAengine.jar) :coffee:
 
-## SEPA APIs (including Application Design Pattern libraries)
+## SEPA APIs - including Application Design Pattern (ADP) libraries
 If you want to save your time, reuse your components and contribute to the community, please follow this pattern:
 
 ![alt text][pattern]
 
 :star: Start implementing a new **SEPApp** :star:
 
-:coffee: Java :coffee:
-[API](build/SEPapi.jar) & [Application Design Library](build/SEPattern.jar)
-
-:snake: Python :snake:
-[API](https://github.com/vaimee/sepa-Python3-kpi)
-
-:iphone: C :iphone:
-[API](https://github.com/vaimee/sepa-C-kpi)
-
-:gem: Ruby :gem:
-[API](https://github.com/vaimee/sepaRubyClientLibrary)
+:coffee: [Java API](build/SEPapi.jar) [Java ADP Library]:coffee:
+:snake: [Python](https://github.com/vaimee/sepa-Python3-kpi) :snake:
+:iphone: [C](https://github.com/vaimee/sepa-C-kpi) :iphone:
+:gem: [Ruby](https://github.com/vaimee/sepaRubyClientLibrary) :gem:
+ 
+ Want more? Contribute! :+1:
  
 ## SEPA Tools
 Let's start with an essential tool: **the SEPA Dashboard** :clap:
 
-:coffee: Java :coffee:
-[Dashboard](build/SEPAdashboard.jar)
+:coffee: [Java](build/SEPAdashboard.jar) :coffee:
+:icecream: [JavaScript](https://github.com/vaimee/sepa-dashboard) :icecream: 
 
-:icecream: JavaScript :icecream: 
-[Dashboard](https://github.com/vaimee/sepa-dashboard)
-
+ Want more? Contribute! :+1:
+ 
 [sepa]: images/sepa.jpg "SPARQL Event Processing Architecture"
 [framework]: images/SW_framework.png "SEPA Framework"
 [engine]: images/engine.png "SEPA Engine"
