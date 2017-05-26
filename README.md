@@ -1,3 +1,7 @@
+>La fortuna non esiste: esiste il momento in cui il talento incontra l'occasione.
+
+###### Lucio Anneo Seneca
+
 # SPARQL Event Processing Architecture (SEPA)
 SEPA is a publish-subscribe architecture designed to support information level interoperability in smart space applications for the Internet of Things (IoT). The architecture is built on top of a generic SPARQL endpoint where publishers and subscribers use standard SPARQL Updates and Queries. Notifications about events (i.e., **changes in the RDF knowledge base**) are expressed in terms of added and removed SPARQL binding results since the previous notification, limiting the network overhead and facilitating notification processing at subscriber side. 
 
@@ -10,10 +14,6 @@ The SEPA is framed within W3C Recommendations as shown in the following figure.
 ![alt text][sepa]
 
 Please refer to [vaimee-documentation](https://github.com/vaimee/sepa-documentation) for a set of **W3C Recommendation drafts** we are writing about the SEPA. The SEPA, as an interoperability platform, aims supporting the development of [Web of Things applications](https://www.w3.org/WoT/).
-
->La fortuna non esiste: esiste il momento in cui il talento incontra l'occasione.
-
-######Lucio Anneo Seneca
 
 ## HOW TO
 > Are you in hurry? You do not have time to read the following sections? You cannot wait trying SEPA? :smile:
