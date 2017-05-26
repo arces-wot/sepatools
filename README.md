@@ -1,5 +1,5 @@
 # SPARQL Event Processing Architecture (SEPA)
-SEPA is a publish-subscribe architecture designed to support information level interoperability in smart space applications in the Internet of Things (IoT). The architecture is built on top of a generic SPARQL endpoint where publishers and subscribers use standard SPARQL Updates and Queries. Notifications about events (i.e., changes in the RDF knowledge base) are expressed in terms of added and removed SPARQL binding results since the previous notification, limiting the network overhead and facilitating notification processing at subscriber side. 
+SEPA is a publish-subscribe architecture designed to support information level interoperability in smart space applications for the Internet of Things (IoT). The architecture is built on top of a generic SPARQL endpoint where publishers and subscribers use standard SPARQL Updates and Queries. Notifications about events (i.e., **changes in the RDF knowledge base**) are expressed in terms of added and removed SPARQL binding results since the previous notification, limiting the network overhead and facilitating notification processing at subscriber side. 
 
 >The main drawback of Semantic Web technologies concerns the low level of performance that makes it difficult to achieve responsiveness and scalability required in many IoT applications…Semantic Web technologies have been designed to process data sets consisting of big amounts of Resource Description Framework (RDF) triples that evolve constantly but at a much slower rate compared to the rate of elementary events occurring in the physical environment.
 
@@ -9,7 +9,11 @@ The SEPA is framed within W3C Recommendations as shown in the following figure.
 
 ![alt text][sepa]
 
-Please refer to [vaimee-documentation](https://github.com/vaimee/sepa-documentation) for a set of W3C Recommendation drafts about the SEPA. The SEPA, as an interoperability platform, aims supporting the development of [Web of Things applications](https://www.w3.org/WoT/)
+Please refer to [vaimee-documentation](https://github.com/vaimee/sepa-documentation) for a set of **W3C Recommendation drafts** we are writing about the SEPA. The SEPA, as an interoperability platform, aims supporting the development of [Web of Things applications](https://www.w3.org/WoT/).
+
+>La fortuna non esiste: esiste il momento in cui il talento incontra l'occasione.
+
+######Lucio Anneo Seneca
 
 ## HOW TO
 > Are you in hurry? You do not have time to read the following sections? You cannot wait trying SEPA? :smile:
@@ -32,12 +36,12 @@ The SEPA engine is designed to run on top of a [SPARQL 1.1 Processing Service](h
 
 ![alt text][engine]
 
-There are several implementations SPARQL endpoints and the number of public available ones is increasing. The SEPA can be locally evaluated using one of them, like [Virtuoso](https://virtuoso.openlinksw.com/dataspace/doc/dav/wiki/Main/VOSSparqlProtocol), [Fuseki](https://jena.apache.org/documentation/serving_data/) or [Blazegraph](https://wiki.blazegraph.com/wiki/index.php/Main_Page) just to name a few. The current implementation has been tested on Blazegraph. 
+There are several SPARQL endpoint implementations and the number of online SPARQL endopoints is increasing. The SEPA can be locally evaluated using one of them, like [Virtuoso](https://virtuoso.openlinksw.com/dataspace/doc/dav/wiki/Main/VOSSparqlProtocol), [Fuseki](https://jena.apache.org/documentation/serving_data/) or [Blazegraph](https://wiki.blazegraph.com/wiki/index.php/Main_Page) just to name a few. The current implementation has been tested on Blazegraph.
 
 :coffee: [SEPA Engine](build/SEPAengine.jar) :coffee:
 
 ## SEPA APIs - including Application Design Pattern (ADP) libraries
-If you want to save your time, reuse your components and contribute to the community, please follow this pattern:
+If you want to save your time, reuse and share components and contribute to the community, please follow this pattern:
 
 ![alt text][pattern]
 
@@ -57,7 +61,16 @@ Let's start with an essential tool: **the SEPA Dashboard** :clap:
 :icecream: [JavaScript](https://github.com/vaimee/sepa-dashboard) :icecream: 
 
  Want more? Contribute! :+1:
- 
+
+## Contact info
+SEPA stands for *SPARQL Event Processing Architecture* and represent the main research area of the [**Web of Things**](http://wot.arces.unibo.it) working group of [**ARCES**](http://www.arces.unibo.it) (*Advanced Research Center on Electronic Systems*) - [**University of Bologna**](http://www.unibo.it). This repository is maintained by:
+
+Name | Email | On Github
+---- | ----- | ---------
+Luca Roffia | luca DOT roffia AT unibo DOT it | @lroffia
+Fabio Viola | fabio DOT viola AT unibo DOT it | @desmovalvo
+Francesco Antoniazzi | francesco DOT antoniazzi AT unibo DOT it | @fr4ncidir
+
 [sepa]: images/sepa.jpg "SPARQL Event Processing Architecture"
 [framework]: images/SW_framework.png "SEPA Framework"
 [engine]: images/engine.png "SEPA Engine"
