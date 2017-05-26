@@ -15,7 +15,7 @@ The SEPA is framed within W3C Recommendations as shown in the following figure.
 
 Please refer to [vaimee-documentation](https://github.com/vaimee/sepa-documentation) for a set of **W3C Recommendation drafts** we are writing about the SEPA. The SEPA, as an interoperability platform, aims supporting the development of [Web of Things applications](https://www.w3.org/WoT/).
 
-## HOW TO
+## HOW TO :page_facing_up:
 > Are you in hurry? You do not have time to read the following sections? You cannot wait trying SEPA? :smile:
 
 Here the steps to follow:
@@ -26,12 +26,12 @@ Here the steps to follow:
 4. Open a new shell (a command prompt) from the same directory and type: `java -jar SEPAEngine.jar -Dcom.sun.management.config.file=management.properties`
 5. The `-Dcom.sun.management.config.file=management.properties` command line argument allows to monitor the SEPA Engine using [JMX](http://www.oracle.com/technetwork/articles/java/javamanagement-140525.html). You can open a new shell (yes, the third one...sorry for that :smile:) and type `jconsole` . Once the console windows is up, select the **Remote Process** checkbox, type **localhost:5555** and use **root** as username and password (this is just a demo :bowtie:). Now you can see (and change) some engine parameters.
 
-## SEPA framework
+## SEPA framework :panda_face:
 The SEPA software framework is shown in the following figure.  
 
 ![alt text][framework]
 
-## SEPA Engine
+## SEPA Engine :dog:
 The SEPA engine is designed to run on top of a [SPARQL 1.1 Processing Service](https://www.w3.org/TR/sparql11-protocol/).
 
 ![alt text][engine]
@@ -40,7 +40,7 @@ There are several SPARQL endpoint implementations and the number of online SPARQ
 
 :coffee: [SEPA Engine](build/SEPAengine.jar) :coffee:
 
-## SEPA APIs - including Application Design Pattern (ADP) libraries
+## SEPA APIs - including Application Design Pattern (ADP) libraries :rabbit2:
 If you want to save your time, reuse and share components and contribute to the community, please follow this pattern:
 
 ![alt text][pattern]
@@ -66,7 +66,7 @@ Let's start with an essential tool: **the SEPA Dashboard** :clap:
 
  Want more? Contribute! :+1:
 
-## Contact info
+## Contact info :mailbox:
 SEPA stands for *SPARQL Event Processing Architecture* and represent the main research area of the [**Web of Things**](http://wot.arces.unibo.it) working group of [**ARCES**](http://www.arces.unibo.it) (*Advanced Research Center on Electronic Systems*) - [**University of Bologna**](http://www.unibo.it). This repository is maintained by:
 
 Name | Email | On Github
