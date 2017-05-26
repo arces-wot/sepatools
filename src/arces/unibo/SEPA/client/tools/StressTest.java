@@ -1,134 +1,180 @@
 package arces.unibo.SEPA.client.tools;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.NoSuchElementException;
+import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
 
-import arces.unibo.SEPA.client.api.SPARQL11SEProperties;
-import arces.unibo.SEPA.client.api.SPARQL11SEProtocol;
-import arces.unibo.SEPA.commons.request.SubscribeRequest;
-import arces.unibo.SEPA.commons.request.UpdateRequest;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import arces.unibo.SEPA.client.pattern.GenericClient;
+import arces.unibo.SEPA.commons.SPARQL.ARBindingsResults;
+import arces.unibo.SEPA.commons.SPARQL.Bindings;
+import arces.unibo.SEPA.commons.SPARQL.BindingsResults;
+import arces.unibo.SEPA.commons.SPARQL.RDFTermLiteral;
+import arces.unibo.SEPA.commons.SPARQL.RDFTermURI;
 import arces.unibo.SEPA.commons.response.ErrorResponse;
 import arces.unibo.SEPA.commons.response.Notification;
-import arces.unibo.SEPA.commons.response.NotificationHandler;
-import arces.unibo.SEPA.commons.response.SubscribeResponse;
-import arces.unibo.SEPA.commons.response.UnsubscribeResponse;
 
-public class StressTest extends SEPATest {
-	static Consumer consumer;
-	static Producer producer;
-	
-	static int nConsumers = 1;
-	static int nProducers = 1;
-	static int producerUpdates = 100;
-	
-	public static void main(String[] args) {
-		properties = new SPARQL11SEProperties("client.json");
-		if (!properties.loaded()) {
-			logger.fatal("Properties file is null");
-			System.exit(-1);
-		}
-		
-		client = new SPARQL11SEProtocol(properties);			
-		consumer = new StressTest().new Consumer();
-		client.subscribe(new SubscribeRequest("select * where {?s ?p ?o}"),consumer);
-		
-		producer = new StressTest().new Producer();
-		Thread th = new Thread(producer);
-		th.setName("Producer");
-		th.start();
+public class StressTest {
+	private static final Logger logger = LogManager.getLogger("StressTest");
+	static int nConsumers = 2;
+	static int nProducers = 50;
+	static int producerUpdates = 50;
 
-		
-		synchronized(th){
-			try {
-				th.wait();
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+	static CountDownLatch publishingEnded = new CountDownLatch(nProducers * producerUpdates);
+	static CountDownLatch notificationEnded = new CountDownLatch(nProducers * producerUpdates * nConsumers);
+
+	private static HashMap<Integer, Float> meanNotificationPeriod = new HashMap<Integer, Float>();
+	private static HashMap<Integer, Integer> notifications = new HashMap<Integer, Integer>();
+
+	private static HashMap<Integer, Float> meanUpdatePeriod = new HashMap<Integer, Float>();
+	private static HashMap<Integer, Integer> updates = new HashMap<Integer, Integer>();
+
+	private static synchronized void notification(int index, float period) {
+		Integer number;
+		if ((number = notifications.get(index)) != null) {
+			notifications.put(index, number + 1);
+			float mean = (meanNotificationPeriod.get(index) * (notifications.get(index) - 1) + period)
+					/ notifications.get(index);
+			meanNotificationPeriod.put(index, mean);
+		} else {
+			notifications.put(index, 1);
+			meanNotificationPeriod.put(index, period);
 		}
+		notificationEnded.countDown();
+		logger.info("*** NOTIFICATION *** #"+index+" "+period+" ms ("+notificationEnded.getCount()+")");
 	}
-	
-	protected class Consumer implements NotificationHandler {
+
+	private static synchronized void update(int index, float period) {
+		Integer number;
+		if ((number = updates.get(index)) != null) {
+			updates.put(index, number + 1);
+			float mean = (meanUpdatePeriod.get(index) * (updates.get(index) - 1) + period) / updates.get(index);
+			meanUpdatePeriod.put(index, mean);
+		} else {
+			updates.put(index, 1);
+			meanUpdatePeriod.put(index, period);
+		}
+		publishingEnded.countDown();
+		logger.info("*** UPDATE *** #"+index+" "+period+" ms ("+publishingEnded.getCount()+")");
+	}
+
+	public static void main(String[] args) throws FileNotFoundException, NoSuchElementException, IOException, IllegalArgumentException, URISyntaxException {
+		for (int i = 0; i < nConsumers; i++) {
+			new Thread(new StressTest().new Subscriber("client.jpar", i)).start();
+		}
+
+		for (int i = 0; i < nProducers; i++) {
+			new Thread(new StressTest().new Publisher("client.jpar", i, producerUpdates)).start();
+		}
+
+		try {
+			notificationEnded.await();
+		} catch (InterruptedException e) {
+		}
+
+		logger.info("UPDATES:" + updates.toString());
+		logger.info("NOTIFICATIONS:" + notifications.toString());
+		logger.info("UPDATE PERIOD:" + meanUpdatePeriod.toString());
+		logger.info("NOTIFICATION PERIOD:" + meanNotificationPeriod.toString());
+	}
+
+	class Subscriber extends GenericClient implements Runnable {
 		private Date previous = null;
-		private float meanNotificationPeriod = 0;
-		private long notifications = 0; 
-		private long subscribe = 0; 
-		private long unsubscribe = 0; 
-		private long ping = 0; 
-		private long broken = 0;
-		private long error = 0;
-		
+		private int index = 0;
+
+		public Subscriber(String jparFile, int i)
+				throws IllegalArgumentException, FileNotFoundException, NoSuchElementException, IOException, URISyntaxException {
+			super(jparFile);
+			index = i;
+			previous = new Date();
+			update("delete {?s ?p ?o} where {?s ?p ?o}",null);
+			subscribe("select * where {?s ?p ?o}", null);
+		}
+
 		@Override
 		public void semanticEvent(Notification notify) {
-			notifications++;
-			if (previous == null) previous = new Date();
-			else {
-				Date now = new Date();
-				logger.info("Notification period "+(now.getTime()-previous.getTime())+" ms");
-				meanNotificationPeriod = (meanNotificationPeriod*(notifications-1) + (now.getTime()-previous.getTime()))/notifications;
-				previous = now;
-			}
-			
+			Date now = new Date();
+			float period = now.getTime() - previous.getTime();
+			StressTest.notification(index, period);
+			previous = now;
 		}
 
 		@Override
-		public void subscribeConfirmed(SubscribeResponse response) {
-			subscribe++;
-			
-		}
+		public void notify(ARBindingsResults notify, String spuid, Integer sequence) {}
 
 		@Override
-		public void unsubscribeConfirmed(UnsubscribeResponse response) {
-			unsubscribe++;
-			
-		}
+		public void notifyAdded(BindingsResults bindingsResults, String spuid, Integer sequence) {}
 
 		@Override
-		public void ping() {
-			ping++;
-			
-		}
+		public void notifyRemoved(BindingsResults bindingsResults, String spuid, Integer sequence) {}
 
 		@Override
-		public void brokenSubscription() {
-			broken++;
-			
-		}
+		public void onSubscribe(BindingsResults bindingsResults, String spuid) {}
 
 		@Override
-		public void onError(ErrorResponse errorResponse) {
-			error++;
-			
-		}	
+		public void brokenSubscription() {}
+
+		@Override
+		public void onError(ErrorResponse errorResponse) {}
+
+		@Override
+		public void run() {}
 	}
-	
-	protected class Producer implements Runnable {
-		public float meanUpdatePeriod = 0;
+
+	class Publisher extends GenericClient implements Runnable {
+		private int index = 0;
 		public int nUpdate = 0;
-		public long totalTime = 0;
-		
+
+		public Publisher(String jparFile, int i, int nu)
+				throws IllegalArgumentException, FileNotFoundException, NoSuchElementException, IOException {
+			super(jparFile);
+			index = i;
+			nUpdate = nu;
+		}
+
 		@Override
 		public void run() {
-			int nUpdate;
-			for(nUpdate = 1; nUpdate < producerUpdates; nUpdate++) {
+			String id = UUID.randomUUID().toString();
+			String UPDATE = "prefix test:<http://www.vaimee.com/test#> delete {?id test:value ?oldValue} insert {?ide test:value ?value} where {OPTIONAL{?id test:value ?oldValue}}";
+			Integer i;
+			Bindings bindings = new Bindings();
+			bindings.addBinding("id", new RDFTermURI("test:" + id));
+			for (i = 0; i < nUpdate; i++) {
+				bindings.addBinding("value", new RDFTermLiteral(i.toString()));
 				Date start = new Date();
-				client.update(new UpdateRequest("prefix test:<http://www.vaimee.com/test#> delete {?s ?p ?o} insert {test:Sub test:Pred \""+String.format("%d", nUpdate)+"\"} where {?s ?p ?o}"));
+				update(UPDATE, bindings);
 				Date stop = new Date();
-				meanUpdatePeriod = (meanUpdatePeriod*(nUpdate-1) + (stop.getTime()-start.getTime()))/nUpdate;
-				
-				logger.info("Update "+(stop.getTime()-start.getTime())+" ms Mean: "+meanUpdatePeriod);
+				StressTest.update(index, stop.getTime() - start.getTime());
+				/*try {
+					Thread.sleep((long) (Math.random() * 1000));
+				} catch (InterruptedException e) {
+				}*/
 			}
-			try {
-				Thread.sleep(3000);
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			logger.info("Updates [Mean period: "+meanUpdatePeriod+" ms] [Number: "+nUpdate+"]");
-			logger.info("Notifications [Mean period: "+consumer.meanNotificationPeriod+" ms] [Number: "+consumer.notifications+"]");
-			logger.info("Error [Number: "+consumer.error+"]");
-			logger.info("Subscribes [Number: "+consumer.subscribe+"]");
-			logger.info("Unsubscribes [Number: "+consumer.unsubscribe+"]");
-			logger.info("Ping [Number: "+consumer.ping+"]");
 		}
+
+		@Override
+		public void notify(ARBindingsResults notify, String spuid, Integer sequence) {}
+
+		@Override
+		public void notifyAdded(BindingsResults bindingsResults, String spuid, Integer sequence) {}
+
+		@Override
+		public void notifyRemoved(BindingsResults bindingsResults, String spuid, Integer sequence) {}
+
+		@Override
+		public void onSubscribe(BindingsResults bindingsResults, String spuid) {}
+
+		@Override
+		public void brokenSubscription() {}
+
+		@Override
+		public void onError(ErrorResponse errorResponse) {}
 	}
 }

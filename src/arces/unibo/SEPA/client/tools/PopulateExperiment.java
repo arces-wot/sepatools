@@ -1,8 +1,16 @@
 package arces.unibo.SEPA.client.tools;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.util.NoSuchElementException;
+
 public class PopulateExperiment extends SmartLightingBenchmark {
+	public PopulateExperiment() throws FileNotFoundException, NoSuchElementException, IOException {
+		super();
+	}
+
 	protected String tag ="LampExp";
-	protected static SmartLightingBenchmark benchmark = new PopulateExperiment();
+	protected static SmartLightingBenchmark benchmark = null;
 	
 	//Data set
 	protected int roads[] = {100,100,100,10};
@@ -42,7 +50,8 @@ public class PopulateExperiment extends SmartLightingBenchmark {
 		
 	}
 	
-	public static void main(String[] args) {
+	public static void main(String[] args) throws FileNotFoundException, NoSuchElementException, IOException {
+		benchmark = new PopulateExperiment();
 		benchmark.run(true,true,5000);
 	}
 }

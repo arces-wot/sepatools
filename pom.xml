@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>SEPATools</groupId>
   <artifactId>SEPATools</artifactId>
-  <version>0.6.1-SNAPSHOT</version>
+  <version>0.7.0-SNAPSHOT</version>
   <name>SEPATools</name>
   <description>A Semantic Event Processing Architecture for the Web of Things. The project includes the client classes (API) and server classes (engine)</description>
   <build>

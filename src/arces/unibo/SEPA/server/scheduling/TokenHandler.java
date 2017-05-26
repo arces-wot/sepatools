@@ -24,7 +24,6 @@ import java.util.Vector;
 import org.apache.logging.log4j.Logger;
 
 import arces.unibo.SEPA.server.beans.SEPABeans;
-import arces.unibo.SEPA.server.beans.TokenHandlerMBean;
 import arces.unibo.SEPA.server.core.EngineProperties;
 
 import org.apache.logging.log4j.LogManager;
@@ -39,28 +38,14 @@ import org.apache.logging.log4j.LogManager;
 
 public class TokenHandler implements TokenHandlerMBean {
 	private static final Logger logger = LogManager.getLogger("TokenHandler");
-	protected static String mBeanName = "arces.unibo.SEPA.server:type=TokenHandler";
 	
 	private EngineProperties properties;
 	private Vector<Integer> jar=new Vector<Integer>();
 	
 	public TokenHandler(EngineProperties properties)  {
-		for (int i=0; i < properties.getMaxTokens(); i++) jar.addElement(i);
+		for (int i=0; i < properties.getSchedulingQueueSize(); i++) jar.addElement(i);
 		
-		SEPABeans.registerMBean(this,mBeanName);
-	}
-	
-	@Override
-	public long getTimeout() {
-		return properties.getTokenTimeout();
-	}
-	
-	/**
-	 * Returns the number of available tokens
-	 * @returns the number of available tokens
-	 */
-	public int availableTokens() {
-		return jar.size();
+		SEPABeans.registerMBean("SEPA:type=TokenHandler",this);
 	}
 	
 	/**
@@ -75,7 +60,7 @@ public class TokenHandler implements TokenHandlerMBean {
 			if (jar.size() == 0){
 				logger.warn("No token available...wait...");
 				try {
-					jar.wait(properties.getTokenTimeout());
+					jar.wait(properties.getSchedulingTimeout());
 				} catch (InterruptedException e) {
 					logger.debug(e.getMessage());
 				}
@@ -115,13 +100,12 @@ public class TokenHandler implements TokenHandlerMBean {
 	}
 
 	@Override
-	public int getAvailableTokens() {
-		return this.availableTokens();
+	public int getSchedulingQueueSize() {
+		return jar.size();
 	}
-
+	
 	@Override
-	public long getMaxTokens() {
-		return properties.getMaxTokens();
+	public long getSchedulingTimeout() {
+		return properties.getSchedulingTimeout();
 	}
-
 }

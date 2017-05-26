@@ -18,6 +18,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package arces.unibo.SEPA.client.pattern;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.util.NoSuchElementException;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -27,42 +31,37 @@ import arces.unibo.SEPA.commons.response.ErrorResponse;
 import arces.unibo.SEPA.commons.response.Response;
 
 public abstract class Aggregator extends Consumer implements IAggregator {
-	protected String sparqlUpdate = "INSERT { ?subject ?predicate ?object }";
-	protected String updateID = "";
+	protected String sparqlUpdate = null;
 	
 	private static final Logger logger = LogManager.getLogger("Aggregator");
 	
-	public Aggregator(String url,int updatePort,int subscribePort,String path,String subscribe,String update) {
-		super(url,updatePort,subscribePort,path,subscribe);
-		sparqlUpdate = update;
-	}
-	
-	public Aggregator(ApplicationProfile appProfile,String subscribeID,String updateID){
+	public Aggregator(ApplicationProfile appProfile,String subscribeID,String updateID) throws IllegalArgumentException {
 		super(appProfile,subscribeID);
 		
-		if (appProfile == null){
-			logger.fatal("Cannot be initialized with UPDATE ID " +updateID+" (application profile is null)");
-			return;	
+		if (appProfile == null || subscribeID == null || updateID == null){
+			logger.fatal("Some arguments are null)");
+			throw new IllegalArgumentException("Arguments can not be null");
 		}
+		
 		if (appProfile.update(updateID) == null) {
-			logger.fatal("UPDATE ID " +updateID+" not found");
-			return;
+			logger.fatal("UPDATE ID " +updateID+" not found in "+appProfile.getFileName());
+			throw new IllegalArgumentException("UPDATE ID " +updateID+" not found in "+appProfile.getFileName());
 		}
 		
 		sparqlUpdate = appProfile.update(updateID);
-		this.updateID = updateID;
 	} 
 		
-	public boolean update(Bindings forcedBindings){
-		 
-		 if (protocolClient == null) {
-			 logger.fatal("UPDATE " +updateID+" FAILED because client has not been inizialized");
+	public Aggregator(String jparFile) throws IllegalArgumentException, FileNotFoundException, NoSuchElementException, IOException {
+		super(jparFile);
+	}
+
+	public boolean update(Bindings forcedBindings){	 
+		 if (protocolClient == null || sparqlUpdate == null) {
+			 logger.fatal("Aggregator not initialized");			 
 			 return false;
 		 }
 		 
-		 String sparql = prefixes() + replaceBindings(sparqlUpdate,forcedBindings);
-		 
-		 logger.debug("<UPDATE> "+updateID+" ==> "+sparql);
+		 String sparql = prefixes() + replaceBindings(sparqlUpdate,forcedBindings);		 		 
 		 
 		 Response response = protocolClient.update(new UpdateRequest(sparql));
 		 logger.debug(response.toString());

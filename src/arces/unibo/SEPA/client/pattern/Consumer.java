@@ -18,6 +18,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package arces.unibo.SEPA.client.pattern;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.util.NoSuchElementException;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -128,22 +133,28 @@ public abstract class Consumer extends Client implements IConsumer,NotificationH
 			notifyAll();
 		}
 	}
-	public Consumer(String url,int updatePort,int subscribePort,String path,String SPARQL) {
-		super(url,updatePort,subscribePort,path);
-		sparqlSubscribe = SPARQL;
-	}
 	
-	public Consumer(ApplicationProfile appProfile,String subscribeID) {
+	public Consumer(ApplicationProfile appProfile,String subscribeID) throws IllegalArgumentException {
 		super(appProfile);
-		if (appProfile == null) {
-			logger.fatal("Cannot be initialized with SUBSCRIBE ID: "+subscribeID+ " (application profile is null)");
-			return;
+
+		if (appProfile == null || subscribeID == null) {
+			logger.fatal("One or more arguments are null");
+			throw new IllegalArgumentException("One or more arguments are null");
 		}
-		if (appProfile.subscribe(subscribeID) == null) return;
-		sparqlSubscribe = appProfile.subscribe(subscribeID);
+
+		if (appProfile.subscribe(subscribeID) == null) {
+			logger.fatal("SUBSCRIBE ID " + subscribeID + " not found in " + appProfile.getFileName());
+			throw new IllegalArgumentException("SUBSCRIBE ID " + subscribeID + " not found in " + appProfile.getFileName());
+		}
+		
+		sparqlSubscribe = appProfile.subscribe(subscribeID);			
 	}
 	
-	public String subscribe(Bindings forcedBindings) {
+	public Consumer(String jparFile) throws IllegalArgumentException, FileNotFoundException, NoSuchElementException, IOException {
+		super(jparFile);
+	}
+
+	public String subscribe(Bindings forcedBindings) throws IOException, URISyntaxException {
 		if (sparqlSubscribe == null) {
 			logger.fatal( "SPARQL SUBSCRIBE not defined");
 			 return null;
@@ -163,6 +174,7 @@ public abstract class Consumer extends Client implements IConsumer,NotificationH
 		subConfirm = new SubcribeConfirmSync();
 		
 		Response response = protocolClient.subscribe(new SubscribeRequest(sparql), this);
+
 		logger.debug(response.toString());
 		
 		if(response.getClass().equals(ErrorResponse.class)) return null;
@@ -175,7 +187,7 @@ public abstract class Consumer extends Client implements IConsumer,NotificationH
 		
 	}
 	 
-	public boolean unsubscribe() {
+	public boolean unsubscribe() throws IOException, URISyntaxException {
 		logger.debug("UNSUBSCRIBE "+subID);
 		
 		if (protocolClient == null) {
@@ -183,7 +195,10 @@ public abstract class Consumer extends Client implements IConsumer,NotificationH
 			 return false;
 		 }
 		
-		Response response = protocolClient.unsubscribe(new UnsubscribeRequest(subID));
+		Response response;
+
+		response = protocolClient.unsubscribe(new UnsubscribeRequest(subID));
+
 		logger.debug(response.toString());
 		
 		return !(response.getClass().equals(ErrorResponse.class));

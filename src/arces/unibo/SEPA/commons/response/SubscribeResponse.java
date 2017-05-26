@@ -53,6 +53,10 @@ public class SubscribeResponse extends Response {
 		if (spuid != null) json.add("subscribed",new JsonPrimitive(spuid));
 	}
 	
+	public SubscribeResponse() {
+		super();
+	}
+	
 	public SubscribeResponse(String spuid,String alias) {
 		super();
 

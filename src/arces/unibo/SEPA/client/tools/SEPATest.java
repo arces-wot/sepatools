@@ -16,11 +16,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package arces.unibo.SEPA.client.tools;
 
+import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Scanner;
-import java.util.UUID;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -154,7 +156,7 @@ public class SEPATest {
 		}
 	}
 	
-	protected static boolean updateTest(String sparql,boolean secure) {
+	protected static boolean updateTest(String sparql,boolean secure) throws IOException, URISyntaxException {
 		notificationReceived = false;
 		
 		UpdateRequest update = new UpdateRequest(sparql);
@@ -171,7 +173,7 @@ public class SEPATest {
 		return !response.getClass().equals(ErrorResponse.class);
 	}
 	
-	protected static boolean queryTest(String sparql,String utf8,boolean secure) {
+	protected static boolean queryTest(String sparql,String utf8,boolean secure) throws IOException, URISyntaxException {
 		QueryRequest query = new QueryRequest(sparql);
 		
 		if (!secure) logger.info(query.toString());
@@ -202,7 +204,7 @@ public class SEPATest {
 		return !error;
 	}
 	
-	protected static boolean subscribeTest(String sparql,boolean secure) {
+	protected static boolean subscribeTest(String sparql,boolean secure) throws IOException, URISyntaxException {
 		subscribeConfirmReceived = false;
 		notificationReceived = false;
 		
@@ -268,7 +270,7 @@ public class SEPATest {
 		return notificationReceived;
 	}
 	
-	protected static boolean unsubscribeTest(String spuid,boolean secure) {	
+	protected static boolean unsubscribeTest(String spuid,boolean secure) throws IOException, URISyntaxException {	
 		unsubscriptionConfirmReceived = false;
 		
 		UnsubscribeRequest unsub = new UnsubscribeRequest(spuid);
@@ -286,7 +288,7 @@ public class SEPATest {
 		synchronized(sync) {
 			if (unsubscriptionConfirmReceived) return true;
 			try {
-				sync.wait(5000);
+				sync.wait(2000);
 			} catch (InterruptedException e) {
 				logger.debug("InterruptedException: "+e.getMessage());
 			}				
@@ -295,13 +297,13 @@ public class SEPATest {
 		return unsubscriptionConfirmReceived;
 	}
 	
-	protected static boolean registrationTest(String id){		
+	protected static boolean registrationTest(String id) throws IOException, URISyntaxException{		
 		Response response;
 		response = client.register(id);		
 		return !response.getClass().equals(ErrorResponse.class);
 	}
 		
-	protected static boolean requestAccessTokenTest() {
+	protected static boolean requestAccessTokenTest() throws IOException, URISyntaxException {
 		Response response;
 		response = client.requestToken();
 		
@@ -311,12 +313,23 @@ public class SEPATest {
 	}
 	
 	public static void main(String[] args) {
+		boolean ret = false;
+		
+		try {
+			properties = new SPARQL11SEProperties("client.jpar");
+		} catch (NoSuchElementException | IOException e2) {
+			logger.fatal(e2.getMessage());
+			return;
+		}		
+		client = new SPARQL11SEProtocol(properties);	
+		
 		logger.warn("**********************************************************");
 		logger.warn("***     SPARQL 1.1 SE Protocol Service test suite      ***");
 		logger.warn("**********************************************************");
 		logger.warn("***   WARNING: the RDF store content will be ERASED    ***");
 		logger.warn("***         Do you want to continue (yes/no)?          ***");
 		logger.warn("**********************************************************");
+		logger.warn("SPARQL 1.1 SE Protocol Service parameters: "+client.toString());
 		Scanner scanner = new Scanner(System.in);
 		scanner.useDelimiter("\\n"); //"\\z" means end of input
 		String input = scanner.next();
@@ -335,29 +348,36 @@ public class SEPATest {
 			System.exit(0);
 		}
 		scanner.close();
-		
-		properties = new SPARQL11SEProperties("client.json");
-		if (!properties.loaded()) {
-			logger.fatal("Properties file is null");
-			System.exit(-1);
-		}
-		client = new SPARQL11SEProtocol(properties);	
-		logger.info("SPARQL 1.1 SE Protocol Service properties: "+client.toString());
-		
+				
 		// UPDATE
-		boolean ret =updateTest("prefix test:<http://www.vaimee.com/test#> delete {?s ?p ?o} insert {test:Sub test:Pred \"測試\"} where {?s ?p ?o}",false);
+		try {
+			ret =updateTest("prefix test:<http://www.vaimee.com/test#> delete {?s ?p ?o} insert {test:Sub test:Pred \"測試\"} where {?s ?p ?o}",false);
+		} catch (URISyntaxException | IOException e1) {
+			ret = false;
+			logger.error(e1.getMessage());
+		}
 		results.addResult("Update", ret);
 		if (ret) logger.warn("Update PASSED");
 		else logger.error("Update FAILED");
 		
 		// QUERY
-		ret = queryTest("select ?o where {?s ?p ?o}","測試",false);
+		try {
+			ret = queryTest("select ?o where {?s ?p ?o}","測試",false);
+		} catch (URISyntaxException | IOException e1) {
+			ret = false;
+			logger.error(e1.getMessage());
+		}
 		results.addResult("Query", ret);
 		if (ret) logger.warn("Query PASSED");
 		else logger.error("Query FAILED");
 		
 		// SUBSCRIBE
-		ret = subscribeTest("select ?o where {?s ?p ?o}",false);
+		try {
+			ret = subscribeTest("select ?o where {?s ?p ?o}",false);
+		} catch (URISyntaxException | IOException e1) {
+			ret = false;
+			logger.error(e1.getMessage());
+		}
 		results.addResult("Subscribe - request", ret);
 		if (ret) logger.warn("Subscribe PASSED");
 		else logger.error("Subscribe FAILED");
@@ -381,7 +401,12 @@ public class SEPATest {
 		else logger.error("Ping recevied FAILED");
 		
 		// TRIGGER A NOTIFICATION
-		ret = updateTest("prefix test:<http://www.vaimee.com/test#> delete {?s ?p ?o} insert {test:Sub test:Pred \"ვაიმეე\"} where {?s ?p ?o}",false);
+		try {
+			ret = updateTest("prefix test:<http://www.vaimee.com/test#> delete {?s ?p ?o} insert {test:Sub test:Pred \"ვაიმეე\"} where {?s ?p ?o}",false);
+		} catch (IOException | URISyntaxException e1) {
+			ret = false;
+			logger.error(e1.getMessage());
+		}
 		results.addResult("Subscribe - triggering", ret);
 		if (ret) logger.warn("Triggering update PASSED");
 		else logger.error("Triggering update FAILED");
@@ -393,7 +418,12 @@ public class SEPATest {
 		else logger.error("Notification FAILED");
 		
 		// UNSUBSCRIBE
-		ret = unsubscribeTest(spuid,false);
+		try {
+			ret = unsubscribeTest(spuid,false);
+		} catch (IOException | URISyntaxException e1) {
+			ret = false;
+			logger.error(e1.getMessage());
+		}
 		results.addResult("Unsubscribe - request", ret);
 		if (ret) logger.warn("Unsubscribe PASSED");
 		else logger.error("Unsubscribe FAILED");
@@ -414,90 +444,156 @@ public class SEPATest {
 		// Enable security
 		//**********************
 		logger.info("Switch to secure mode");
-		properties = new SPARQL11SEProperties("secureclient.json");
-		client = new SPARQL11SEProtocol(properties);	
-		logger.info("SPARQL 1.1 SE Protocol Service properties: "+client.toString());
 		
 		// REGISTRATION
-		String identity = UUID.randomUUID().toString();
-		ret = registrationTest(identity);
+		try {
+			ret = registrationTest("SEPATest");
+		} catch (URISyntaxException | IOException e1) {
+			ret = false;
+			logger.error(e1.getMessage());
+		}
 		results.addResult("Registration", ret);
 		if (ret) logger.warn("Registration PASSED");
 		else logger.error("Registration FAILED");
 		
 		// REGISTRATION (multiple registration)
-		ret = !registrationTest(identity);
+		try {
+			ret = !registrationTest("SEPATest");
+		} catch (URISyntaxException | IOException e1) {
+			ret = false;
+			logger.error(e1.getMessage());
+		} 
 		results.addResult("Registration not allowed", ret); 
 		if (ret) logger.warn("Registration (not allowed) PASSED");
 		else logger.error("Registration (not allowed) FAILED");
 		
 		// REQUEST ACCESS TOKEN
-		ret = requestAccessTokenTest();	
+		try {
+			ret = requestAccessTokenTest();
+		} catch (IOException | URISyntaxException e1) {
+			ret = false;
+			logger.error(e1.getMessage());
+		}	
 		results.addResult("Access token", ret); 
 		if (ret) logger.warn("Access token PASSED");
 		else logger.error("Access token FAILED");
 		
 		// REQUEST ACCESS TOKEN (not expired);
-		if (!properties.isTokenExpired()) ret = !requestAccessTokenTest();			
+		if (!properties.isTokenExpired())
+			try {
+				ret = !requestAccessTokenTest();
+			} catch (URISyntaxException | IOException e1) {
+				ret = false;
+				logger.error(e1.getMessage());
+			}
 		else ret = false;
 		results.addResult("Access token not expired", ret); 
 		if (ret) logger.warn("Access token (not expired) PASSED");
 		else logger.error("Access token (not expired) FAILED");
 		
 		// REQUEST ACCESS TOKEN (expired);
-		logger.info("Waiting token expiring in "+properties.getExpiringSeconds()+" + 1 seconds...");
+		logger.info("Waiting token expiring in "+properties.getExpiringSeconds()+" + 2 seconds...");
 		try {
-			Thread.sleep((properties.getExpiringSeconds()+1)*1000);
+			Thread.sleep((properties.getExpiringSeconds()+2)*1000);
 		} catch (InterruptedException e) {
 			logger.error(e.getMessage());
 		}
-		if (properties.isTokenExpired()) ret = requestAccessTokenTest();	
+		if (properties.isTokenExpired())
+			try {
+				ret = requestAccessTokenTest();
+			} catch (IOException | URISyntaxException e1) {
+				ret = false;
+				logger.error(e1.getMessage());
+			}
 		else ret = false;
 		results.addResult("Access token expired", ret); 
 		if (ret) logger.warn("Access token (expired) PASSED");
 		else logger.error("Access token (expired) FAILED");
 		
 		// SECURE UPDATE
-		if (properties.isTokenExpired()) requestAccessTokenTest();
-		ret = updateTest("prefix test:<http://wot.arces.unibo.it/test#> delete {?s ?p ?o} insert {test:Sub test:Pred \"ვაიმეე\"} where {?s ?p ?o}",true);
+		if (properties.isTokenExpired())
+			try {
+				requestAccessTokenTest();
+			} catch (IOException | URISyntaxException e1) {
+				ret = false;
+				logger.error(e1.getMessage());
+			}
+		try {
+			ret = updateTest("prefix test:<http://wot.arces.unibo.it/test#> delete {?s ?p ?o} insert {test:Sub test:Pred \"ვაიმეე\"} where {?s ?p ?o}",true);
+		} catch (IOException | URISyntaxException e1) {
+			ret = false;
+			logger.error(e1.getMessage());
+		}
 		results.addResult("Secure update ", ret); 
 		if (ret) logger.warn("Secure update PASSED");
 		else logger.error("Secure update FAILED");
 		
 		// SECURE UPDATE (expired token)
-		logger.info("Waiting token expiring in "+properties.getExpiringSeconds()+" + 1 seconds...");
+		logger.info("Waiting token expiring in "+properties.getExpiringSeconds()+" + 2 seconds...");
 		try {
-			Thread.sleep((properties.getExpiringSeconds()+1)*1000);
+			Thread.sleep((properties.getExpiringSeconds()+2)*1000);
 		} catch (InterruptedException e) {
 			logger.error(e.getMessage());
 		}
-		ret = !updateTest("prefix test:<http://wot.arces.unibo.it/test#> delete {?s ?p ?o} insert {test:Sub test:Pred \"vaimee!\"} where {?s ?p ?o}",true);
+		try {
+			ret = !updateTest("prefix test:<http://wot.arces.unibo.it/test#> delete {?s ?p ?o} insert {test:Sub test:Pred \"vaimee!\"} where {?s ?p ?o}",true);
+		} catch (IOException | URISyntaxException e1) {
+			ret = false;
+			logger.error(e1.getMessage());
+		}
 		results.addResult("Secure update (expired)", ret); 
 		if (ret) logger.warn("Secure update (expired) PASSED");
 		else logger.error("Secure update (expired) FAILED");
 		
 		// SECURE QUERY
-		if (properties.isTokenExpired()) requestAccessTokenTest();
-		ret = queryTest("select ?o where {?s ?p ?o}","ვაიმეე",true);
+		if (properties.isTokenExpired())
+			try {
+				requestAccessTokenTest();
+			} catch (IOException | URISyntaxException e1) {
+				ret = false;
+				logger.error(e1.getMessage());
+			}
+		try {
+			ret = queryTest("select ?o where {?s ?p ?o}","ვაიმეე",true);
+		} catch (IOException | URISyntaxException e1) {
+			ret = false;
+			logger.error(e1.getMessage());
+		}
 		results.addResult("Secure query", ret); 
 		if (ret) logger.warn("Secure query PASSED");
 		else logger.error("Secure query FAILED");
 		
 		// SECURE QUERY (expired token)
-		logger.info("Waiting token expiring in "+properties.getExpiringSeconds()+" + 1 seconds...");
+		logger.info("Waiting token expiring in "+properties.getExpiringSeconds()+" + 2 seconds...");
 		try {
-			Thread.sleep((properties.getExpiringSeconds()+1)*1000);
+			Thread.sleep((properties.getExpiringSeconds()+2)*1000);
 		} catch (InterruptedException e) {
 			logger.error(e.getMessage());
 		}
-		ret = !queryTest("select ?o where {?s ?p ?o}","ვაიმეე",true);
+		try {
+			ret = !queryTest("select ?o where {?s ?p ?o}","ვაიმეე",true);
+		} catch (IOException | URISyntaxException e1) {
+			ret = false;
+			logger.error(e1.getMessage());
+		}
 		results.addResult("Secure query (expired)", ret); 
 		if (ret) logger.warn("Secure query (expired) PASSED");
 		else logger.error("Secure query (expired) FAILED");
 		
 		// SECURE SUBSCRIBE
-		if (properties.isTokenExpired()) requestAccessTokenTest();
-		ret = subscribeTest("select ?o where {?s ?p ?o}",true);
+		if (properties.isTokenExpired())
+			try {
+				requestAccessTokenTest();
+			} catch (IOException | URISyntaxException e1) {
+				ret = false;
+				logger.error(e1.getMessage());
+			}
+		try {
+			ret = subscribeTest("select ?o where {?s ?p ?o}",true);
+		} catch (IOException | URISyntaxException e1) {
+			ret = false;
+			logger.error(e1.getMessage());
+		}
 		results.addResult("Secure subscribe - request", ret); 
 		if (ret) logger.warn("Secure subscribe PASSED");
 		else logger.error("Secure subscribe FAILED");
@@ -521,8 +617,19 @@ public class SEPATest {
 		else logger.error("Secure ping recevied FAILED");
 			
 		// TRIGGER A NOTIFICATION 
-		if (properties.isTokenExpired()) requestAccessTokenTest();
-		ret = updateTest("prefix test:<http://wot.arces.unibo.it/test#> delete {?s ?p ?o} insert {test:Sub test:Pred \"卢卡\"} where {?s ?p ?o}",true);
+		if (properties.isTokenExpired())
+			try {
+				requestAccessTokenTest();
+			} catch (IOException | URISyntaxException e1) {
+				ret = false;
+				logger.error(e1.getMessage());
+			}
+		try {
+			ret = updateTest("prefix test:<http://wot.arces.unibo.it/test#> delete {?s ?p ?o} insert {test:Sub test:Pred \"卢卡\"} where {?s ?p ?o}",true);
+		} catch (IOException | URISyntaxException e1) {
+			ret = false;
+			logger.error(e1.getMessage());
+		}
 		results.addResult("Secure subscribe - triggering", ret); 
 		if (ret) logger.warn("Secure triggering update PASSED");
 		else logger.error("Secure triggering update FAILED");
@@ -533,36 +640,52 @@ public class SEPATest {
 		if (ret) logger.warn("Secure subscribe - notification PASSED");
 		else logger.error("Secure subscribe - notification FAILED");
 			
-		// UNSUBSCRIBE (expired)
-		logger.info("Wait token expiring in "+properties.getExpiringSeconds()+" +1 seconds...");
+		// SECURE UNSUBSCRIBE (expired)
+		logger.info("Wait token expiring in "+properties.getExpiringSeconds()+" + 2 seconds...");
 		try {
-			Thread.sleep((properties.getExpiringSeconds()+1)*1000);
+			Thread.sleep((properties.getExpiringSeconds()+2)*1000);
 		} catch (InterruptedException e) {
 			logger.error(e.getMessage());
 		}
-		ret = unsubscribeTest(spuid,true);
+		try {
+			ret = unsubscribeTest(spuid,true);
+		} catch (IOException | URISyntaxException e1) {
+			ret = false;
+			logger.error(e1.getMessage());
+		}
 		results.addResult("Secure unsubscribe (expired) - request", ret); 
-		if (ret) logger.warn("Secure unsubscribe - expired PASSED");
-		else logger.error("Secure unsubscribe - expired FAILED");
+		if (ret) logger.warn("Secure unsubscribe (expired) - request PASSED");
+		else logger.error("Secure unsubscribe (expired) - request FAILED");
 					
 		// WAIT UNSUBSCRIBE CONFIRM
-		ret = !waitUnsubscribeConfirm();
-		results.addResult("Secure unsubscribe (expired) - confirm", ret);
-		if (ret) logger.warn("Secure unsubscribe confirmed PASSED");
-		else logger.error("Secure unsubscribe confirmed FAILED");
-					
+		/*ret = waitUnsubscribeConfirm();
+		results.addResult("Secure unsubscribe (expired) - confirm", !ret);
+		if (ret) logger.warn("Secure unsubscribe (expired) - confirm PASSED");
+		else logger.error("Secure unsubscribe (expired) - confirm FAILED");
+			*/		
 		// UNSUBSCRIBE
-		if (properties.isTokenExpired()) requestAccessTokenTest();
-		ret = unsubscribeTest(spuid,true);
+		if (properties.isTokenExpired())
+			try {
+				requestAccessTokenTest();
+			} catch (IOException | URISyntaxException e1) {
+				ret = false;
+				logger.error(e1.getMessage());
+			}
+		try {
+			ret = unsubscribeTest(spuid,true);
+		} catch (IOException | URISyntaxException e1) {
+			ret = false;
+			logger.error(e1.getMessage());
+		}
 		results.addResult("Secure unsubscribe - request", ret); 		
-		if (ret) logger.warn("Secure unsubscribe PASSED");
-		else logger.error("Secure unsubscribe FAILED");
+		if (ret) logger.warn("Secure unsubscribe - request PASSED");
+		else logger.error("Secure unsubscribe - request FAILED");
 			
 		// WAIT UNSUBSCRIBE CONFIRM
 		ret = waitUnsubscribeConfirm();
 		results.addResult("Secure unsubscribe - confirm", ret);
-		if (ret) logger.warn("Unsubscribe confirmed PASSED");
-		else logger.error("Unsubscribe confirmed FAILED");
+		if (ret) logger.warn("Secure unsubscribe - confirm PASSED");
+		else logger.error("Secure unsubscribe - confirm  FAILED");
 					
 		//WAITING PING
 		ret = !waitPing();
@@ -571,22 +694,27 @@ public class SEPATest {
 		else logger.error("Secure unsubscribe - ping FAILED");
 		
 		// SECURE SUBSCRIBE (expired)
-		logger.info("Wait token expiring in "+properties.getExpiringSeconds()+" +1 seconds...");
+		logger.info("Wait token expiring in "+properties.getExpiringSeconds()+" + 2 seconds...");
 		try {
-			Thread.sleep((properties.getExpiringSeconds()+1)*1000);
+			Thread.sleep((properties.getExpiringSeconds()+2)*1000);
 		} catch (InterruptedException e) {
 			logger.error(e.getMessage());
 		}
-		ret = subscribeTest("select ?o where {?s ?p ?o}",true);
+		try {
+			ret = subscribeTest("select ?o where {?s ?p ?o}",true);
+		} catch (IOException | URISyntaxException e) {
+			ret = false;
+			logger.error(e.getMessage());
+		}
 		results.addResult("Secure subscribe (expired) - request", ret); 
-		if (ret) logger.warn("Secure subscribe PASSED");
-		else logger.error("Secure subscribe FAILED");
+		if (ret) logger.warn("Secure subscribe (expired) - request PASSED");
+		else logger.error("Secure subscribe (expired) - request FAILED");
 				
 		//SUBSCRIBE CONFIRM
-		ret = !waitSubscribeConfirm();
+		/*ret = !waitSubscribeConfirm();
 		results.addResult("Secure subscribe (expired) - confirm", ret);
-		if (ret) logger.warn("Secure subscribe confirmed PASSED");
-		else logger.error("Secure subscribe confirmed FAILED");
+		if (ret) logger.warn("Secure subscribe (expired) - confirm PASSED");
+		else logger.error("Secure subscribe (expired) - confirm FAILED");*/
 				
 		results.print();
 	}

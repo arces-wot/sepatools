@@ -25,5 +25,5 @@ public interface SchedulerInterface {
 
 	int getToken();
 	void addRequest(Request request, ResponseAndNotificationListener listener);
-	void releaseToken(Integer token);
+	void releaseToken(int token);
 }

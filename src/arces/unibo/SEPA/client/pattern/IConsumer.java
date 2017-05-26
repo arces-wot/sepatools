@@ -18,13 +18,16 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package arces.unibo.SEPA.client.pattern;
 
+import java.io.IOException;
+import java.net.URISyntaxException;
+
 import arces.unibo.SEPA.commons.SPARQL.ARBindingsResults;
 import arces.unibo.SEPA.commons.SPARQL.Bindings;
 import arces.unibo.SEPA.commons.SPARQL.BindingsResults;
 
 public interface IConsumer extends IClient{	
-	public String subscribe(Bindings forcedBindings);
-	public boolean unsubscribe();
+	public String subscribe(Bindings forcedBindings) throws IOException, URISyntaxException;
+	public boolean unsubscribe() throws IOException, URISyntaxException;
 	
 	public void notify(ARBindingsResults notify,String spuid,Integer sequence);
 	public void notifyAdded(BindingsResults bindingsResults,String spuid,Integer sequence);

@@ -68,6 +68,7 @@ public class WebsocketClientEndpoint extends Endpoint implements MessageHandler.
 			logger.error("Session is null");
 			return;
 		}
+		
 		try {
     		JsonObject request = new JsonObject();
 			request.add("subscribe", new JsonPrimitive(sparql));
@@ -76,6 +77,7 @@ public class WebsocketClientEndpoint extends Endpoint implements MessageHandler.
 			if (jwt != null) request.add("authorization", new JsonPrimitive(jwt));
 			else logger.debug("Authorization is null");
 			logger.debug(request.toString());
+			
 			wsClientSession.getBasicRemote().sendText(request.toString());
 		} 
 		catch (IOException e) {
@@ -86,19 +88,17 @@ public class WebsocketClientEndpoint extends Endpoint implements MessageHandler.
 	@Override
 	public void onOpen(Session session, EndpointConfig config) {
 		logger.debug("@onOpen");
+		
 		wsClientSession = session;
     	wsClientSession.addMessageHandler(this);	
+    	
     	sendSubscribeRequest();
 	}
-	
-	private boolean connect() {
-		try {
-			client.connectToServer(this,cec, new URI(wsUrl));
-		} catch (DeploymentException | IOException | URISyntaxException e) {
-			logger.fatal(e.getMessage());
-			return false;
-		} 
-		return true;
+
+	private void connect() throws DeploymentException, IOException, URISyntaxException {
+		logger.debug("Connect to server: "+wsUrl);
+		
+		client.connectToServer(this,cec, new URI(wsUrl));
 	}
 	
 	boolean isConnected() {
@@ -106,36 +106,39 @@ public class WebsocketClientEndpoint extends Endpoint implements MessageHandler.
 		return wsClientSession.isOpen();
 	}
 	
-	public boolean subscribe(String sparql,String alias,String jwt,NotificationHandler handler) {
+	public void subscribe(String sparql,String alias,String jwt,NotificationHandler handler) throws IOException, URISyntaxException {
 		this.handler = handler;
 		this.sparql = sparql;
 		this.alias = alias;
 		this.jwt = jwt;
 		
-		if (!isConnected()) return connect();
-		
-		sendSubscribeRequest();
+		if (!isConnected())
+			try {
+				connect();
+			} catch (DeploymentException e) {
+				throw new IOException(e.getMessage());
+			}
+		else sendSubscribeRequest();
 		
 		//Start watchdog
 		if (watchDog == null) watchDog = new WebsocketWatchdog(handler,this,sparql); 
-	
-		return true;
 	}
 	
-	public boolean unsubscribe(String spuid,String jwt) {
+	public void unsubscribe(String spuid,String jwt) throws IOException, URISyntaxException {
 		logger.debug("unsubscribe");
-		if (isConnected())
+		
+		if (!isConnected())
 			try {
-				JsonObject request = new JsonObject();
-				if (spuid != null) request.add("unsubscribe", new JsonPrimitive(spuid));
-				if (jwt != null) request.add("authorization", new JsonPrimitive(jwt));
-				wsClientSession.getBasicRemote().sendText(request.toString());
-			} 
-			catch (IOException e) {
-				return false;
+				connect();
+			} catch (DeploymentException e) {
+				throw new IOException(e.getMessage());
 			}
 		
-		return true;
+			JsonObject request = new JsonObject();
+			if (spuid != null) request.add("unsubscribe", new JsonPrimitive(spuid));
+			if (jwt != null) request.add("authorization", new JsonPrimitive(jwt));
+			
+			wsClientSession.getBasicRemote().sendText(request.toString());
 	}
 	
 	public boolean close() {

@@ -18,9 +18,11 @@
 
 package arces.unibo.SEPA.commons.protocol;
 
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.NoSuchElementException;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -29,6 +31,15 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
 
+/**
+{"parameters":{
+	"host":"localhost",
+	"port":9999,
+	"scheme":"http",
+	"path":"/blazegraph/namespace/kb/sparql",
+	"query":{"method":"POST","format":"JSON"},
+	"update":{"method":"URL_ENCODED_POST","format":"HTML"}}}
+*/
 public class SPARQL11Properties {
 	private static final Logger logger = LogManager.getLogger("SPARQL11ProtocolProperties");
 	
@@ -38,45 +49,53 @@ public class SPARQL11Properties {
 	public enum UpdateResultsFormat {HTML,JSON};
 	
 	//Properties file
-	protected String defaultsFileName = "endpointdefaults.json";
-	protected String propertiesFile = "endpoint.json";
-	protected JsonObject properties = new JsonObject();
-	private boolean loaded = false;
+	protected String defaultsFileName = "endpoint.defaults";
+	protected String propertiesFile = "endpoint.jpar";
 	
-	public SPARQL11Properties(String propertiesFile) {
+	protected JsonObject parameters = new JsonObject();
+	protected JsonObject doc = new JsonObject();
+	
+	public SPARQL11Properties(String propertiesFile) throws FileNotFoundException, NoSuchElementException, IOException {
 		this.propertiesFile = propertiesFile;
 		
-		loaded = loadProperties();
+		loadProperties();
 	}
 	
-	public boolean loaded() {
-		return loaded;
+	public String toString() {
+		return doc.toString();
 	}
 	
 	protected void defaults() {
-		properties.add("host", new JsonPrimitive("localhost"));
-		properties.add("port", new JsonPrimitive(9999));
-		properties.add("scheme", new JsonPrimitive("http"));
+		parameters.add("host", new JsonPrimitive("localhost"));
+		parameters.add("port", new JsonPrimitive(9999));
+		parameters.add("scheme", new JsonPrimitive("http"));
+		parameters.add("path", new JsonPrimitive("/blazegraph/namespace/kb/sparql"));
 		
 		JsonObject query = new JsonObject();
-		query.add("path", new JsonPrimitive("/blazegraph/namespace/kb/sparql"));
 		query.add("method", new JsonPrimitive("POST"));
 		query.add("format", new JsonPrimitive("JSON"));
-		properties.add("query", query);
+		parameters.add("query", query);
 		
 		JsonObject update = new JsonObject();
-		update.add("path", new JsonPrimitive("/blazegraph/namespace/kb/sparql"));
 		update.add("method", new JsonPrimitive("URL_ENCODED_POST"));
 		update.add("format", new JsonPrimitive("HTML"));
-		properties.add("update", update);
+		parameters.add("update", update);
+		
+		doc.add("parameters", parameters);
 	}
 	
-	protected boolean loadProperties(){
+	protected void loadProperties() throws FileNotFoundException, NoSuchElementException, IOException
+	{
 		FileReader in = null;
 		try {
 			in = new FileReader(propertiesFile);
 			if (in != null) {
-				properties = new JsonParser().parse(in).getAsJsonObject();
+				doc = new JsonParser().parse(in).getAsJsonObject();
+				if (doc.get("parameters") == null) {
+					logger.warn("parameters key is missing");
+					throw new NoSuchElementException("parameters key is missing");
+				}
+				parameters = doc.get("parameters").getAsJsonObject();
 			}
 			if (in != null) in.close();
 		} catch (IOException e) {
@@ -84,50 +103,98 @@ public class SPARQL11Properties {
 			
 			defaults();
 			
-			if(storeProperties(defaultsFileName)) {
-				logger.warn("USING DEFAULTS. Edit \""+defaultsFileName+"\" and rename it to \""+propertiesFile+"\"");
-			}
-			return false;
+			storeProperties(defaultsFileName);
+				
+			logger.warn("USING DEFAULTS. Edit \""+defaultsFileName+"\" and rename it to \""+propertiesFile+"\"");
+			
+			throw new FileNotFoundException("USING DEFAULTS. Edit \""+defaultsFileName+"\" and rename it to \""+propertiesFile+"\"");
 		}		
-		return true;
 	}
 	
-	protected boolean storeProperties(String propertiesFile) {
-		FileWriter out;
-		try {
-			out = new FileWriter(propertiesFile);
-			out.write(properties.toString());
-			out.close();
-		} catch (IOException e) {
-			logger.error("Write properties file FAILED "+propertiesFile);
-			return false;
+	protected void storeProperties(String propertiesFile) throws IOException{
+		FileWriter out = new FileWriter(propertiesFile);
+		out.write(doc.toString());
+		out.close();
+	}
+	
+	protected int getParameter(String rootKey,String nestedKey,int def) {
+		if (rootKey == null) {
+			if (parameters.get(nestedKey) != null) return parameters.get(nestedKey).getAsInt();
+			return -1;
 		}
-
-		return true;
+		if (parameters.get(rootKey) != null) {
+			if (parameters.get(rootKey).getAsJsonObject().get(nestedKey) != null)
+				return parameters.get(rootKey).getAsJsonObject().get(nestedKey).getAsInt();
+			
+		}
+		if (parameters.get(nestedKey) != null) return parameters.get(nestedKey).getAsInt();
+		
+		logger.warn(rootKey+" or "+nestedKey+" keys not found");
+		return def;
+	}
+	
+	protected String getParameter(String rootKey,String nestedKey,String def) {
+		if (rootKey == null) {
+			if (parameters.get(nestedKey) != null) return parameters.get(nestedKey).getAsString();
+			return "";
+		}
+		if (parameters.get(rootKey) != null) {
+			if (parameters.get(rootKey).getAsJsonObject().get(nestedKey) != null)
+				return parameters.get(rootKey).getAsJsonObject().get(nestedKey).getAsString();
+			
+		}
+		if (parameters.get(nestedKey) != null) return parameters.get(nestedKey).getAsString();
+		
+		logger.warn(rootKey+" or "+nestedKey+" keys not found");
+		return def;	
 	}
 	
 	public String getHost() {
-		return properties.get("host").getAsString();
+		return getParameter(null,"host","localhost");
 	}
 	
-	public String getHttpScheme() {
-		return properties.get("scheme").getAsString();
+	public String getUpdateScheme() {
+		return getParameter("update","scheme","http");
 	}
 	
-	public int getHttpPort() {
-		return properties.get("port").getAsInt();
-	}
-	
-	public String getQueryPath() {
-		return properties.get("query").getAsJsonObject().get("path").getAsString();
+	public int getUpdatePort() {
+		return getParameter("update","port",9999);
 	}
 	
 	public String getUpdatePath() {
-		return properties.get("update").getAsJsonObject().get("path").getAsString();
+		return getParameter("update","path","/blazegraph/namespace/kb/sparql");
+	}
+	
+	public HTTPMethod getUpdateMethod() {
+		switch(getParameter("update","method","URL_ENCODED_POST")){
+			case "POST": return HTTPMethod.POST;
+			case "URL_ENCODED_POST": return HTTPMethod.URL_ENCODED_POST;
+			default: return HTTPMethod.POST;
+		}	
+	}
+	
+	public UpdateResultsFormat getUpdateResultsFormat() {
+		switch(getParameter("update","format","JSON")) {
+			case "JSON" : return UpdateResultsFormat.JSON;
+			case "HTML" : return UpdateResultsFormat.HTML;
+			default: return UpdateResultsFormat.JSON;
+		}
+	}
+	
+	public String getQueryScheme() {
+		return getParameter("query","scheme","http");
+	}
+	
+	public int getQueryPort() {
+		return getParameter("query","port",9999);
+	}
+	
+	public String getQueryPath() {
+		return getParameter("query","path","/blazegraph/namespace/kb/sparql");
 	}
 	
 	public HTTPMethod getQueryMethod() {
-		switch(properties.get("query").getAsJsonObject().get("method").getAsString()){
+		switch(getParameter("query","method","POST")){
 			case "POST": return HTTPMethod.POST;
 			case "GET": return HTTPMethod.GET;
 			case "URL_ENCODED_POST": return HTTPMethod.URL_ENCODED_POST;
@@ -136,7 +203,7 @@ public class SPARQL11Properties {
 	}
 	
 	public QueryResultsFormat getQueryResultsFormat() {
-		switch(properties.get("query").getAsJsonObject().get("format").getAsString()) {
+		switch(getParameter("query","format","JSON")) {
 			case "JSON" : return QueryResultsFormat.JSON;
 			case "XML" : return QueryResultsFormat.XML;
 			case "CSV": return QueryResultsFormat.CSV;
@@ -144,19 +211,5 @@ public class SPARQL11Properties {
 		}
 	}
 	
-	public HTTPMethod getUpdateMethod() {
-		switch(properties.get("update").getAsJsonObject().get("method").getAsString()){
-			case "POST": return HTTPMethod.POST;
-			case "URL_ENCODED_POST": return HTTPMethod.URL_ENCODED_POST;
-			default: return HTTPMethod.POST;
-		}	
-	}
 	
-	public UpdateResultsFormat getUpdateResultsFormat() {
-		switch(properties.get("update").getAsJsonObject().get("format").getAsString()) {
-			case "JSON" : return UpdateResultsFormat.JSON;
-			case "HTML" : return UpdateResultsFormat.HTML;
-			default: return UpdateResultsFormat.JSON;
-		}
-	}
 }

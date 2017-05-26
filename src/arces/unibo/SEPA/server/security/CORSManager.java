@@ -111,9 +111,7 @@ public class CORSManager {
 			    		
 			return true;
 		}
-		else {
-			return accessControlAllowOrigin(httpExchange);
-		}
+		else return accessControlAllowOrigin(httpExchange);
 	}
 	
 	/*
@@ -154,9 +152,11 @@ public class CORSManager {
 		
 		allowOrigin = origins.get(0);	
 		
-		httpExchange.getResponseHeaders().add("Access-Control-Allow-Origin", allowOrigin);
+		boolean allowed = allowedOrigin(allowOrigin);
 		
-		return allowedOrigin(allowOrigin);
+		if (allowed) httpExchange.getResponseHeaders().add("Access-Control-Allow-Origin", allowOrigin);
+		
+		return allowed;
 	}
 
 	public static boolean isPreFlightRequest(HttpExchange httpExchange) {

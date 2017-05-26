@@ -1,6 +1,14 @@
 package arces.unibo.SEPA.client.tools;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.util.NoSuchElementException;
+
 public class RoadLightEx extends RoadExperiment {
+
+	public RoadLightEx() throws FileNotFoundException, NoSuchElementException, IOException {
+		super();
+	}
 
 	@Override
 	public void reset() {
@@ -30,7 +38,7 @@ public class RoadLightEx extends RoadExperiment {
 		super.subscribe();
 	}
 	
-	public static void main(String[] args) {
+	public static void main(String[] args) throws FileNotFoundException, NoSuchElementException, IOException {
 		RoadLightEx benchmark = new RoadLightEx();
 		benchmark.run(true,true,5000);
 	}

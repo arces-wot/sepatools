@@ -20,7 +20,7 @@ package arces.unibo.SEPA.client.api;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
+
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
@@ -38,7 +38,7 @@ import javax.net.ssl.SSLSession;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.ParseException;
-import org.apache.http.client.ClientProtocolException;
+
 import org.apache.http.client.ResponseHandler;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpUriRequest;
@@ -75,12 +75,14 @@ import arces.unibo.SEPA.commons.response.QueryResponse;
 import arces.unibo.SEPA.commons.response.RegistrationResponse;
 import arces.unibo.SEPA.commons.response.Response;
 import arces.unibo.SEPA.commons.response.SubscribeResponse;
+import arces.unibo.SEPA.commons.response.UnsubscribeResponse;
 import arces.unibo.SEPA.commons.response.UpdateResponse;
 
 public class SPARQL11SEProtocol extends SPARQL11Protocol {
 	private static final Logger logger = LogManager.getLogger("SPARQL11SEProtocol");
 	
 	private WebsocketClientEndpoint wsClient;
+	private SecureWebsocketClientEndpoint wssClient;
 	
 	public enum SUBSCRIPTION_STATE {SUBSCRIBED,UNSUBSCRIBED,BROKEN_SOCKET};
 	
@@ -119,11 +121,12 @@ public class SPARQL11SEProtocol extends SPARQL11Protocol {
         return 	sslsf;
 	}
 	
-	public SPARQL11SEProtocol(SPARQL11SEProperties properties) {
+	public SPARQL11SEProtocol(SPARQL11SEProperties properties) throws IllegalArgumentException {
 		super(properties);
+		
 		if (properties == null) {
 			logger.fatal("Properties are null");
-			return;
+			throw new IllegalArgumentException("Properties are null");
 		}
 				
 		this.properties = properties;
@@ -132,11 +135,9 @@ public class SPARQL11SEProtocol extends SPARQL11Protocol {
 		SSLConnectionSocketFactory sslSocketFactory = getSSLConnectionSocketFactory();		
 		if (sslSocketFactory != null) httpclient = HttpClients.custom().setSSLSocketFactory(sslSocketFactory).build();
         
-		//Create secure WebSocket client
-		if (properties.getWsScheme().equals("ws"))
-			wsClient = new WebsocketClientEndpoint(properties.getWsScheme()+"://"+properties.getHost()+":"+properties.getWsPort()+properties.getSubscribePath());
-		else
-			wsClient = new SecureWebsocketClientEndpoint(properties.getWsScheme()+"://"+properties.getHost()+":"+properties.getWsPort()+properties.getSubscribePath());
+		//Create WebSocket clients (secure and not)
+		wsClient = new WebsocketClientEndpoint(properties.getSubscribeScheme()+"://"+properties.getHost()+":"+properties.getSubscribePort()+properties.getSubscribePath());
+		wssClient = new SecureWebsocketClientEndpoint(properties.getSecureSubscribeScheme()+"://"+properties.getHost()+":"+properties.getSecureSubscribePort()+properties.getSecureSubscribePath());
 		
 		//HTTP response handler
 		responseHandler = new ResponseHandler<String>() {
@@ -171,61 +172,178 @@ public class SPARQL11SEProtocol extends SPARQL11Protocol {
 	}
 	
 	//SPARQL 1.1 SE Subscribe Primitive
-	public Response subscribe(SubscribeRequest request,NotificationHandler handler) {
+	public Response subscribe(SubscribeRequest request,NotificationHandler handler) throws IOException, URISyntaxException {
 		logger.debug(request.toString());
 		return executeSPARQL11SEPrimitive(SPARQL11SEPrimitive.SUBSCRIBE, request,handler);		
 	}
 	
 	//SPARQL 1.1 SE Unsubscribe Primitive
-	public Response unsubscribe(UnsubscribeRequest request) {
+	public Response unsubscribe(UnsubscribeRequest request) throws IOException, URISyntaxException {
 		logger.debug(request.toString());
 		return executeSPARQL11SEPrimitive(SPARQL11SEPrimitive.UNSUBSCRIBE, request);
 	}
 	
 	//SPARQL 1.1 SE SECURE Subscribe Primitive
-	public Response secureSubscribe(SubscribeRequest request, NotificationHandler handler) {
+	public Response secureSubscribe(SubscribeRequest request, NotificationHandler handler) throws IOException, URISyntaxException {
 		logger.debug("SECURE "+request.toString());
 		return executeSPARQL11SEPrimitive(SPARQL11SEPrimitive.SECURESUBSCRIBE, request,handler);
 	}	
 	
 	//SPARQL 1.1 SE SECURE Unsubscribe Primitive
-	public Response secureUnsubscribe(UnsubscribeRequest request) {
+	public Response secureUnsubscribe(UnsubscribeRequest request) throws IOException, URISyntaxException {
 		logger.debug("SECURE "+request.toString());
 		return executeSPARQL11SEPrimitive(SPARQL11SEPrimitive.SECUREUNSUBSCRIBE, request);	
 	}
 	
 	//SPARQL 1.1 SE SECURE Update Primitive
-	public Response secureUpdate(UpdateRequest request) {
+	public Response secureUpdate(UpdateRequest request) throws IOException, URISyntaxException {
 		logger.debug("SECURE "+request.toString());
 		return executeSPARQL11SEPrimitive(SPARQL11SEPrimitive.SECUREUPDATE, request);
 	}
 	
 	//SPARQL 1.1 SE SECURE Query Primitive
-	public Response secureQuery(QueryRequest request) {
+	public Response secureQuery(QueryRequest request) throws IOException, URISyntaxException {
 		logger.debug("SECURE "+request.toString());
 		return executeSPARQL11SEPrimitive(SPARQL11SEPrimitive.SECUREQUERY, request);
 	}
 	
 	//Registration to the Authorization Server (AS)
-	public Response register(String identity) {
+	public Response register(String identity) throws IOException, URISyntaxException {
 		logger.debug("REGISTER "+identity);
 		return executeSPARQL11SEPrimitive(SPARQL11SEPrimitive.REGISTER, identity);
 	}
 	
 	//Token request to the Authorization Server (AS)
-	public Response requestToken() {
+	public Response requestToken() throws IOException, URISyntaxException {
 		return executeSPARQL11SEPrimitive(SPARQL11SEPrimitive.REQUESTTOKEN);
 	}
 	
-	protected Response executeSPARQL11SEPrimitive(SPARQL11SEPrimitive op,Object request) {
+	protected Response executeSPARQL11SEPrimitive(SPARQL11SEPrimitive op,Object request) throws IOException, URISyntaxException {
 		return executeSPARQL11SEPrimitive(op,request,null);
 	}
 	
-	protected Response executeSPARQL11SEPrimitive(SPARQL11SEPrimitive op) {
+	protected Response executeSPARQL11SEPrimitive(SPARQL11SEPrimitive op) throws IOException, URISyntaxException {
 		return executeSPARQL11SEPrimitive(op,null,null);
 	}
 	
-	protected Response executeSPARQL11SEPrimitive(SPARQL11SEPrimitive op,Object request,NotificationHandler handler) {
+	protected Response executeSPARQL11SEPrimitive(SPARQL11SEPrimitive op,Object request,NotificationHandler handler) throws IOException, URISyntaxException {
+		//Create the HTTPS request
+		URI uri;
+		String path = null;
+		String scheme = null;
+		int port = 0;
+		
+		//Headers and body
+		String contentType = null;
+		ByteArrayEntity body = null;
+		String accept = null;
+		String authorization = null;
+				
+		switch(op) {
+			case SUBSCRIBE:
+				SubscribeRequest subscribe = (SubscribeRequest) request;
+				wsClient.subscribe(subscribe.getSPARQL(),subscribe.getAlias(),null,handler);
+				
+				return new SubscribeResponse();		
+			case UNSUBSCRIBE:
+				UnsubscribeRequest unsubscribe = (UnsubscribeRequest) request;
+				wsClient.unsubscribe(unsubscribe.getSubscribeUUID(),null);
+				
+				return new UnsubscribeResponse();
+			case REGISTER:
+				path = properties.getRegistrationPath();
+				scheme = properties.getRegistrationScheme();
+				port = properties.getRegistrationPort();
+				
+				accept = "application/json";			
+				contentType = "application/json";
+				String identity = (String) request;
+				
+				body = new ByteArrayEntity(new RegistrationRequest(identity).toString().getBytes("UTF-8"));
+				break;
+			case REQUESTTOKEN:				
+				String basic = properties.getBasicAuthorization();
+				if (basic == null) return new ErrorResponse(0,401,"Basic authorization in null. Register first");
+				
+				path = properties.getRequestTokenPath();
+				scheme = properties.getRequestTokenScheme();
+				port = properties.getRequestTokenPort();
+				
+				authorization = "Basic "+properties.getBasicAuthorization();
+				contentType = "application/json"; 
+				accept ="application/json";
+				break;
+			case SECUREUPDATE:
+				path = properties.getSecureUpdatePath();
+				scheme = properties.getSecureUpdateScheme();
+				port = properties.getUpdateSecurePort();
+				
+				accept = "text/plain";			
+				contentType = "application/x-www-form-urlencoded";
+				authorization = "Bearer "+ properties.getAccessToken();	
+								
+				String encodedContent = URLEncoder.encode(((UpdateRequest)request).getSPARQL(), "UTF-8");
+				body = new ByteArrayEntity(("update="+encodedContent).getBytes());
+				body.setContentType(contentType);
+				break;
+			case SECUREQUERY:
+				path = properties.getSecureQueryPath();
+				scheme = properties.getSecureQueryScheme();
+				port = properties.getQuerySecurePort();
+				
+				accept = "application/sparql-results+json";			
+				contentType = "application/sparql-query";	
+				authorization = "Bearer "+ properties.getAccessToken();		
+				
+				body = new ByteArrayEntity(((QueryRequest)request).getSPARQL().getBytes("UTF-8"));
+				break;
+			case SECURESUBSCRIBE:
+				SubscribeRequest securesubscribe = (SubscribeRequest) request;
+				wssClient.subscribe(securesubscribe.getSPARQL(),securesubscribe.getAlias(),properties.getAccessToken(),handler);
+				
+				return new SubscribeResponse();
+			case SECUREUNSUBSCRIBE:
+				UnsubscribeRequest secureunsubscribe = (UnsubscribeRequest) request;
+				wssClient.unsubscribe(secureunsubscribe.getSubscribeUUID(),properties.getAccessToken());
+				
+				return new SubscribeResponse();
+		}
+		
+		uri = new URI(scheme,
+				   null,
+				   properties.getHost(),
+				   port,
+				   path,
+				   "",
+				   null);
+
+		HttpUriRequest httpRequest = new HttpPost(uri);
+		
+		if (contentType != null) httpRequest.setHeader("Content-Type", contentType);
+		if (accept != null) httpRequest.setHeader("Accept", accept);
+		if (authorization != null) httpRequest.setHeader("Authorization", authorization);
+		if (body != null) ((HttpPost) httpRequest).setEntity(body);
+		
+		//HTTP request execution
+		String response = null;
+
+		long timing = System.nanoTime();
+
+		response = httpclient.execute(httpRequest, responseHandler);
+			    	
+		timing = System.nanoTime() - timing;
+			
+		if(op.equals(SPARQL11SEPrimitive.REGISTER)) logger.info("REGISTER "+timing/1000000+ " ms");
+		else if(op.equals(SPARQL11SEPrimitive.REQUESTTOKEN)) logger.info("TOKEN "+timing/1000000+ " ms");
+		else if(op.equals(SPARQL11SEPrimitive.SECUREQUERY)) logger.info("SECURE_QUERY "+timing/1000000+ " ms");
+		else if(op.equals(SPARQL11SEPrimitive.SECUREUPDATE)) logger.info("SECURE_UPDATE "+timing/1000000+ " ms");
+			
+		logger.debug(response);
+		
+		//Parsing the response
+		return parseSPARQL11SEResponse(response,op);
+		
+/*		
 		//Properties MUST not be null
 		if (properties == null) {
 			logger.fatal("Properties are null");
@@ -234,7 +352,7 @@ public class SPARQL11SEProtocol extends SPARQL11Protocol {
 		
 		//Not secure subscriptions
 		if (op.equals(SPARQL11SEPrimitive.SUBSCRIBE) || op.equals(SPARQL11SEPrimitive.UNSUBSCRIBE)) {
-			if (!properties.getWsScheme().equals("ws")) {
+			if (!properties.getSubscribeScheme().equals("ws")) {
 				logger.fatal("WS scheme required");
 				return new ErrorResponse(0,405,"WS scheme required");	
 			}
@@ -242,10 +360,10 @@ public class SPARQL11SEProtocol extends SPARQL11Protocol {
 			if (op.equals(SPARQL11SEPrimitive.SUBSCRIBE)) {
 				logger.debug("SUBSCRIBE");
 				SubscribeRequest subscribe = (SubscribeRequest) request;
- 				if(wsClient.subscribe(subscribe.getSPARQL(),subscribe.getAlias(),null,handler)){
-					return new SubscribeResponse(0,null);
-				}
-					else return new ErrorResponse(0,500);
+ 				
+				wsClient.subscribe(subscribe.getSPARQL(),subscribe.getAlias(),null,handler);
+				
+				return new SubscribeResponse(0,null);		
 			}
 			else
 			{	
@@ -262,7 +380,8 @@ public class SPARQL11SEProtocol extends SPARQL11Protocol {
 			logger.debug("REQUEST TOKEN");
 			String basic = properties.getBasicAuthorization();
 			if (basic == null) return new ErrorResponse(0,401,"Basic authorization in null. Register first");
-		} else if (!op.equals(SPARQL11SEPrimitive.REGISTER)) {
+		} 
+		else if (!op.equals(SPARQL11SEPrimitive.REGISTER)) {
 			logger.debug("QUERY, UPDATE or SUBSCRIBE (secure)");
 			String token = properties.getAccessToken();
 			if (token == null) return new ErrorResponse(0,401,"Bearer authorization in null. Request token first");
@@ -270,7 +389,7 @@ public class SPARQL11SEProtocol extends SPARQL11Protocol {
 
 		//Secure subscriptions
 		if (op.equals(SPARQL11SEPrimitive.SECURESUBSCRIBE) || op.equals(SPARQL11SEPrimitive.SECUREUNSUBSCRIBE)) {
-			if (!properties.getWsScheme().equals("wss")) {
+			if (!properties.getSecureSubscribeScheme().equals("wss")) {
 				logger.fatal("WSS scheme is required");
 				return new ErrorResponse(0,405,"WSS scheme is required");	
 			}
@@ -278,54 +397,76 @@ public class SPARQL11SEProtocol extends SPARQL11Protocol {
 			if (op.equals(SPARQL11SEPrimitive.SECURESUBSCRIBE)) {
 				logger.debug("SECURE SUBSCRIBE");
 				SubscribeRequest subscribe = (SubscribeRequest) request;
-				if(wsClient.subscribe(subscribe.getSPARQL(),subscribe.getAlias(),properties.getAccessToken(),handler)) {
-					return new SubscribeResponse(0,null);
-				 }
-				 else return new ErrorResponse(0,500);
+				
+				wssClient.subscribe(subscribe.getSPARQL(),subscribe.getAlias(),properties.getAccessToken(),handler);
+				
+				return new SubscribeResponse(0,null);
 			}
 			else
 			{
 				logger.debug("SECURE UNSUBSCRIBE");
-				if(wsClient.unsubscribe(((UnsubscribeRequest) request).getSubscribeUUID(),properties.getAccessToken())) {
+				if(wssClient.unsubscribe(((UnsubscribeRequest) request).getSubscribeUUID(),properties.getAccessToken())) {
 					return new SubscribeResponse(0,null);
 				 }
 				 else return new ErrorResponse(0,500);
 			}
 		}
-		
-		//Secure HTTPS operations
-		if (!properties.getHttpScheme().equals("https")) {
-			logger.fatal("HTTPS scheme is required");
-			return new ErrorResponse(0,405,"HTTPS scheme is required");	
-		}
-		
+			
 		//Create the HTTPS request
 		URI uri;
 		String path = null;
+		String scheme = null;
+		int port = 0;
+		
 		if (op.equals(SPARQL11SEPrimitive.SECUREUPDATE)) {
 			logger.debug("SECURE UPDATE");
-			path = properties.getUpdatePath();
+					
+			//Secure HTTPS operations
+			if (!properties.getSecureUpdateScheme().equals("https")) {
+				logger.fatal("HTTPS scheme is required");
+				return new ErrorResponse(0,405,"HTTPS scheme is required");	
+			}
+			
+			path = properties.getSecureUpdatePath();
+			scheme = properties.getSecureUpdateScheme();
+			port = properties.getUpdateSecurePort();
 		}
 		else if (op.equals(SPARQL11SEPrimitive.SECUREQUERY)) {
 			logger.debug("SECURE QUERY");
-			path = properties.getQueryPath();
+						
+			//Secure HTTPS operations
+			if (!properties.getSecureQueryScheme().equals("https")) {
+				logger.fatal("HTTPS scheme is required");
+				return new ErrorResponse(0,405,"HTTPS scheme is required");	
+			}
+			
+			path = properties.getSecureQueryPath();
+			scheme = properties.getSecureQueryScheme();
+			port = properties.getQuerySecurePort();
 		}
-		else if (op.equals(SPARQL11SEPrimitive.REGISTER)) path = properties.getRegistrationPath();
-		else if (op.equals(SPARQL11SEPrimitive.REQUESTTOKEN)) path = properties.getRequestTokenPath();
-		else path = null;
+		else if (op.equals(SPARQL11SEPrimitive.REGISTER)) {
+			path = properties.getRegistrationPath();
+			scheme = properties.getRegistrationScheme();
+			port = properties.getRegistrationPort();
+		}
+		else if (op.equals(SPARQL11SEPrimitive.REQUESTTOKEN)) {
+			path = properties.getRequestTokenPath();
+			scheme = properties.getRequestTokenScheme();
+			port = properties.getRequestTokenPort();	
+		}
 		
-		try {
-			uri = new URI(properties.getHttpScheme(),
+//		try {
+			uri = new URI(scheme,
 					   null,
 					   properties.getHost(),
-					   properties.getHttpPort(),
+					   port,
 					   path,
 					   "",
 					   null);
-		} catch (URISyntaxException e) {
-			logger.fatal(e.getMessage());
-			return new ErrorResponse(0,500,e.getMessage());
-		}
+//		} catch (URISyntaxException e) {
+//			logger.fatal(e.getMessage());
+//			return new ErrorResponse(0,500,e.getMessage());
+//		}
 		
 		//Uses the HTTP POST method for all the operations
 		HttpUriRequest httpRequest = new HttpPost(uri);
@@ -337,18 +478,18 @@ public class SPARQL11SEProtocol extends SPARQL11Protocol {
 		String authorization = null;
 		
 		if (op.equals(SPARQL11SEPrimitive.REQUESTTOKEN)) {
-			/*
-			String token = properties.getAccessToken();
-			if (token != null)  
-				if (!properties.isTokenExpired()) {
-					String jwt = properties.getAccessToken();
-					String type = properties.getTokenType();
-					long expires_in = properties.getExpiringSeconds();
-					return new JWTResponse(jwt,type,expires_in);
-				}
-			*/
+			
+			//String token = properties.getAccessToken();
+			//if (token != null)  
+			//	if (!properties.isTokenExpired()) {
+			//		String jwt = properties.getAccessToken();
+			//		String type = properties.getTokenType();
+			//		long expires_in = properties.getExpiringSeconds();
+			//		return new JWTResponse(jwt,type,expires_in);
+			//	}
+			
 			authorization = "Basic "+properties.getBasicAuthorization();
-			contentType = "application/x-www-form-urlencoded"; 
+			contentType = "application/json"; 
 			accept ="application/json";
 			logger.debug("Request access token: "+authorization);
 		}	
@@ -357,38 +498,38 @@ public class SPARQL11SEProtocol extends SPARQL11Protocol {
 			contentType = "application/json";
 			String identity = (String) request;
 			
-			try {
+			//try {
 				body = new ByteArrayEntity(new RegistrationRequest(identity).toString().getBytes("UTF-8"));
-			} catch (UnsupportedEncodingException e) {
-				logger.error(e.getMessage());
-				return new ErrorResponse(0,500,e.getMessage());
-			}
+			//} catch (UnsupportedEncodingException e) {
+			//	logger.error(e.getMessage());
+			//	return new ErrorResponse(0,500,e.getMessage());
+			//}
 		}
 		else if (op.equals(SPARQL11SEPrimitive.SECUREUPDATE)) {		
 			accept = "text/plain";			
 			contentType = "application/x-www-form-urlencoded";
 			authorization = "Bearer "+ properties.getAccessToken();	
 			
-			try {
+			//try {
 				String encodedContent = URLEncoder.encode(((UpdateRequest)request).getSPARQL(), "UTF-8");
 				body = new ByteArrayEntity(("update="+encodedContent).getBytes());
 				body.setContentType(contentType);
-			} catch (UnsupportedEncodingException e) {
-				logger.error(e.getMessage());
-				return new ErrorResponse(0,500,e.getMessage());
-			}
+			//} catch (UnsupportedEncodingException e) {
+			//	logger.error(e.getMessage());
+			//	return new ErrorResponse(0,500,e.getMessage());
+			//}
 		}
 		else if (op.equals(SPARQL11SEPrimitive.SECUREQUERY)) {
 			accept = "application/sparql-results+json";			
 			contentType = "application/sparql-query";	
 			authorization = "Bearer "+ properties.getAccessToken();		
 			
-			try {
+			//try {
 				body = new ByteArrayEntity(((QueryRequest)request).getSPARQL().getBytes("UTF-8"));
-			} catch (UnsupportedEncodingException e) {
-				logger.error(e.getMessage());
-				return new ErrorResponse(0,500,e.getMessage());
-			}
+			//} catch (UnsupportedEncodingException e) {
+			//	logger.error(e.getMessage());
+			//	return new ErrorResponse(0,500,e.getMessage());
+			//}
 		}
 		
 		if (contentType != null) httpRequest.setHeader("Content-Type", contentType);
@@ -398,7 +539,7 @@ public class SPARQL11SEProtocol extends SPARQL11Protocol {
 		
 		//HTTP request execution
 		String response = null;
-		try {
+		//try {
 			long timing = System.nanoTime();
 
 			response = httpclient.execute(httpRequest, responseHandler);
@@ -411,8 +552,8 @@ public class SPARQL11SEProtocol extends SPARQL11Protocol {
 			else if(op.equals(SPARQL11SEPrimitive.SECUREUPDATE)) logger.info("SECURE_UPDATE "+timing/1000000+ " ms");
 			
 			logger.debug(response);
-		}
-		catch(java.net.ConnectException e) {
+		//}
+		/*catch(java.net.ConnectException e) {
 			logger.error(httpRequest.toString());
 			logger.error(e.getMessage());
 			return new ErrorResponse(0,503,e.getMessage());
@@ -430,6 +571,7 @@ public class SPARQL11SEProtocol extends SPARQL11Protocol {
 				
 		//Parsing the response
 		return parseSPARQL11SEResponse(response,op);
+		*/
 	}
 	
 	/**
@@ -449,11 +591,11 @@ public class SPARQL11SEProtocol extends SPARQL11Protocol {
 		try {
 			json = new JsonParser().parse(jsonResponse).getAsJsonObject();
 		}
-		catch(JsonParseException | IllegalStateException e) {
-			logger.warn(e.getMessage());
-			
+		catch(JsonParseException | IllegalStateException e) {						
+			//An update response is not forced to be JSON
 			if (op.equals(SPARQLPrimitive.UPDATE)) return new UpdateResponse(token,jsonResponse);
 			
+			logger.error(e.getMessage());
 			return new ErrorResponse(token,500,e.getMessage());	
 		}
 		
@@ -489,7 +631,11 @@ public class SPARQL11SEProtocol extends SPARQL11Protocol {
 		
 		if (op == SPARQL11SEPrimitive.REGISTER) {
 			if (json.get("client_id") != null && json.get("client_secret") != null) {
-				properties.setCredentials(json.get("client_id").getAsString(), json.get("client_secret").getAsString());
+				try {
+					properties.setCredentials(json.get("client_id").getAsString(), json.get("client_secret").getAsString());
+				} catch (IOException e) {
+					return new ErrorResponse(ErrorResponse.NOT_FOUND,"Failed to save credentials");	
+				}
 				
 				return new RegistrationResponse(
 						json.get("client_id").getAsString(),
@@ -504,7 +650,11 @@ public class SPARQL11SEProtocol extends SPARQL11Protocol {
 				int seconds = json.get("expires_in").getAsInt();
 				Date expires = new Date();
 				expires.setTime(expires.getTime()+(1000*seconds));
-				properties.setJWT(json.get("access_token").getAsString(),expires,json.get("token_type").getAsString());
+				try {
+					properties.setJWT(json.get("access_token").getAsString(),expires,json.get("token_type").getAsString());
+				} catch (IOException e) {
+					return new ErrorResponse(ErrorResponse.NOT_FOUND,"Failed to save JWT");	
+				}
 				return new JWTResponse(
 						json.get("access_token").getAsString(),
 						json.get("token_type").getAsString(),

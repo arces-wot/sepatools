@@ -26,24 +26,36 @@ import javax.management.MalformedObjectNameException;
 import javax.management.NotCompliantMBeanException;
 import javax.management.ObjectName;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 public class SEPABeans {
-	public static boolean registerMBean(Object bObj,String mBeanName) {
-		//Get the MBean server
-        MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-        
-        //register the MBean        
-        ObjectName name;
-		try {
-			name = new ObjectName(mBeanName);
-		} catch (MalformedObjectNameException e) {
-			return false;
-		}
-        try {
-			mbs.registerMBean(bObj, name);
-		} catch (InstanceAlreadyExistsException | MBeanRegistrationException | NotCompliantMBeanException e) {
-			return false;
-		}
-        
-        return true;
-	}
+	private static final Logger logger = LogManager.getLogger("SEPABeans");
+	//Get the MBean server
+	static final MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+    
+	public static void registerMBean(final String mBeanObjectName,final Object mBean)
+   {
+      try
+      {
+         final ObjectName name = new ObjectName(mBeanObjectName);
+         mbs.registerMBean(mBean, name);
+      }
+      catch (MalformedObjectNameException badObjectName)
+      {
+    	  logger.error(badObjectName.getMessage());
+      }
+      catch (InstanceAlreadyExistsException duplicateMBeanInstance)
+      {
+    	  logger.error(duplicateMBeanInstance.getMessage());
+      }
+      catch (MBeanRegistrationException mbeanRegistrationProblem)
+      {
+    	  logger.error(mbeanRegistrationProblem.getMessage());
+      }
+      catch (NotCompliantMBeanException badMBean)
+      {
+    	  logger.error(badMBean.getMessage());
+      }
+   }
 }

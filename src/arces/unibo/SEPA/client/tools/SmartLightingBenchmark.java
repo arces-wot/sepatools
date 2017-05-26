@@ -1,5 +1,9 @@
 package arces.unibo.SEPA.client.tools;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.util.NoSuchElementException;
 import java.util.Vector;
 
 import org.apache.logging.log4j.LogManager;
@@ -41,7 +45,7 @@ public abstract class SmartLightingBenchmark {
 	protected int firstRoadIndex = 1;
 	protected int nRoads = 0;
 	
-	static ApplicationProfile appProfile = new ApplicationProfile();
+	static ApplicationProfile appProfile = null;
 	
 	private class RoadPool {
 		private final int size;
@@ -98,13 +102,8 @@ public abstract class SmartLightingBenchmark {
 		return firstIndex + number;
 	}
 	
-	public SmartLightingBenchmark() {
-		//SEPALogger.registerTag(tag);
-		//SEPALogger.enableConsoleLog();
-		//SEPALogger.enableFileLog();
-		//SEPALogger.setVerbosityLevel(VERBOSITY.INFO);
-		
-		appProfile.load("LightingBenchmark.sap");
+	public SmartLightingBenchmark() throws FileNotFoundException, NoSuchElementException, IOException {		
+		appProfile = new ApplicationProfile("LightingBenchmark.jsap");		
 		lampUpdater = new Producer(appProfile,"UPDATE_LAMP");
 		roadUpdater = new Producer(appProfile,"UPDATE_ROAD");		
 	}
@@ -134,7 +133,12 @@ public abstract class SmartLightingBenchmark {
 		
 		public boolean subscribe() {			
 			long startTime = System.nanoTime();
-			subID=super.subscribe(bindings);
+			try {
+				subID=super.subscribe(bindings);
+			} catch (IOException | URISyntaxException e) {
+				logger.error(e.getMessage());
+				return false;
+			}
 			long stopTime = System.nanoTime();
 			logger.info("SUBSCRIBE LAMP "+lampURI+ " "+(stopTime-startTime));
 			
@@ -207,7 +211,12 @@ public abstract class SmartLightingBenchmark {
 		
 		public boolean subscribe() {
 			long startTime = System.nanoTime();
-			subID=super.subscribe(bindings);
+			try {
+				subID=super.subscribe(bindings);
+			} catch (IOException | URISyntaxException e) {
+				logger.error(e.getMessage());
+				return false;
+			}
 			long stopTime = System.nanoTime();
 			logger.info("SUBSCRIBE ROAD "+roadURI+" "+(stopTime-startTime));
 			
@@ -267,7 +276,6 @@ public abstract class SmartLightingBenchmark {
 	
 	private boolean subscribeLamp(int roadIndex,int postIndex) {
 		LampSubscription sub = new LampSubscription(roadIndex,postIndex);
-		if (!sub.join()) return false;
 		new Thread(sub).start();
 		lampSubs.add(sub);
 		return sub.subscribe();
@@ -277,7 +285,6 @@ public abstract class SmartLightingBenchmark {
 		RoadSubscription sub = new RoadSubscription(roadIndex);
 		roadSubs.add(sub);
 		new Thread(sub).start();
-		if (!sub.join()) return false;
 		return sub.subscribe();
 	}
 	
@@ -291,13 +298,6 @@ public abstract class SmartLightingBenchmark {
 		Producer addSensor2post  = new Producer(appProfile,"ADD_SENSOR");
 		Producer addLamp2post = new Producer(appProfile,"ADD_LAMP");
 		
-		if(!road.join()) return firstRoadIndex;
-		if(!addPost2Road.join()) return firstRoadIndex;
-		if(!post.join()) return firstRoadIndex;
-		if(!sensor.join()) return firstRoadIndex;
-		if(!lamp.join()) return firstRoadIndex;
-		if(!addSensor2post.join()) return firstRoadIndex;
-		if(!addLamp2post.join()) return firstRoadIndex;
 		
 		logger.debug("Number of roads: "+nRoad+" Posts/road: "+nPost+" First road index: "+firstRoadIndex);
 		
@@ -398,14 +398,6 @@ public abstract class SmartLightingBenchmark {
 			}
 		}
 		
-		if(!road.leave()) return firstRoadIndex;
-		if(!addPost2Road.leave()) return firstRoadIndex;
-		if(!post.leave()) return firstRoadIndex;
-		if(!sensor.leave()) return firstRoadIndex;
-		if(!lamp.leave()) return firstRoadIndex;
-		if(!addSensor2post.leave()) return firstRoadIndex;
-		if(!addLamp2post.leave()) return firstRoadIndex;
-		
 		return firstRoadIndex+nRoad;
 	}
 	
@@ -415,15 +407,13 @@ public abstract class SmartLightingBenchmark {
 		bindings.addBinding("lamp", new RDFTermURI(lampURI));
 		bindings.addBinding("dimming", new RDFTermLiteral(dimming.toString()));
 		
-		if (!lampUpdater.join()) return false;
-		
 		long startTime = System.nanoTime();		
 		Boolean ret = lampUpdater.update(bindings);
 		long stopTime = System.nanoTime();
 		
 		logger.info("UPDATE LAMP "+lampURI+" "+(stopTime-startTime));
 		
-		return ret && lampUpdater.leave();
+		return ret;
 	}
 	
 	protected boolean updateRoad(int nRoad,Integer dimming) {
@@ -432,15 +422,13 @@ public abstract class SmartLightingBenchmark {
 		bindings.addBinding("?road", new RDFTermURI(roadURI));
 		bindings.addBinding("?dimming", new RDFTermLiteral(dimming.toString()));
 		
-		if(!roadUpdater.join()) return false;
-		
 		long startTime = System.nanoTime();
 		Boolean ret = roadUpdater.update(bindings);
 		long stopTime = System.nanoTime();
 		
 		logger.info("UPDATE ROAD "+roadURI+" "+(stopTime-startTime));
 		
-		return roadUpdater.leave() && ret;
+		return ret;
 	}
 	
 	private void load() {
@@ -460,13 +448,19 @@ public abstract class SmartLightingBenchmark {
 		}
 		
 		for (LampSubscription sub : lampSubs) {
-			sub.unsubscribe();
-			sub.leave(); 
+			try {
+				sub.unsubscribe();
+			} catch (IOException | URISyntaxException e) {
+				logger.error(e.getMessage());
+			}
 			sub.terminate();
 		}
 		for (RoadSubscription sub : roadSubs) {
-			sub.unsubscribe();
-			sub.leave(); 
+			try {
+				sub.unsubscribe();
+			} catch (IOException | URISyntaxException e) {
+				logger.error(e.getMessage());
+			}
 			sub.terminate();
 		}
 	}

@@ -13,7 +13,7 @@ import arces.unibo.SEPA.commons.SPARQL.BindingsResults;
 import arces.unibo.SEPA.commons.response.ErrorResponse;
 
 public class Explorer {
-	ApplicationProfile appProfile = new ApplicationProfile();
+	ApplicationProfile appProfile = null;
 	private DefaultTableModel propertiesDM;
 	
 	class PropertyMonitor extends Consumer {

@@ -30,6 +30,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.text.SimpleDateFormat;
 
 import javax.swing.JFrame;
@@ -63,6 +64,7 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 import java.util.Properties;
 import java.util.Set;
 import java.util.SortedSet;
@@ -115,8 +117,8 @@ public class Dashboard {
 	
 	class DashboardClient extends GenericClient {
 
-		public DashboardClient(ApplicationProfile appProfile){
-			super(appProfile);	
+		public DashboardClient(String jparFile) throws IllegalArgumentException, FileNotFoundException, NoSuchElementException, IOException{
+			super(jparFile);	
 		}
 		
 		@Override
@@ -266,7 +268,7 @@ public class Dashboard {
 	private JList<String> updatesList;
 	private JList<String> subscribesList;
 	
-	ApplicationProfile appProfile = new ApplicationProfile();
+	ApplicationProfile appProfile;
 	
 	private JTextField textFieldUPort;
 	private JTextField textFieldUPortSecure;
@@ -652,7 +654,7 @@ public class Dashboard {
 			try {
 				in = new FileInputStream("dashboard.properties");
 			} catch (FileNotFoundException e) {
-				logger.error(e.getMessage());
+				logger.warn(e.getMessage());
 				return false;
 			}
 			
@@ -679,44 +681,55 @@ public class Dashboard {
 		updatesList.clearSelection();
 		subscribesList.clearSelection();
 		
-		if(appProfile.load(file)) {
-			frmSepaDashboard.setTitle("SEPA Dashboard Ver 1.0 " + " - " + file);
-			
-			//Loading namespaces
-			for(String prefix : appProfile.getPrefixes()) {
-				Vector<String> row = new Vector<String>();
-				row.add(prefix);
-				row.addElement(appProfile.getNamespaceURI(prefix));
-				namespacesDM.addRow(row);
-			}
-			//Loading updates
-			for(String update : appProfile.getUpdateIds()) {
-				//updateListDM.addElement(update);
-				updateListDM.add(update);
-			}
-			//Loading updates
-			for(String subscribe : appProfile.getSubscribeIds()) {
-				//subscribeListDM.addElement(subscribe);
-				subscribeListDM.add(subscribe);
-			}
-			
-			textFieldIP.setText(appProfile.getHost());
-			textFieldUPort.setText(String.format("%d", appProfile.getPort()));
-			textFieldSPort.setText(String.format("%d", appProfile.getSubscribePort()));
-			txtFieldPath.setText(appProfile.getPath());
-			textFieldUPortSecure.setText(String.format("%d", appProfile.getSecurePort()));
-			textFieldSPortSecure.setText(String.format("%d", appProfile.getSecureSubscribePort()));
-			
-			//Enable all the buttons
-			btnUpdate.setEnabled(true);
-			btnSubscribe.setEnabled(true);
-			btnQuery.setEnabled(true);
-			
-			kp = new DashboardClient(appProfile); 
-			
-			return true;
+		try {
+			appProfile = new ApplicationProfile(file);
+		} catch (NoSuchElementException | IOException e) {
+			logger.error(e.getMessage());
+			return false;
 		}
-		return false;
+		
+		frmSepaDashboard.setTitle("SEPA Dashboard Ver 1.0 " + " - " + file);
+		
+		//Loading namespaces
+		for(String prefix : appProfile.getPrefixes()) {
+			Vector<String> row = new Vector<String>();
+			row.add(prefix);
+			row.addElement(appProfile.getNamespaceURI(prefix));
+			namespacesDM.addRow(row);
+		}
+		
+		//Loading updates
+		for(String update : appProfile.getUpdateIds()) {
+			//updateListDM.addElement(update);
+			updateListDM.add(update);
+		}
+		
+		//Loading subscribes
+		for(String subscribe : appProfile.getSubscribeIds()) {
+			//subscribeListDM.addElement(subscribe);
+			subscribeListDM.add(subscribe);
+		}
+		
+		textFieldIP.setText(appProfile.getHost());
+		textFieldUPort.setText(String.format("%d", appProfile.getUpdatePort()));
+		textFieldSPort.setText(String.format("%d", appProfile.getSubscribePort()));
+		txtFieldPath.setText(appProfile.getUpdatePath());
+		textFieldUPortSecure.setText(String.format("%d", appProfile.getUpdateSecurePort()));
+		textFieldSPortSecure.setText(String.format("%d", appProfile.getSubscribeSecurePort()));
+		
+		//Enable all the buttons
+		btnUpdate.setEnabled(true);
+		btnSubscribe.setEnabled(true);
+		btnQuery.setEnabled(true);
+		
+		try {
+			kp = new DashboardClient(file);
+		} catch (IllegalArgumentException | NoSuchElementException | IOException e) {
+			logger.error(e.getMessage());
+			return false;
+		} 
+			
+		return true;
 	}
 	
 	private class DashboardFileFilter extends FileFilter {
@@ -908,7 +921,7 @@ public class Dashboard {
 		btnLoadXmlProfile.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				final JFileChooser fc = new JFileChooser(appProperties.getProperty("appProfile"));
-				DashboardFileFilter filter = new DashboardFileFilter("SAP Profile (.sap)",".sap");
+				DashboardFileFilter filter = new DashboardFileFilter("JSON SAP Profile (.jsap)",".jsap");
 				fc.setFileFilter(filter);
 				int returnVal = fc.showOpenDialog(frmSepaDashboard);
 				if (returnVal == JFileChooser.APPROVE_OPTION) {
@@ -1193,14 +1206,11 @@ public class Dashboard {
 					if (literal) forced.addBinding(var,new RDFTermLiteral(value));
 					else forced.addBinding(var, new RDFTermURI(value));
 				}
-				String prefixes = "";
-				for (int index = 0; index < namespacesDM.getRowCount();index++){
-					prefixes = prefixes + "PREFIX "+namespacesDM.getValueAt(index, 0).toString()+":<"+namespacesDM.getValueAt(index, 1).toString()+"> ";
-				}
+				
 				String update = SPARQLUpdate.getText().replaceAll("[\n\t]","");
 				
 				long start = System.currentTimeMillis();
-				boolean result = kp.update(prefixes+update, forced);
+				boolean result = kp.update(prefixes()+update, forced);
 				long stop = System.currentTimeMillis();
 				
 				lblInfo.setText("UPDATE returned "+result+" in "+(stop-start)+ " ms");
@@ -1258,12 +1268,13 @@ public class Dashboard {
 					}
 					
 					String query = SPARQLSubscribe.getText().replaceAll("[\n\t]","");
-					String prefixes = "";
-					for (int index = 0; index < namespacesDM.getRowCount();index++){
-						prefixes = prefixes + "PREFIX "+namespacesDM.getValueAt(index, 0).toString()+":<"+namespacesDM.getValueAt(index, 1).toString()+"> ";
-					}
 					
-					response = kp.subscribe(prefixes + query, forced);
+					try {
+						response = kp.subscribe(prefixes()+query, forced);
+					} catch (IOException | URISyntaxException e1) {
+						lblInfo.setText("Subscription failed: "+e1.getMessage());
+						return;
+					}
 					
 					if (response.equals("")) {
 						lblInfo.setText("Subscription failed");
@@ -1274,8 +1285,12 @@ public class Dashboard {
 					lblInfo.setText("Subscribed");	
 				}
 				else {
-					if (kp.unsubscribe()) {
-						lblInfo.setText("Unsubscribed");	
+					try {
+						if (kp.unsubscribe()) {
+							lblInfo.setText("Unsubscribed");	
+						}
+					} catch (IOException | URISyntaxException e1) {
+						lblInfo.setText(e1.getMessage());	
 					}
 					
 					btnSubscribe.setText("SUBSCRIBE");	
@@ -1307,14 +1322,12 @@ public class Dashboard {
 					if (literal) forced.addBinding(var, new RDFTermLiteral(value));
 					else forced.addBinding(var, new RDFTermURI(value));
 				}
+
 				String query = SPARQLSubscribe.getText().replaceAll("[\n\t]", "");
-				String prefixes = "";
-				for (int index = 0; index < namespacesDM.getRowCount();index++){
-					prefixes = prefixes + "PREFIX "+namespacesDM.getValueAt(index, 0).toString()+":<"+namespacesDM.getValueAt(index, 1).toString()+"> ";
-				}
+				
 				lblInfo.setText("Running query...");
 				long start = System.currentTimeMillis();
-				BindingsResults ret = kp.query(prefixes+query, forced);
+				BindingsResults ret = kp.query(prefixes()+query, forced);
 				long stop = System.currentTimeMillis();
 				
 				if (ret != null) {
@@ -1423,5 +1436,17 @@ public class Dashboard {
 		gbc_btnClean.gridy = 0;
 		panel_1.add(btnClean, gbc_btnClean);
 		bindingsRender.setNamespaces(namespacesDM);
+	}
+
+	protected String prefixes() {
+		String prefixes = "";
+		@SuppressWarnings("unchecked")
+		Vector<Vector<String>> ns = namespacesDM.getDataVector();
+		for (int row = 0; row < namespacesDM.getRowCount(); row++) {
+			String prefix = (String) ns.elementAt(row).elementAt(0);
+			String namespace = (String) ns.elementAt(row).elementAt(1);
+			prefixes += "PREFIX "+prefix+":<"+namespace+"> ";
+		}
+		return prefixes;
 	}
 }

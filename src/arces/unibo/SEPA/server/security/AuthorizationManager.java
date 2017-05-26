@@ -61,18 +61,19 @@ import arces.unibo.SEPA.commons.response.ErrorResponse;
 import arces.unibo.SEPA.commons.response.JWTResponse;
 import arces.unibo.SEPA.commons.response.RegistrationResponse;
 import arces.unibo.SEPA.commons.response.Response;
+import arces.unibo.SEPA.server.beans.SEPABeans;
 
-public class AuthorizationManager {
+public class AuthorizationManager implements AuthorizationManagerMBean {
 	
-	//TODO: to be made persistent (DB)
+	//TODO: CLIENTS DB to be made persistent
 	//IDENTITY ==> ID
 	private HashMap<String,String> clients = new HashMap<String,String>();
 	
-	//TODO: to be made persistent (DB)
+	//TODO: CREDENTIALS DB to be made persistent
 	//ID ==> Secret
 	private HashMap<String,String> credentials = new HashMap<String,String>();
 	
-	//TODO: to be made persistent (DB)
+	//TODO: TOKENS DB to be made persistent
 	//ID ==> JWTClaimsSet
 	private HashMap<String,JWTClaimsSet> clientClaims = new HashMap<String,JWTClaimsSet>();
 	
@@ -86,15 +87,17 @@ public class AuthorizationManager {
 	private SEPASecurityContext context = new SEPASecurityContext();
 	private SSLSecurityManager sManager;
 	
-	private long expiring = 5; 												//TODO: JMX
-	private String issuer = "https://wot.arces.unibo.it:8443/oauth/token"; 		//TODO: JMX
-	private String httpsAudience = "https://wot.arces.unibo.it:8443/sparql"; 	//TODO: JMX
-	private String wssAudience ="wss://wot.arces.unibo.it:9443/sparql";  		//TODO: JMX
-	private String subject = "SEPADemo";										//TODO: JMX
-	 
+	//JMX Access
+	private HashMap<String,Boolean> authorizedIdentities = new HashMap<String,Boolean>();
+	private long expiring = 5; 												
+	private String issuer = "https://wot.arces.unibo.it:8443/oauth/token"; 		
+	private String httpsAudience = "https://wot.arces.unibo.it:8443/sparql"; 	
+	private String wssAudience ="wss://wot.arces.unibo.it:9443/sparql";  		
+	private String subject = "SEPATest";										
+	
 	private static final Logger logger = LogManager.getLogger("AuthorizationManager");
 	
-	/*
+	/**
 	Security context. Provides additional information necessary for processing a JOSE object.
 	Example context information:
 
@@ -111,6 +114,9 @@ public class AuthorizationManager {
 	
 	private void securityCheck(String identity) {
 		logger.debug("*** Security check ***");
+		//Add identity
+		addAuthorizedIdentity(identity);
+		
 		//Register
 		logger.debug("Register: "+identity);
 		Response response = register(identity);
@@ -140,6 +146,9 @@ public class AuthorizationManager {
 		else logger.debug("FAILED");
 		logger.debug("**********************");
 		System.out.println("");	
+		
+		//Add identity
+		removeAuthorizedIdentity(identity);
 	}
 
 	private boolean init(String keyAlias,String keyPwd){		
@@ -184,6 +193,8 @@ public class AuthorizationManager {
 	}
 	
 	public AuthorizationManager(String keystoreFileName,String keystorePwd,String keyAlias,String keyPwd,String certificate) {	
+		SEPABeans.registerMBean("SEPA:type=AuthorizationManager",this);	
+		
 		sManager = new SSLSecurityManager(keystoreFileName, keystorePwd, keyAlias, keyPwd, certificate,false,true,null);
 		init(keyAlias, keyPwd);
 		
@@ -191,11 +202,22 @@ public class AuthorizationManager {
 	}
 	
 	private boolean authorizeIdentity(String id) {
-		logger.debug("authorizeIdentity:"+id);
+		logger.debug("Authorize identity:"+id);
 		
-		//TODO: check if "id" is registered
-		return true;
+		//TODO: WARNING! TO BE REMOVED IN PRODUCTION. ONLY FOR TESTING.
+		if (id.equals("SEPATest")) {
+			authorizedIdentities.put(id, true);
+			expiring = 5;
+			return true;
+		}
+		
+		if(authorizedIdentities.containsKey(id)) {
+			if(authorizedIdentities.get(id)) authorizedIdentities.put(id, false);
+			return true;
+		}
+		return false;
 	}
+	
 	/**
 	 * POST https://wot.arces.unibo.it:8443/oauth/token
 	 * 
@@ -233,7 +255,7 @@ public class AuthorizationManager {
 		//Multiple registration not allowed
 		if (clients.containsKey(identity)) {
 			logger.error("Multiple registration forbitten "+identity);
-			return new ErrorResponse(0,ErrorResponse.FORBIDDEN,"Multiple registration forbitten "+identity);
+			return new ErrorResponse(0,ErrorResponse.FORBIDDEN,"Multiple registration forbidden "+identity);
 		}
 		
 		//Create credentials
@@ -316,7 +338,7 @@ public class AuthorizationManager {
 			logger.debug("Check token expiration: "+now+" > "+expires+ " ?");
 			if(now.before(expires)) {
 				logger.warn("Token is not expired");
-				return new ErrorResponse(0,ErrorResponse.BAD_REQUEST,"Token in not expired");
+				return new ErrorResponse(0,ErrorResponse.BAD_REQUEST,"Token is not expired");
 			}
 		}
 		
@@ -474,5 +496,72 @@ public class AuthorizationManager {
 	public SSLEngineConfigurator getWssConfigurator() {
 		SSLEngineConfigurator config = new SSLEngineConfigurator(sManager.getWssConfigurator().getSslContext(), false, false, false);
 		return config;
+	}
+
+	
+	@Override
+	public long getTokenExpiringPeriod() {
+		return expiring;
+	}
+	
+
+	@Override
+	public void setTokenExpiringPeriod(long period) {
+		expiring = period;
+	}
+
+	@Override
+	public void addAuthorizedIdentity(String id) {
+		authorizedIdentities.put(id, true);
+	}
+
+	@Override
+	public void removeAuthorizedIdentity(String id) {
+		authorizedIdentities.remove(id);
+	}
+
+	@Override
+	public HashMap<String, Boolean> getAuthorizedIdentities() {
+		return authorizedIdentities;
+	}
+
+	@Override
+	public String getIssuer() {
+		return issuer;
+	}
+
+	@Override
+	public void setIssuer(String issuer) {
+		this.issuer = issuer;
+	}
+
+	@Override
+	public String getHttpsAudience() {
+		return httpsAudience;
+	}
+
+	@Override
+	public void setHttpsAudience(String audience) {
+		this.httpsAudience = audience;
+	}
+
+	@Override
+	public String getWssAudience() {
+		return wssAudience;
+	}
+
+	@Override
+	public void setWssAudience(String audience) {
+		this.wssAudience = audience;
+	}
+
+	@Override
+	public String getSubject() {
+		return this.subject;
+	}
+
+	@Override
+	public void setSubject(String sub) {
+		this.subject = sub;
 	}	
 }

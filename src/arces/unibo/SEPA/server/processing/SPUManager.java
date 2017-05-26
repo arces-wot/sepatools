@@ -30,23 +30,26 @@ import arces.unibo.SEPA.commons.request.UnsubscribeRequest;
 
 import arces.unibo.SEPA.commons.response.Notification;
 import arces.unibo.SEPA.commons.response.UpdateResponse;
+import arces.unibo.SEPA.server.beans.SEPABeans;
 
-public class SPUManager extends Observable implements Observer{
+public class SPUManager extends Observable implements Observer,SPUManagerMBean{
 	private static final Logger logger = LogManager.getLogger("SPUManager");
 	private SPARQL11Protocol endpoint;
 	private HashMap<String,SPU> spus = new HashMap<String,SPU>();
-
+	protected static String mBeanName = "SEPA:type=SPUManager";
+	
 	//Sequential update processing
 	private static int subscriptionsChecked = 0;
 	
 	public SPUManager(SPARQL11Protocol endpoint) {
 		this.endpoint = endpoint;
+		SEPABeans.registerMBean(mBeanName, this);
 	}
 	
 	public void processSubscribe(SubscribeRequest req) {
 		logger.debug("Process SUBSCRIBE #"+req.getToken());
 		
-		//TODO: choose different kind of SPU based on subscription request
+		//TODO: choose different kinds of SPU based on subscription request
 		SPU spu = new SPUNaive(req,endpoint);
 		spu.addObserver(this);
 		
@@ -129,5 +132,10 @@ public class SPUManager extends Observable implements Observer{
 			setChanged();
 			notifyObservers(arg);
 		}
+	}
+
+	@Override
+	public long getActiveSPUs() {
+		return spus.size();
 	}
 }

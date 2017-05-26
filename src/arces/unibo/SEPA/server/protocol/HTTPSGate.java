@@ -19,8 +19,10 @@
 package arces.unibo.SEPA.server.protocol;
 
 import java.io.IOException;
-import java.io.OutputStream;
+
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
 
 import java.util.List;
 
@@ -35,11 +37,13 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpHandler;
+import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.HttpsServer;
 
 import arces.unibo.SEPA.commons.response.ErrorResponse;
 import arces.unibo.SEPA.commons.response.Response;
+
+import arces.unibo.SEPA.server.beans.SEPABeans;
 import arces.unibo.SEPA.server.core.EngineProperties;
 import arces.unibo.SEPA.server.scheduling.SchedulerInterface;
 import arces.unibo.SEPA.server.security.AuthorizationManager;
@@ -47,10 +51,11 @@ import arces.unibo.SEPA.server.security.CORSManager;
 
 public class HTTPSGate extends HTTPGate {
 	protected Logger logger = LogManager.getLogger("HTTPSGate");	
-	protected static String mBeanName = "arces.unibo.SEPA.server:type=HTTPSGate";
+	protected String mBeanName = "SEPA:type=HTTPSGate";
 		
 	//Authorization manager
-	private static AuthorizationManager am = new AuthorizationManager("sepa.jks","*sepa.jks*","SepaKey","*SepaKey*","SepaCertificate");
+	protected HttpServer authorizationServer = null;
+	private AuthorizationManager am;
 
 	/*
 	Error Code	Description (RFC 2616 Status codes) 
@@ -65,36 +70,32 @@ public class HTTPSGate extends HTTPGate {
 	503			Service Unavailable
 	*/
 	
-	public HTTPSGate(EngineProperties properties, SchedulerInterface scheduler) {
+	public HTTPSGate(EngineProperties properties, SchedulerInterface scheduler,AuthorizationManager am) throws IllegalArgumentException {
 		super(properties, scheduler);
-		
-		if (properties == null) {
-			logger.fatal("Properties are null");
-			System.exit(-1);
-		}
+		if (am == null) throw new IllegalArgumentException("Authorization manager can not be null");
+		this.am = am;
 	}
 	
-	class RegistrationHandler implements HttpHandler {
+	/**
+	 * Registration is done according [RFC7591] and described in the following.
+	 * Create a HTTP request with JSON request content as in the following prototype and send it via TLS to the AM.
+	 * 
+	 * Request 
+	 * POST HTTP/1.1
+	 * 
+	 * Request headers 
+	 * Host: <URL> 
+	 * Content-Type: application/json 
+	 * Accept: application/json
+	 * 
+	 * Request body 
+	 * { 
+	 * "client_identity": "IDENTITY", 
+	 * "grant_types": ["client_credentials"] 
+	 * }
+	 */
+	class RegistrationHandler extends SPARQLHandler {
 
-		/*
-		 * Registration is done according [RFC7591] and described in the following.
-		 * Create a HTTP request with JSON request content as in the following prototype and send it via TLS to the AM.
-		 * 
-		 * Request 
-		 * POST HTTP/1.1
-		 * 
-		 * Request headers 
-		 * Host: <URL> 
-		 * Content-Type: application/json 
-		 * Accept: application/json
-		 * 
-		 * Request body 
-		 * { c
-		 * "client_identity": "IDENTITY", 
-		 * "grant_types": ["client_credentials"] 
-		 * }
-		 */
-		
 		@Override
 		public void handle(HttpExchange exchange) throws IOException {
 			logger.info(">> HTTPS request (REGISTRATION)");
@@ -109,7 +110,7 @@ public class HTTPSGate extends HTTPGate {
 				return;
 			}
 			
-			//Parsing and validating request headers
+			// Parsing and validating request headers
 			// Content-Type: application/json 
 			// Accept: application/json
 			if (!exchange.getRequestHeaders().containsKey("Content-Type")) {
@@ -203,50 +204,31 @@ public class HTTPSGate extends HTTPGate {
 				return;
 			}
 			
-			sendHTTPResponse(exchange,cred.toString());	
-		}
-		
-		private void sendHTTPResponse(HttpExchange exchange,String body) {
-			try {
-				exchange.sendResponseHeaders(201, body.length());
-			} catch (IOException e) {
-				logger.error(e.getMessage());
-			}
-			OutputStream os = exchange.getResponseBody();
-			try {
-				os.write(body.getBytes());
-			} catch (IOException e) {
-				logger.error(e.getMessage());
-			}
-			try {
-				os.close();
-			} catch (IOException e) {
-				logger.error(e.getMessage());
-			}	
+			sendResponse(exchange,201,cred.toString());	
 		}
 	}
 	
-	class TokenHandler implements HttpHandler {
-		/*
-		 * Token Acquisition
-		 * Create a HTTP request as in the following prototype and send it via TLS to the AM.
-		 * 
-		 * Request 
-		 * POST HTTP/1.1
-		 * 
-		 * Request headers 
-		 * Host: <URL> 
-		 * Content-Type: application/x-www-form-urlencoded 
-		 * Accept: application/json 
-		 * Authorization: Basic Base64(<c_id>:<c_secret>)
-		 * 
-		 * Request body 
-		 * 
-		 * { 
-		 * "client_identity": "68:a8:6d:1a:9c:04", 
-		 * "grant_types": ["client_credentials"] 
-		 * }
-		 * */
+	/**
+	 * Token Acquisition
+	 * Create a HTTP request as in the following prototype and send it via TLS to the AM.
+	 * 
+	 * Request 
+	 * POST HTTP/1.1
+	 * 
+	 * Request headers 
+	 * Host: <URL> 
+	 * Content-Type: application/json
+	 * Accept: application/json 
+	 * Authorization: Basic Base64(<c_id>:<c_secret>)
+	 * 
+	 * Request body 
+	 * 
+	 * { 
+	 * "client_identity": "68:a8:6d:1a:9c:04", 
+	 * "grant_types": ["client_credentials"] 
+	 * }
+	 * */
+	class TokenHandler extends SPARQLHandler {
 		
 		@Override
 		public void handle(HttpExchange exchange) throws IOException {
@@ -262,28 +244,32 @@ public class HTTPSGate extends HTTPGate {
 				return;
 			}
 			
+			//Parsing and validating request headers
+			// Content-Type: application/json 
+			// Accept: application/json
 			if (!exchange.getRequestHeaders().containsKey("Content-Type")) {
-				logger.error("Content-Type is null");
-				failureResponse(exchange,400,"Content-Type is null");
+				logger.error("Bad request header: Content-Type is missing");
+				failureResponse(exchange,400,"Bad request header: Content-Type is missing");
 				return;
 			}
-			if (!exchange.getRequestHeaders().get("Content-Type").contains("application/x-www-form-urlencoded")) {
-				logger.error("Content-Type must be \"application/x-www-form-urlencoded\"");
-				failureResponse(exchange,400,"Content-Type must be \"application/x-www-form-urlencoded\"");
+			if (!exchange.getRequestHeaders().get("Content-Type").contains("application/json")) {
+				logger.error("Bad request header: Content-Type must be \"application/json\"");
+				failureResponse(exchange,400,"Bad request header: Content-Type must be \"application/json\"");
 				return;	
-			} 
+			}
 			
 			if (!exchange.getRequestHeaders().containsKey("Accept")) {
-				logger.error("Accept is null");
-				failureResponse(exchange,400,"Accept is null");
+				logger.error("Bad request header: Accept is missing");
+				failureResponse(exchange,400,"Bad request header: Accept is missing");
 				return;
 			}
 			if (!exchange.getRequestHeaders().get("Accept").contains("application/json")) {
-				logger.error("Accept must be \"application/json\"");
-				failureResponse(exchange,400,"Accept must be \"/application/json\"");
+				logger.error("Bad request header: Accept must be \"application/json\"");
+				failureResponse(exchange,400,"Bad request header: Accept must be \"/application/json\"");
 				return;	
 			}
 			
+			//Authorization header
 			if (!exchange.getRequestHeaders().containsKey("Authorization")) {
 				logger.error("Authorization is null");
 				failureResponse(exchange,401,"Authorization is null");
@@ -313,45 +299,30 @@ public class HTTPSGate extends HTTPGate {
 				logger.error(token.toString());
 				failureResponse(exchange,error.getErrorCode(),error.getErrorMessage());
 			}
-			else sendHTTPResponse(exchange,token.toString());
-		}
-		
-		private void sendHTTPResponse(HttpExchange exchange,String body) {
-			try {
-				exchange.sendResponseHeaders(201, body.length());
-			} catch (IOException e) {
-				logger.error(e.getMessage());
+			else {
+				sendResponse(exchange,201,token.toString());
 			}
-			OutputStream os = exchange.getResponseBody();
-			try {
-				os.write(body.getBytes());
-			} catch (IOException e) {
-				logger.error(e.getMessage());
-			}
-			try {
-				os.close();
-			} catch (IOException e) {
-				logger.error(e.getMessage());
-			}	
 		}
 	}
 	
+	/**
+	 * Operation when receiving a HTTP request at a protected endpoint
+	 * 
+		 * 1. Check if the request contains an Authorization header.
+	 * 2. Check if the request contains an Authorization: Bearer-header with non-null/empty contents
+	 * 3. Check if the value of the Authorization: Bearer-header is a JWT object
+	 * 4. Check if the JWT object is signed
+	 * 5. Check if the signature of the JWT object is valid. This is to be checked with AS public signature verification key
+	 * 6. Check the contents of the JWT object
+	 * 7. Check if the value of "iss" is https://wot.arces.unibo.it:8443/oauth/token
+	 * 8. Check if the value of "aud" contains https://wot.arces.unibo.it:8443/sparql
+	 * 9. Accept the request as well as "sub" as the originator of the request and process it as usual
+	 * 
+	 * *** Respond with 401 if not
+	 * */
+	
 	class SecureSPARQLHandler extends SPARQLHandler {
-		/*
-		 * Operation when receiving a HTTP request at a protected endpoint
-		 * 
- 		 * 1. Check if the request contains an Authorization header.
-		 * 2. Check if the request contains an Authorization: Bearer-header with non-null/empty contents
-		 * 3. Check if the value of the Authorization: Bearer-header is a JWT object
-		 * 4. Check if the JWT object is signed
-		 * 5. Check if the signature of the JWT object is valid. This is to be checked with AS public signature verification key
-		 * 6. Check the contents of the JWT object
-		 * 7. Check if the value of "iss" is https://wot.arces.unibo.it:8443/oauth/token
-		 * 8. Check if the value of "aud" contains https://wot.arces.unibo.it:8443/sparql
-		 * 9. Accept the request as well as "sub" as the originator of the request and process it as usual
-		 * 
-		 * *** Respond with 401 if not
-		 * */
+		
 		@Override
 		public void handle(HttpExchange httpExchange) throws IOException {
 			logger.info(">> HTTPS request");	
@@ -368,14 +339,19 @@ public class HTTPSGate extends HTTPGate {
 			
 			//Extract Bearer authorization
 			List<String> bearer = httpExchange.getRequestHeaders().get("Authorization");
+			if (bearer == null) {
+				logger.error("Authorization header is missing");
+				failureResponse(httpExchange,ErrorResponse.UNAUTHORIZED,"Authorization header is missing");
+				return;		
+			}
 			if (bearer.size()!=1) {
-				logger.error("Bearer is null");
-				failureResponse(httpExchange,401,"Bearer is null");
+				logger.error("Too many authorization headers");
+				failureResponse(httpExchange,ErrorResponse.UNAUTHORIZED,"Too many authorization headers");
 				return;		
 			}
 			if (!bearer.get(0).startsWith("Bearer ")) {
 				logger.error("Authorization must be \"Bearer JWT\"");
-				failureResponse(httpExchange,401,"Authorization must be \"Bearer JWT\"");
+				failureResponse(httpExchange,ErrorResponse.UNAUTHORIZED,"Authorization must be in the form \"Bearer JWT\"");
 				return;		
 			}
 			
@@ -396,30 +372,77 @@ public class HTTPSGate extends HTTPGate {
 	}
 	
 	@Override
-	public void start(){	
+	public void start() {	
 		this.setName("SEPA HTTPS Gate");
+		
+		SEPABeans.registerMBean(mBeanName,this);
 		
 		// create HTTPS server
 		try {
-			server = HttpsServer.create(new InetSocketAddress(properties.getHttpsPort()), 0);
+			updateServer = HttpsServer.create(new InetSocketAddress(properties.getSecureUpdatePort()), 0);
+			if (properties.getSecureUpdatePort() != properties.getSecureQueryPort()){
+				queryServer = HttpsServer.create(new InetSocketAddress(properties.getSecureQueryPort()), 0);
+				if (properties.getAuthorizationServerPort() == properties.getSecureUpdatePort()) authorizationServer = updateServer;
+				else if (properties.getAuthorizationServerPort() == properties.getSecureQueryPort()) authorizationServer = queryServer;
+				else authorizationServer = HttpsServer.create(new InetSocketAddress(properties.getAuthorizationServerPort()), 0);
+			}
+			else {
+				queryServer = updateServer;
+				if (properties.getAuthorizationServerPort() == properties.getSecureUpdatePort()) authorizationServer = updateServer;
+				else {
+					authorizationServer = HttpsServer.create(new InetSocketAddress(properties.getAuthorizationServerPort()), 0);	
+				}
+			}
 		} catch (IOException e) {
 			logger.fatal(e.getMessage());
 			System.exit(1);
 		}
 		
 		// Set security configuration
-		((HttpsServer)server).setHttpsConfigurator(am.getHttpsConfigurator());
+		((HttpsServer)updateServer).setHttpsConfigurator(am.getHttpsConfigurator());
+		if (queryServer != updateServer) 
+			((HttpsServer)queryServer).setHttpsConfigurator(am.getHttpsConfigurator());
+		if (authorizationServer != updateServer && authorizationServer != queryServer) 
+			((HttpsServer)authorizationServer).setHttpsConfigurator(am.getHttpsConfigurator());
 		
-	    server.createContext(properties.getHttpsPath(), new SecureSPARQLHandler());
-	    server.createContext("/echo", new EchoHandler());
-	    
+		//Update and query
+	    updateServer.createContext(properties.getSecureUpdatePath(), new SecureSPARQLHandler());
+	    updateServer.createContext("/echo", new EchoHandler());
+	    if (queryServer != updateServer) {
+	    	queryServer.createContext(properties.getSecureQueryPath(), new SecureSPARQLHandler());
+	    	queryServer.createContext("/echo", new EchoHandler());
+	    }
+	    	    
 	    //WoT Authentication
-	    server.createContext(properties.getRegisterPath(), new RegistrationHandler());
-	    server.createContext(properties.getTokenRequestPath(), new TokenHandler());
+	    authorizationServer.createContext(properties.getRegisterPath(), new RegistrationHandler());
+	    authorizationServer.createContext(properties.getTokenRequestPath(), new TokenHandler());
 	    
-	    server.setExecutor(null);
-	    server.start();
+	    //Starting...
+	    updateServer.setExecutor(null);
+	    updateServer.start();
 	    
-	    logger.info("Started on port "+properties.getHttpsPort()+properties.getHttpsPath());
+	    if (queryServer != updateServer) {
+	    	queryServer.setExecutor(null);
+	    	queryServer.start();
+	    }
+	    
+	    if (authorizationServer != updateServer && authorizationServer != queryServer) {
+	    	authorizationServer.setExecutor(null);
+	    	authorizationServer.start();
+	    }
+	    
+	    logger.info("HTTPS gate started");
+	    
+	    String host = "localhost";
+	    try {
+			host = InetAddress.getLocalHost().getHostName();
+		} catch (UnknownHostException e) {
+			logger.warn(e.getMessage());
+		}
+	    
+	    logger.info("Listening for SECURE SPARQL UPDATES on https://"+host+":"+properties.getSecureUpdatePort()+properties.getSecureUpdatePath());
+	    logger.info("Listening for SECURE SPARQL QUERIES on https://"+host+":"+properties.getSecureQueryPort()+properties.getSecureQueryPath());
+	    logger.info("Listening for REGISTRATION REQUESTS on https://"+host+":"+properties.getAuthorizationServerPort()+properties.getRegisterPath());
+	    logger.info("Listening for TOKEN REQUESTS on https://"+host+":"+properties.getAuthorizationServerPort()+properties.getTokenRequestPath());
 	}
 }

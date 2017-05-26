@@ -18,12 +18,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package arces.unibo.SEPA.client.pattern;
 
-import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.Reader;
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.Map.Entry;
+import java.util.NoSuchElementException;
 import java.util.Set;
 
 import org.apache.logging.log4j.Logger;
@@ -31,19 +30,16 @@ import org.apache.logging.log4j.LogManager;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 
+import arces.unibo.SEPA.client.api.SPARQL11SEProperties;
 import arces.unibo.SEPA.commons.SPARQL.Bindings;
 import arces.unibo.SEPA.commons.SPARQL.RDFTerm;
 import arces.unibo.SEPA.commons.SPARQL.RDFTermLiteral;
 import arces.unibo.SEPA.commons.SPARQL.RDFTermURI;
 
-/* SAP file example
+/** SAP file example
  {
-    "parameters" : { "path":"sparql",
-		     "subscribeSecurePort":9443, "subscribePort":9000,
-		     "updateSecurePort":8443, "updatePort":8000,
-		     "host":"localhost"},
+    "parameters":{},
     "namespaces" : { "iot":"http://www.arces.unibo.it/iot#",
 		     "rdf":"http://www.w3.org/1999/02/22-rdf-syntax-ns#"},
     "updates": {
@@ -64,11 +60,18 @@ import arces.unibo.SEPA.commons.SPARQL.RDFTermURI;
     }
 }
 */
-public class ApplicationProfile {	
+public class ApplicationProfile extends SPARQL11SEProperties {	
+	public ApplicationProfile(String propertiesFile) throws FileNotFoundException, NoSuchElementException, IOException {
+		super(propertiesFile);
+	}
+
+	public ApplicationProfile(String propertiesFile,byte[] secret) throws FileNotFoundException, NoSuchElementException, IOException {
+		super(propertiesFile,secret);	
+	}
+	
 	protected Logger logger = LogManager.getLogger("SAP");	
 
-	protected boolean loaded = false;
-	private JsonObject doc = null;
+	private String fileName;
 	
 	/**
 	  "updates": {
@@ -170,85 +173,6 @@ public class ApplicationProfile {
 				}
 		return ret;
 	}
-	
-	/**
-	"parameters":{
-	  	"ports":{"ws":9000,"wss":9443,"http":8000,"https":8443},
-		"paths":{"http":"/sparql","https":"/sparql","ws":"/sparql","wss":"/secure/sparql","register":"/oauth/register","token":"/oauth/token"},
-	    "host": "localhost"
-	   }
-	*/
-	
-	public String getHost() {
-		JsonElement elem = null;
-		if ((elem = doc.get("parameters")) != null) 
-			if ((elem = elem.getAsJsonObject().get("host"))!=null) return elem.getAsString();
-		return null;
-	}
-
-	public int getPort() {
-		JsonElement elem = null;
-		if ((elem = doc.get("parameters")) != null) 
-			if ((elem = elem.getAsJsonObject().get("ports"))!=null) 
-				if ((elem = elem.getAsJsonObject().get("http"))!=null) return elem.getAsInt();
-		return -1;
-	}
-	
-	public int getSecurePort() {
-		JsonElement elem = null;
-		if ((elem = doc.get("parameters")) != null) 
-			if ((elem = elem.getAsJsonObject().get("ports"))!=null) 
-				if ((elem = elem.getAsJsonObject().get("https"))!=null) return elem.getAsInt();
-		return -1;
-	}
-
-	public int getSubscribePort() {
-		JsonElement elem = null;
-		if ((elem = doc.get("parameters")) != null) 
-			if ((elem = elem.getAsJsonObject().get("ports"))!=null) 
-				if ((elem = elem.getAsJsonObject().get("ws"))!=null) return elem.getAsInt();
-		return -1;
-	}
-	
-	public int getSecureSubscribePort() {
-		JsonElement elem = null;
-		if ((elem = doc.get("parameters")) != null) 
-			if ((elem = elem.getAsJsonObject().get("ports"))!=null) 
-				if ((elem = elem.getAsJsonObject().get("wss"))!=null) return elem.getAsInt();
-		return -1;
-	}
-
-	public String getPath() {
-		JsonElement elem = null;
-		if ((elem = doc.get("parameters")) != null) 
-			if ((elem = elem.getAsJsonObject().get("paths"))!=null) 
-				if ((elem = elem.getAsJsonObject().get("http"))!=null) return elem.getAsString();
-		return null;
-	}
-	
-	public String getSecurePath() {
-		JsonElement elem = null;
-		if ((elem = doc.get("parameters")) != null) 
-			if ((elem = elem.getAsJsonObject().get("paths"))!=null) 
-				if ((elem = elem.getAsJsonObject().get("https"))!=null) return elem.getAsString();
-		return null;
-	}
-	
-	public String getSecureSubscribePath() {
-		JsonElement elem = null;
-		if ((elem = doc.get("parameters")) != null) 
-			if ((elem = elem.getAsJsonObject().get("paths"))!=null) 
-				if ((elem = elem.getAsJsonObject().get("wss"))!=null) return elem.getAsString();
-		return null;
-	}
-	
-	public String getSubscribePath() {
-		JsonElement elem = null;
-		if ((elem = doc.get("parameters")) != null) 
-			if ((elem = elem.getAsJsonObject().get("paths"))!=null) 
-				if ((elem = elem.getAsJsonObject().get("ws"))!=null) return elem.getAsString();
-		return null;
-	}
 
 	/**
 	 * "namespaces" : { "iot":"http://www.arces.unibo.it/iot#","rdf":"http://www.w3.org/1999/02/22-rdf-syntax-ns#"},
@@ -272,34 +196,12 @@ public class ApplicationProfile {
 				return elem.getAsString();
 		return ret;
 	}
-	
-	public synchronized boolean load(String fileName){
-		
-		loaded = false;
-		
-		logger.debug("Loading: "+fileName);
-		
-		try {
-			File inputFile = new File(fileName);
-			Reader reader = new FileReader(inputFile);
-			doc = new JsonParser().parse(reader).getAsJsonObject();
-			if (doc == null) {
-				logger.error("Failed to parse "+fileName);
-				return false;
-			}
-		} catch (FileNotFoundException e) {
-			logger.error(e.getMessage());
-			return false;
-		}
-		
-		loaded = true;
-				
-		return true;
+
+	public String getFileName() {
+		return fileName;
 	}
 
-	public boolean isLoaded() {
-		return loaded;
+	public String printParameters() {
+		return parameters.toString();
 	}
-
-	
 }

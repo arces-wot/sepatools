@@ -1,9 +1,15 @@
 package arces.unibo.SEPA.client.tools;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.util.NoSuchElementException;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import arces.unibo.SEPA.client.pattern.ApplicationProfile;
 import arces.unibo.SEPA.client.pattern.Producer;
@@ -12,13 +18,14 @@ import arces.unibo.SEPA.commons.SPARQL.RDFTermLiteral;
 import arces.unibo.SEPA.commons.SPARQL.RDFTermURI;
 
 public class RealTimeIoTResourceUpdate {
-	private static int nThreads = 10;
+	protected static final Logger logger = LogManager.getLogger("RealTimeIoTResourceUpdate");
+	
+	private static int nThreads = 1;
 	private static int nUpdates = 1000;
 	
 	private static ExecutorService producers = Executors.newFixedThreadPool(nThreads);
 	
 	public class ProducerThread extends Producer implements Runnable {
-		
 		
 		public ProducerThread(ApplicationProfile appProfile, String updateID) {
 			super(appProfile, updateID);
@@ -29,27 +36,39 @@ public class RealTimeIoTResourceUpdate {
 			int i = 0;
 			Bindings bindings = new Bindings();
 			bindings.addBinding("resource", new RDFTermURI("iot:Resource_"+UUID.randomUUID().toString()));
-			
-			while (i < nUpdates) {
-				bindings.addBinding("value", new RDFTermLiteral(String.format("%d", i++)));
+			while (i++ < nUpdates) {
+				double value = Math.random()*100;
+				bindings.addBinding("value", new RDFTermLiteral(String.format("%.2f", value)));
 				update(bindings);
 			}
-			
 		}
-		
 	}
 	
-	public static void main(String[] args) {
-		ApplicationProfile app = new ApplicationProfile();
-		app.load("sapexamples/GatewayProfile.sap");
+	public static void main(String[] args) throws FileNotFoundException, NoSuchElementException, IOException {
+		ApplicationProfile app = new ApplicationProfile("sapexamples/GatewayProfile.jsap");
 		
-		for (int i=0; i < nThreads; i++) producers.submit(new RealTimeIoTResourceUpdate().new ProducerThread(app,"UPDATE_RESOURCE"));
+		///Thread th = null;
+		
+		for (int i=0; i < nThreads; i++) {
+			producers.execute(new RealTimeIoTResourceUpdate().new ProducerThread(app,"UPDATE_RESOURCE"));
+			//th = new Thread(new RealTimeIoTResourceUpdate().new ProducerThread(app,"UPDATE_RESOURCE"));
+			//th.setName("S"+i);
+			//th.start();
+		}
+		/*			
+		synchronized(th){
+			try {
+				th.wait();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}*/
 		
 		try {
 			producers.awaitTermination(60, TimeUnit.SECONDS);
 		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			logger.warn(e.getMessage());
 		}
 	}
 }

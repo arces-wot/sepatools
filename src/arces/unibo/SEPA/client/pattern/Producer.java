@@ -32,20 +32,17 @@ public class Producer extends Client implements IProducer {
 	
 	private static final Logger logger = LogManager.getLogger("GenericClient");
 	
-	public Producer(String updateQuery,String url,int updatePort,int subscribePort,String path){
-		super(url,updatePort,subscribePort,path);
-		sparqlUpdate = updateQuery;
-	}
-	
-	public Producer(ApplicationProfile appProfile,String updateID){
+	public Producer(ApplicationProfile appProfile,String updateID) throws IllegalArgumentException {
 		super(appProfile);
+		
 		if (appProfile == null) {
-			logger.fatal("Cannot be initialized with UPDATE ID: "+updateID+" (application profile is null)");
-			System.exit(-1);
+			logger.fatal("Application profile is null)");
+			throw new IllegalArgumentException("Application profile is null");
 		}
+		
 		if (appProfile.update(updateID) == null) {
-			logger.fatal("Cannot find UPDATE ID: "+updateID);
-			System.exit(-1);
+			logger.fatal("UPDATE ID " +updateID+" not found in "+appProfile.getFileName());
+			throw new IllegalArgumentException("UPDATE ID " +updateID+" not found in "+appProfile.getFileName());
 		}
 		
 		SPARQL_ID = updateID;
@@ -54,14 +51,9 @@ public class Producer extends Client implements IProducer {
 	}
 	
 	public boolean update(Bindings forcedBindings){	 
-		 if (sparqlUpdate == null) {
-			 logger.fatal("SPARQL UPDATE not defined");
-			 System.exit(-1);
-		 }
-		 
-		 if (protocolClient == null) {
-			 logger.fatal("Client not initialized");
-			 System.exit(-1);
+		 if (sparqlUpdate == null || protocolClient == null) {
+			 logger.fatal("Producer not initialized");
+			 return false;
 		 }
 
 		 String sparql = prefixes() + replaceBindings(sparqlUpdate,forcedBindings);

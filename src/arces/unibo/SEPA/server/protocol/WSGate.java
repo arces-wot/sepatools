@@ -19,7 +19,8 @@
 package arces.unibo.SEPA.server.protocol;
 
 import java.io.IOException;
-
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -170,23 +171,30 @@ public class WSGate extends WebSocketApplication {
 	
 	public boolean start(){	
 		//Create an HTTP server to which attach the websocket
-		final HttpServer server = HttpServer.createSimpleServer(null, properties.getWsPort());
+		final HttpServer server = HttpServer.createSimpleServer(null, properties.getSubscribePort());
 
 		// Register the WebSockets add on with the HttpServer
         server.getListener("grizzly").registerAddOn(new WebSocketAddOn());
         		
         // register the application
-        WebSocketEngine.getEngine().register("", properties.getWsPath(), this);
+        WebSocketEngine.getEngine().register("", properties.getSubscribePath(), this);
 		
         //Start the server
         try {
 			server.start();
 		} catch (IOException e) {
-			logger.fatal("Failed to start WebSocket gate on port "+properties.getWsPort()+ " "+e.getMessage());
+			logger.fatal("Failed to start WebSocket gate on port "+properties.getSubscribePort()+ " "+e.getMessage());
 			System.exit(1);
 		}
         
-		logger.info("Started on port "+properties.getWsPort()+properties.getWsPath());
+        String host = "localhost";
+	    try {
+			host = InetAddress.getLocalHost().getHostName();
+		} catch (UnknownHostException e) {
+			logger.warn(e.getMessage());
+		}
+	    
+	    logger.info("Listening for SPARQL SUBSCRIBE/UNSUBSCRIBE on ws://"+host+":"+properties.getSubscribePort()+properties.getSubscribePath());
 		
 		//Start the keep alive thread
 		if (properties.getKeepAlivePeriod() > 0) new KeepAlive().start();

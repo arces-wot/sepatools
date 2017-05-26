@@ -18,12 +18,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package arces.unibo.SEPA.client.api;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 
 import java.security.*;
 
 import java.util.Date;
+import java.util.NoSuchElementException;
 
 import javax.crypto.*;
 import javax.crypto.spec.SecretKeySpec;
@@ -40,6 +42,27 @@ import sun.misc.*;
 
 /**
  * The Class SPARQL11SEProperties.
+ * 
+ * {"parameters":{
+	"host":"localhost",
+	"port":8000,
+	"scheme":"http",
+	"path":"/sparql",
+	"query":{"method":"POST","format":"JSON"},
+	"update":{"method":"URL_ENCODED_POST","format":"HTML"},
+	"subscribe":{"port":9000,"scheme":"ws"},
+	"securesubscribe":{"port":9443,"scheme":"wss","path":"/secure/sparql"},
+	"secureupdate":{"port":8443,"scheme":"https"},
+	"securequery":{"port":8443,"scheme":"https"},
+	"authorizationserver":{
+		"register":"/oauth/register","requesttoken":"/oauth/token",
+		"port":8443,"scheme":"https"},
+	"security":{
+		"client_id":"2onesV7vDw9TvXTBt6JlrD0MV6f8eU+Xd8hqTpyok0PcnuFi19HwGTOwdJ56uZDR",
+		"client_secret":"qp6AulTNzU3jMdUY45+eNgQ3+iilVaBuAADR64w9vqmVYtzk814g2x5ZLAgngT7s",
+		"jwt":"xabtQWoH8RJJk1FyKJ78J8h8i2PcWmAugfJ4J6nMd+3Adk0TRGMLTGccxJUiJyyc2yRaVage8/Tz\ndZJiz2jdRP8bhkuNzFhGx6N1/1mgmvfKihLheMmcU0pLj5uKOYWFb+TB98n1IpNO4G69lia2YoR1\n5LScBzibBPpmKWF+XAr5TeDDHDZQK4N3VBS/e3tFL/yOhkfC9Mw45s3mz83oydQazps2cFzookIh\nydKJWfupSsIpj+KmOAjcfC9/tTs3K5uCw8It/0FKvsuW0MAboo4X49sDS+AHTOnVUf67wnnPqJ2M\n1thThv3dIr/WNn+8xJovJWkwcpGP4T7nH7MOCfZzVnKTHr4hN3q14VUWHYne1Mbui7F238uxPBhm\nGoMoSnd7dpaVGHZK9Kfa97HuiKN8s2SfRBcyLOnlBczjgQAaKYdJRUXndWQhPIu1W0oZUxH//6Kx\nA+cquekGC+mzeC8QscLmuwOkBaYIX2Va9600gErGqtHisgNwUUH/g73zjO4pD+xLL/cXuudp89Vq\nu+FyVDOqH5GoCX3G4PMPXLoVuBm4Zt2yQdPvpshH3mrGJsPxS8f1PeVnR6Iy5Wbc8a5jiGYHljbs\n0498sKRA0rko/LHSCZwQwuKwuMd110ZvvmQhBUX/23appJ1Wj9hrS1/G5mPXvFQGuZGf+dgynvPT\njeF4RZQVcsfY7jxTwxVC0VRq7dRIncRgmNOHmfKBA18h9fd6gix5RYEX69NvPKEolFyy2wJJxaci\nwW1ub235Gzd/gn+hnNox1g2rIKPu5XY6ttF0L5HwQmk8aYhusOY=",
+		"expires":"gVpKtUqSbe+km85RCBcsBQ==",
+		"type":"XPrHEX2xHy+5IuXHPHigMw=="}}
  */
 public class SPARQL11SEProperties extends SPARQL11Properties {
 	private long expires = 0;
@@ -83,8 +106,11 @@ public class SPARQL11SEProperties extends SPARQL11Properties {
 	 *
 	 * @param propertiesFile the properties file
 	 * @param secret the secret
+	 * @throws IOException 
+	 * @throws NoSuchElementException 
+	 * @throws FileNotFoundException 
 	 */
-	public SPARQL11SEProperties(String propertiesFile,byte[] secret) {
+	public SPARQL11SEProperties(String propertiesFile,byte[] secret) throws FileNotFoundException, NoSuchElementException, IOException {
 		super(propertiesFile);
 		SEPAEncryption.init(secret);
 	}
@@ -93,14 +119,18 @@ public class SPARQL11SEProperties extends SPARQL11Properties {
 	 * Instantiates a new SPARQL 11 SE properties.
 	 *
 	 * @param propertiesFile the properties file
+	 * @throws IOException 
+	 * @throws NoSuchElementException 
+	 * @throws FileNotFoundException 
 	 */
-	public SPARQL11SEProperties(String propertiesFile) {
+	public SPARQL11SEProperties(String propertiesFile) throws FileNotFoundException, NoSuchElementException, IOException {
 		this(propertiesFile,null);
 	}
 	
-	/* (non-Javadoc)
-	 * @see arces.unibo.SEPA.commons.protocol.SPARQL11Properties#defaults()
-	 */
+	public String toString() {
+		return parameters.toString();
+	}
+	
 	@Override
 	protected void defaults() {
 		super.defaults();
@@ -109,94 +139,117 @@ public class SPARQL11SEProperties extends SPARQL11Properties {
 		subscribe.add("port", new JsonPrimitive(9000));
 		subscribe.add("scheme", new JsonPrimitive("ws"));
 		subscribe.add("path", new JsonPrimitive("/sparql"));
-		properties.add("subscribe", subscribe);
+		parameters.add("subscribe", subscribe);
 		
-		JsonObject security = new JsonObject();
-		security.add("register", new JsonPrimitive("/oauth/register"));
-		security.add("token", new JsonPrimitive("/oauth/token"));
-		properties.add("security", security);
+		JsonObject securesubscribe = new JsonObject();
+		securesubscribe.add("port", new JsonPrimitive(9443));
+		securesubscribe.add("scheme", new JsonPrimitive("wss"));
+		securesubscribe.add("path", new JsonPrimitive("/secure/sparql"));
+		parameters.add("securesubscribe", securesubscribe);
+		
+		JsonObject secureUpdate = new JsonObject();
+		secureUpdate.add("port", new JsonPrimitive(8443));
+		secureUpdate.add("scheme", new JsonPrimitive("https"));
+		parameters.add("secureupdate", secureUpdate);
+		
+		JsonObject secureQuery = new JsonObject();
+		secureQuery.add("port", new JsonPrimitive(8443));
+		secureQuery.add("scheme", new JsonPrimitive("https"));
+		parameters.add("securequery", secureQuery);
+		
+		JsonObject register = new JsonObject();
+		register.add("register", new JsonPrimitive("/oauth/register"));
+		register.add("requesttoken", new JsonPrimitive("/oauth/token"));
+		register.add("port", new JsonPrimitive(8443));
+		register.add("scheme", new JsonPrimitive("https"));
+		parameters.add("authorizationserver", register);
 	}
 	
-	protected boolean loadProperties(){
-		boolean ret = super.loadProperties();
+	protected void loadProperties() throws FileNotFoundException, NoSuchElementException, IOException{
+		super.loadProperties();
 		
-		if (properties.get("security").getAsJsonObject().get("expires") != null) 
-			expires = Long.decode(SEPAEncryption.decrypt(properties.get("security").getAsJsonObject().get("expires").getAsString()));
-		else
-			expires = 0;
-		
-		if (properties.get("security").getAsJsonObject().get("jwt") != null) 
-			jwt = SEPAEncryption.decrypt(properties.get("security").getAsJsonObject().get("jwt").getAsString());
-		else
-			jwt = null;
-		
-		if (properties.get("security").getAsJsonObject().get("type") != null) 
-			tokenType =  SEPAEncryption.decrypt(properties.get("security").getAsJsonObject().get("type").getAsString());
-		else
-			tokenType = null;
-		
-		if (properties.get("security").getAsJsonObject().get("client_id") != null && properties.get("security").getAsJsonObject().get("client_secret") != null ) {
-			id = SEPAEncryption.decrypt(properties.get("security").getAsJsonObject().get("client_id").getAsString());
-			secret = SEPAEncryption.decrypt(properties.get("security").getAsJsonObject().get("client_secret").getAsString());
-			try {
-				authorization = new BASE64Encoder().encode((id + ":" + secret).getBytes("UTF-8"));
-				
-				//TODO need a "\n", why?
-				authorization = authorization.replace("\n", "");
-			} catch (UnsupportedEncodingException e) {
-				logger.error(e.getMessage());
-			}	
+		if (doc.get("security") != null) {
+			if (doc.get("security").getAsJsonObject().get("expires") != null) 
+				expires = Long.decode(SEPAEncryption.decrypt(doc.get("security").getAsJsonObject().get("expires").getAsString()));
+			else
+				expires = 0;
+			
+			if (doc.get("security").getAsJsonObject().get("jwt") != null) 
+				jwt = SEPAEncryption.decrypt(doc.get("security").getAsJsonObject().get("jwt").getAsString());
+			else
+				jwt = null;
+			
+			if (doc.get("security").getAsJsonObject().get("type") != null) 
+				tokenType =  SEPAEncryption.decrypt(doc.get("security").getAsJsonObject().get("type").getAsString());
+			else
+				tokenType = null;
+			
+			if (doc.get("security").getAsJsonObject().get("client_id") != null && doc.get("security").getAsJsonObject().get("client_secret") != null ) {
+				id = SEPAEncryption.decrypt(doc.get("security").getAsJsonObject().get("client_id").getAsString());
+				secret = SEPAEncryption.decrypt(doc.get("security").getAsJsonObject().get("client_secret").getAsString());
+				try {
+					authorization = new BASE64Encoder().encode((id + ":" + secret).getBytes("UTF-8"));
+					
+					//TODO need a "\n", why?
+					authorization = authorization.replace("\n", "");
+				} catch (UnsupportedEncodingException e) {
+					logger.error(e.getMessage());
+				}	
+			}
+			else
+				authorization = null;
 		}
-		else
-			authorization = null;
-		
-		return ret;
 	}
 	
-	/**
-	 * Gets the ws port.
-	 *
-	 * @return the ws port
-	 */
-	public int getWsPort() {
-		return properties.get("subscribe").getAsJsonObject().get("port").getAsInt();
+	public int getSubscribePort() {
+		return getParameter("subscribe","port",9000);
 	}
 	
-	/**
-	 * Gets the subscribe path.
-	 *
-	 * @return the subscribe path
-	 */
 	public String getSubscribePath() {
-		return properties.get("subscribe").getAsJsonObject().get("path").getAsString();
+		return getParameter("subscribe","path","/sparql");
 	}
 	
-	/**
-	 * Gets the ws scheme.
-	 *
-	 * @return the ws scheme
-	 */
-	public String getWsScheme() {
-		return properties.get("subscribe").getAsJsonObject().get("scheme").getAsString();
+	public String getSubscribeScheme() {
+		return getParameter("subscribe","scheme","ws");
 	}
 	
-	/**
-	 * Gets the registration path.
-	 *
-	 * @return the registration path
-	 */
-	public String getRegistrationPath() {
-		return properties.get("security").getAsJsonObject().get("register").getAsString();
+	public int getSubscribeSecurePort(){
+		return getParameter("securesubscribe","port",9443);
+	}
+	
+	public int getUpdateSecurePort(){
+		return getParameter("secureupdate","port",8443);
+	}
+	
+	public int getQuerySecurePort() {
+		return getParameter("securequery","port",8443);
 	}
 
-	/**
-	 * Gets the request token path.
-	 *
-	 * @return the request token path
-	 */
-	public String getRequestTokenPath() {
-		return properties.get("security").getAsJsonObject().get("token").getAsString();
+	public String getRegistrationScheme() {
+		return getParameter("authorizationserver","scheme","https");
 	}
+
+	public String getRequestTokenScheme() {
+		return getParameter("authorizationserver","scheme","https");
+	}
+	
+	public String getRegistrationPath() {
+		return getParameter("authorizationserver","register","/oauth/register");
+	}
+	
+	public String getRequestTokenPath() {
+		return getParameter("authorizationserver","requesttoken","/oauth/token");
+	}
+	 
+	public int getRegistrationPort() {
+		return getParameter("authorizationserver","port",8443);
+	}
+
+	public int getRequestTokenPort() {
+		return getParameter("authorizationserver","port",8443);
+	}
+	
+	
 	
 	/**
 	 * Checks if is token expired.
@@ -250,8 +303,9 @@ public class SPARQL11SEProperties extends SPARQL11Properties {
 	 *
 	 * @param id the username
 	 * @param secret the password
+	 * @throws IOException 
 	 */
-	public void setCredentials(String id,String secret) {	
+	public void setCredentials(String id,String secret) throws IOException {	
 		logger.debug("Set credentials Id: "+id+" Secret:"+secret);
 		
 		this.id = id;
@@ -266,9 +320,17 @@ public class SPARQL11SEProperties extends SPARQL11Properties {
 			logger.error(e.getMessage());
 		}
 		
-		//Save on file the encrypted version
-		properties.get("security").getAsJsonObject().add("client_id",new JsonPrimitive(SEPAEncryption.encrypt(id)));
-		properties.get("security").getAsJsonObject().add("client_secret",new JsonPrimitive(SEPAEncryption.encrypt(secret)));
+		//Save on file the encrypted version	
+		if (parameters.get("security")==null) {
+			JsonObject credentials = new JsonObject();
+			credentials.add("client_id",new JsonPrimitive(SEPAEncryption.encrypt(id)));
+			credentials.add("client_secret",new JsonPrimitive(SEPAEncryption.encrypt(secret)));		
+			parameters.add("security",credentials);
+		}
+		else {
+			parameters.get("security").getAsJsonObject().add("client_id",new JsonPrimitive(SEPAEncryption.encrypt(id)));
+			parameters.get("security").getAsJsonObject().add("client_secret",new JsonPrimitive(SEPAEncryption.encrypt(secret)));	
+		}
 		
 		storeProperties(propertiesFile);
 	}
@@ -279,18 +341,28 @@ public class SPARQL11SEProperties extends SPARQL11Properties {
 	 * @param jwt the JSON Web Token
 	 * @param expires the date when the token will expire
 	 * @param type the token type (e.g., bearer)
+	 * @throws IOException 
 	 */
-	public void setJWT(String jwt, Date expires,String type) {	
+	public void setJWT(String jwt, Date expires,String type) throws IOException {	
 		
 		this.jwt = jwt;
 		this.expires = expires.getTime();
 		this.tokenType = type;
 		
 		//Save on file the encrypted version
-		properties.get("security").getAsJsonObject().add("jwt",new JsonPrimitive(SEPAEncryption.encrypt(jwt)));
-		properties.get("security").getAsJsonObject().add("expires",new JsonPrimitive(SEPAEncryption.encrypt(String.format("%d", expires.getTime()))));
-		properties.get("security").getAsJsonObject().add("type",new JsonPrimitive(SEPAEncryption.encrypt(type)));
-		
+		if (parameters.get("security")==null) {
+			JsonObject credentials = new JsonObject();
+			credentials.add("jwt",new JsonPrimitive(SEPAEncryption.encrypt(jwt)));
+			credentials.add("expires",new JsonPrimitive(SEPAEncryption.encrypt(String.format("%d", expires.getTime()))));
+			credentials.add("type",new JsonPrimitive(SEPAEncryption.encrypt(type)));	
+			parameters.add("security",credentials);
+		}
+		else {
+			parameters.get("security").getAsJsonObject().add("jwt",new JsonPrimitive(SEPAEncryption.encrypt(jwt)));
+			parameters.get("security").getAsJsonObject().add("expires",new JsonPrimitive(SEPAEncryption.encrypt(String.format("%d", expires.getTime()))));
+			parameters.get("security").getAsJsonObject().add("type",new JsonPrimitive(SEPAEncryption.encrypt(type)));	
+		}
+				
 		storeProperties(propertiesFile);
 	}
 	
@@ -356,4 +428,34 @@ public class SPARQL11SEProperties extends SPARQL11Properties {
 			}
 	    }
 	}
+
+	public String getSecureQueryScheme() {
+		return getParameter("securequery","scheme","https");
+	}
+
+	public String getSecureUpdateScheme() {
+		return getParameter("secureupdate","scheme","https");
+	}
+
+	public Object getSecureSubscribeScheme() {
+		return getParameter("securesubscribe","scheme","wss");
+	}
+
+	public String getSecureUpdatePath() {
+		return getParameter("secureupdate","path","/sparql");
+	}
+
+	public String getSecureQueryPath() {
+		return getParameter("securequery","path","/sparql");
+	}
+
+	public int getSecureSubscribePort() {
+		return getParameter("securesubscribe","port",9443);
+	}
+
+	public String getSecureSubscribePath() {
+		return getParameter("securesubscribe","path","/secure/sparql");
+	}
+
+	
 }

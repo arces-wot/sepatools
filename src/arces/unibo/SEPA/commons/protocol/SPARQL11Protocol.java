@@ -81,15 +81,14 @@ public class SPARQL11Protocol {
 		return properties.toString();
 	}
 	
-	public SPARQL11Protocol(SPARQL11Properties properties) {
+	public SPARQL11Protocol(SPARQL11Properties properties) throws IllegalArgumentException {
 		
 		if (properties == null) {
 			logger.fatal("Properties are null");
-			System.exit(1);
+			throw new IllegalArgumentException("Properties are null");
 		}
-		else {
-			this.properties = properties;
-		}
+		
+		this.properties = properties;
 		
 		responseHandler = new ResponseHandler<String>() {
 	        @Override
@@ -192,8 +191,8 @@ public class SPARQL11Protocol {
 	    	
 			timing = System.nanoTime() - timing;
 	    	
-			if(op.equals(SPARQLPrimitive.QUERY)) logger.info("QUERY_TIME "+timing/1000000+ " ms");
-			else logger.info("UPDATE_TIME "+timing/1000000+ " ms");
+			if(op.equals(SPARQLPrimitive.QUERY)) logger.debug("QUERY_TIME "+timing/1000000+ " ms");
+			else logger.debug("UPDATE_TIME "+timing/1000000+ " ms");
 	    }
 	    catch(java.net.ConnectException e) {
 	    	logger.error(e.getMessage());
@@ -325,23 +324,37 @@ public class SPARQL11Protocol {
 			}	
 		}
 		
-		//Path MAY be different for query and update
-		String path;
-		if (op.equals(SPARQLPrimitive.QUERY)) path = properties.getQueryPath();
-		else path = properties.getUpdatePath();
-		
-		try {
-			uri = new URI(properties.getHttpScheme(),
-					   null,
-					   properties.getHost(),
-					   properties.getHttpPort(),
-					   path,
-					   query,
-					   null);
-		} catch (URISyntaxException e) {
-			logger.error("Error on creating request URI "+e.getMessage());
-			return null;
+		//Parameters MAY be different for query and update
+		if (op.equals(SPARQLPrimitive.QUERY)) {
+			try {
+				uri = new URI(properties.getQueryScheme(),
+						   null,
+						   properties.getHost(),
+						   properties.getQueryPort(),
+						   properties.getQueryPath(),
+						   query,
+						   null);
+			} catch (URISyntaxException e) {
+				logger.error("Error on creating request URI "+e.getMessage());
+				return null;
+			}	
 		}
+		else {
+			try {
+				uri = new URI(properties.getUpdateScheme(),
+						   null,
+						   properties.getHost(),
+						   properties.getUpdatePort(),
+						   properties.getUpdatePath(),
+						   query,
+						   null);
+			} catch (URISyntaxException e) {
+				logger.error("Error on creating request URI "+e.getMessage());
+				return null;
+			}
+		}
+		
+		
 		
 		//GET or POST
 		if (method.equals(HTTPMethod.GET)) httpRequest = new HttpGet(uri);	 	

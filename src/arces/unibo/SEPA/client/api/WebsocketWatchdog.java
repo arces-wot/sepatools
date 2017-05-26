@@ -23,6 +23,12 @@ import arces.unibo.SEPA.client.api.SPARQL11SEProtocol.SUBSCRIPTION_STATE;
 import arces.unibo.SEPA.commons.response.NotificationHandler;
 
 import org.apache.logging.log4j.Logger;
+
+import java.io.IOException;
+import java.net.URISyntaxException;
+
+import javax.websocket.DeploymentException;
+
 import org.apache.logging.log4j.LogManager;
 
 class WebsocketWatchdog extends Thread {
@@ -101,7 +107,7 @@ class WebsocketWatchdog extends Thread {
 		return pingReceived;
 	}
 	
-	private synchronized boolean subscribing() {
+	private synchronized boolean subscribing() throws DeploymentException, IOException, URISyntaxException {
 		logger.debug("Subscribing...");
 		if (wsClient == null) {
 			logger.warn("Websocket client is null");
@@ -109,7 +115,9 @@ class WebsocketWatchdog extends Thread {
 		}
 		while(state == SUBSCRIPTION_STATE.BROKEN_SOCKET) {
 			if (wsClient.isConnected()) wsClient.close();
+			
 			wsClient.subscribe(sparql,alias,token,handler);
+			
 			try {
 				wait(DEFAULT_SUBSCRIPTION_DELAY);
 			} catch (InterruptedException e) {
@@ -123,6 +131,7 @@ class WebsocketWatchdog extends Thread {
 		try {
 			Thread.sleep(DEFAULT_PING_PERIOD*5/2);
 		} catch (InterruptedException e) {
+			logger.warn(e.getMessage());
 			return;
 		}
 		
@@ -134,7 +143,12 @@ class WebsocketWatchdog extends Thread {
 				state = SUBSCRIPTION_STATE.BROKEN_SOCKET;
 			}
 			
-			if(!subscribing()) return;
+			try {
+				if(!subscribing()) return;
+			} catch (DeploymentException | IOException | URISyntaxException e) {
+				logger.error(e.getMessage());
+				return;
+			}
 		}
 	}
 }

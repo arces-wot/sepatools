@@ -46,6 +46,10 @@ public class UnsubscribeResponse extends Response {
 		if (spuid != null) json.add("unsubscribed", new JsonPrimitive(spuid));
 	}
 	
+	public UnsubscribeResponse() {
+		super();
+	}
+
 	public String getSpuid() {
 		if (json.get("unsubscribed") == null) return "";
 		return json.get("unsubscribed").getAsString();

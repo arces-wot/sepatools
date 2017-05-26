@@ -1,6 +1,11 @@
 package arces.unibo.SEPA.client.tools;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.net.URISyntaxException;
+import java.util.NoSuchElementException;
+
+import javax.websocket.DeploymentException;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -54,14 +59,12 @@ public class GarbageCollector extends Aggregator {
 		}	
 	}
 	
-	public static void main(String[] args) {
+	public static void main(String[] args) throws FileNotFoundException, NoSuchElementException, IOException, DeploymentException, URISyntaxException {
 		
-		ApplicationProfile profile = new ApplicationProfile();
-		if(!profile.load("GarbageCollector.sap")) return;
+		ApplicationProfile profile = new ApplicationProfile("GarbageCollector.jsap");
 		
 		chatServer = new GarbageCollector(profile,"GARBAGE","REMOVE");
 		
-		if (!chatServer.join()) return;
 		if (chatServer.subscribe(null) == null) return;
 		
 		logger.info("Up and running");

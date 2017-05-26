@@ -53,7 +53,7 @@ import arces.unibo.SEPA.server.scheduling.RequestResponseHandler.ResponseAndNoti
 * @version 0.1
 * */
 
-public class Scheduler extends Thread implements Observer {
+public class Scheduler extends Thread implements Observer,SchedulerInterface {
 	private static final Logger logger = LogManager.getLogger("Scheduler");
 
 	private RequestResponseHandler requestHandler;

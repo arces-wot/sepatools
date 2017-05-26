@@ -18,7 +18,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package arces.unibo.SEPA.client.pattern;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.HashMap;
+import java.util.NoSuchElementException;
 import java.util.Set;
 
 import org.apache.logging.log4j.LogManager;
@@ -60,40 +63,26 @@ public abstract class Client implements IClient {
 		return ret;
 	}
 	
-	public Client(String url,int updatePort,int subscribePort,String path){
-		logger.debug("Opening connection to SEPA engine:"+url+" Update port:"+updatePort+" Subscribe port:"+subscribePort+ " Path: "+path);
-		SPARQL11SEProperties properties = new SPARQL11SEProperties("client.json");
-		protocolClient = new SPARQL11SEProtocol(properties);	
-		logger.info(protocolClient.toString());
-	}
-	
-	public boolean join() {
-		return true;
-	}
-	
-	public boolean leave() {
-		return true;
-	}
-	
-	public Client(ApplicationProfile appProfile){
+	public Client(ApplicationProfile appProfile) throws IllegalArgumentException {
 		if (appProfile == null) {
 			logger.fatal("Application profile is null. Client cannot be initialized");
-			return;
+			throw new IllegalArgumentException("Application profile is null");
 		}
-		if (!appProfile.isLoaded()) logger.warn("Running with default parameters. No application profile loaded");
 		
-		logger.debug("SEPA parameters Update["+appProfile.getHost()+" Update port:"+appProfile.getPort()+" Subscribe port:"+appProfile.getSubscribePort()+ " Path: "+appProfile.getPath());
+		logger.debug("SEPA parameters: "+appProfile.printParameters());
 		
-		SPARQL11SEProperties properties = new SPARQL11SEProperties("client.properties");
-		protocolClient = new SPARQL11SEProtocol(properties);
-		logger.info(protocolClient.toString());
+		protocolClient = new SPARQL11SEProtocol(appProfile);
 		
 		Set<String> prefixes = appProfile.getPrefixes();
 		for (String prefix : prefixes) addNamespace(prefix,appProfile.getNamespaceURI(prefix));
 	}
 	
+	public Client(String jparFile) throws IllegalArgumentException, FileNotFoundException, NoSuchElementException, IOException {
+		protocolClient = new SPARQL11SEProtocol(new SPARQL11SEProperties(jparFile));
+	}
+
 	protected String replaceBindings(String sparql, Bindings bindings){
-		if (bindings == null) return sparql;
+		if (bindings == null || sparql == null) return sparql;
 		
 		String replacedSparql = String.format("%s", sparql);
 		String selectPattern = "";
@@ -116,6 +105,7 @@ public abstract class Client implements IClient {
 	}
 	
 	protected String fixLiteralTerms(String s) {
+		if (s == null) return s;
 		return s.replace("\"", "\\\"");
 	}
 }

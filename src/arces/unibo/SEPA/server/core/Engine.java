@@ -17,7 +17,10 @@
 */
 package arces.unibo.SEPA.server.core;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.Date;
+import java.util.NoSuchElementException;
 
 import javax.management.InstanceAlreadyExistsException;
 import javax.management.MBeanRegistrationException;
@@ -28,9 +31,7 @@ import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 
 import arces.unibo.SEPA.commons.protocol.SPARQL11Properties;
-import arces.unibo.SEPA.commons.request.Request;
 
-import arces.unibo.SEPA.server.beans.EngineMBean;
 import arces.unibo.SEPA.server.beans.SEPABeans;
 
 import arces.unibo.SEPA.server.processing.Processor;
@@ -41,8 +42,8 @@ import arces.unibo.SEPA.server.protocol.WSGate;
 import arces.unibo.SEPA.server.protocol.WSSGate;
 
 import arces.unibo.SEPA.server.scheduling.Scheduler;
-import arces.unibo.SEPA.server.scheduling.SchedulerInterface;
-import arces.unibo.SEPA.server.scheduling.RequestResponseHandler.ResponseAndNotificationListener;
+
+import arces.unibo.SEPA.server.security.AuthorizationManager;
 
 /**
  * This class represents the SPARQL Subscription (SUB) Engine of the Semantic Event Processing Architecture (SEPA)
@@ -51,16 +52,15 @@ import arces.unibo.SEPA.server.scheduling.RequestResponseHandler.ResponseAndNoti
 * @version 0.6
 * */
 
-public class Engine extends Thread implements EngineMBean,SchedulerInterface {
+public class Engine extends Thread implements EngineMBean {
 	private static final Logger logger = LogManager.getLogger("Engine");
 	
-	//Properties, logging and JMX
-	private EngineProperties engineProperties = new EngineProperties("engine.json");
-	private SPARQL11Properties endpointProperties = new SPARQL11Properties("endpoint.json");
+	//Properties, logging
+	private EngineProperties engineProperties = null;
+	private SPARQL11Properties endpointProperties = null;
 	
-	private final Date startDate = new Date(); 
-	
-	protected static String mBeanName = "arces.unibo.SEPA.scheduling:type=Engine";
+	//JMX properties
+	private static Date startDate; 
 	
 	//Primitives scheduler/dispatcher
 	private Scheduler scheduler = null;
@@ -76,7 +76,9 @@ public class Engine extends Thread implements EngineMBean,SchedulerInterface {
 	private WSGate websocketApp;
 	private WSSGate secureWebsocketApp;
 	
-	public static void main(String[] args) throws MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException {
+	private AuthorizationManager am = new AuthorizationManager("sepa.jks","*sepa.jks*","SepaKey","*SepaKey*","SepaCertificate");
+	
+	public static void main(String[] args) throws MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException, FileNotFoundException, NoSuchElementException, IOException {
 		System.out.println("##########################################################################################");
 		System.out.println("# SEPA Engine Ver 0.6  Copyright (C) 2016-2017                                           #");
 		System.out.println("# University of Bologna (Italy)                                                          #");
@@ -104,24 +106,21 @@ public class Engine extends Thread implements EngineMBean,SchedulerInterface {
 		System.out.println("org.jdom                      2.0.6       Similar to Apache License but with the acknowledgment clause removed");
 		System.out.println("");
 		
+		//Engine creation and initialization
 		Engine engine = new Engine();
-		
-		SEPABeans.registerMBean(engine,mBeanName);
-		
-		if (engine.init()) {
-			logger.info("SUB Engine initialized and ready to start");	
-		}
-		else {
-			logger.fatal("Failed to initialize the SUB Engine...exit...");
-			System.exit(1);
-		}
+		engine.init();
 		
 		//Starting main engine thread
 		engine.start();
 	}
 	
+	public Engine() {
+		SEPABeans.registerMBean("SEPA:type=Engine",this);		
+	}
+	
 	@Override
 	public void start() {
+		
 		this.setName("SEPA Engine");
 		logger.info("SUB Engine starting...");	
 		
@@ -139,49 +138,36 @@ public class Engine extends Thread implements EngineMBean,SchedulerInterface {
 		super.start();
 		logger.info("SUB Engine started");	
 		System.out.println("");	
+		
+		startDate = new Date();
 	}
 	
-	public boolean init() throws MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException {			
-		if (!endpointProperties.loaded() || !engineProperties.loaded()) return false;
+	public boolean init() throws MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException, FileNotFoundException, NoSuchElementException, IOException {			
+		//Initialize SPARQL 1.1 processing service properties
+		endpointProperties = new SPARQL11Properties("endpoint.jpar");
 		
+		//Initialize SPARQL 1.1 SE processing service properties
+		engineProperties = new EngineProperties("engine.jpar");
+		
+		//SPARQL 1.1 SE request processor
 		processor = new Processor(endpointProperties);
+		
+		//SPARQL 1.1 SE request scheduler
 		scheduler = new Scheduler(engineProperties,processor);
 		
 		//SPARQL 1.1 Protocol handlers
-		httpGate = new HTTPGate(engineProperties,this);
-		httpsGate = new HTTPSGate(engineProperties,this);
+		httpGate = new HTTPGate(engineProperties,scheduler);
+		httpsGate = new HTTPSGate(engineProperties,scheduler,am);
 		
 		//SPARQL 1.1 SE Protocol handler for WebSocket based subscriptions
 		websocketApp = new WSGate(engineProperties,scheduler);
-		secureWebsocketApp = new WSSGate(engineProperties,scheduler);
-		
-		return true;
-	}
-	
-	@Override
-	public EngineProperties getProperties() {
-		return this.engineProperties;
+		secureWebsocketApp = new WSSGate(engineProperties,scheduler,am);
+		        
+        return true;
 	}
 
 	@Override
 	public Date getStartDate() {
-		return this.startDate;
-	}
-
-	@Override
-	public int getToken() {
-		if (scheduler != null) return scheduler.getToken();
-		return -1;
-	}
-
-	@Override
-	public void addRequest(Request request, ResponseAndNotificationListener listener) {
-		if (scheduler != null) scheduler.addRequest(request, listener);
-		
-	}
-
-	@Override
-	public void releaseToken(Integer token) {
-		if (scheduler != null) scheduler.releaseToken(token);
+		return startDate;
 	}
 }

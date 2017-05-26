@@ -17,6 +17,8 @@ import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManagerFactory;
+
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.security.KeyPair;
@@ -25,6 +27,7 @@ import java.security.Security;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.util.HashMap;
+import java.util.NoSuchElementException;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -223,15 +226,13 @@ public class MQTTAdapter extends Producer implements MqttCallback {
 	}
 	
 	public boolean join() {
-		if (!super.join()) return false;
-		else return created;
+		return created;
 	}
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws FileNotFoundException, NoSuchElementException, IOException {
 		//SEPALogger.loadSettings();
 		
-		ApplicationProfile profile = new ApplicationProfile();
-		if(!profile.load("MQTTAdapter.sap")) return;
+		ApplicationProfile profile = new ApplicationProfile("MQTTAdapter.jsap");
 		
 		adapter = new MQTTAdapter(profile,"UPDATE");
 		

@@ -18,6 +18,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package arces.unibo.SEPA.client.pattern;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.util.NoSuchElementException;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -31,11 +36,8 @@ import arces.unibo.SEPA.commons.response.Response;
 public abstract class GenericClient extends Aggregator {	
 	private static final Logger logger = LogManager.getLogger("GenericClient");
 	
-	public GenericClient(ApplicationProfile appProfile){
-		super(appProfile.getHost(),
-				appProfile.getPort(),
-				appProfile.getSubscribePort(),
-				appProfile.getPath(),"","");	
+	public GenericClient(String jparFile) throws IllegalArgumentException, FileNotFoundException, NoSuchElementException, IOException {
+		super(jparFile);	
 	}
 	
 	public boolean update(String SPARQL_UPDATE,Bindings forced) {
@@ -45,7 +47,7 @@ public abstract class GenericClient extends Aggregator {
 	
 	public BindingsResults query(String SPARQL_QUERY,Bindings forced) {
 		if (protocolClient == null) {
-			 logger.fatal("Client not initialized");
+			 logger.fatal("Client is not initialized");
 			 return null;
 		 }
 		
@@ -61,12 +63,12 @@ public abstract class GenericClient extends Aggregator {
 		return ((QueryResponse)response).getBindingsResults();
 	}
 	
-	public String subscribe(String SPARQL_SUBSCRIBE,Bindings forced) {	
+	public String subscribe(String SPARQL_SUBSCRIBE,Bindings forced) throws IOException, URISyntaxException {	
 		sparqlSubscribe = SPARQL_SUBSCRIBE;
 		return super.subscribe(forced);
 	}
 	 
-	public boolean unsubscribe() {
+	public boolean unsubscribe() throws IOException, URISyntaxException {
 		return super.unsubscribe();
 	}
 }

@@ -19,6 +19,8 @@
 package arces.unibo.SEPA.server.protocol;
 
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 
 import org.glassfish.grizzly.http.server.HttpServer;
 import org.glassfish.grizzly.websockets.WebSocket;
@@ -36,16 +38,18 @@ import arces.unibo.SEPA.server.scheduling.Scheduler;
 import arces.unibo.SEPA.server.security.AuthorizationManager;
 
 public class WSSGate extends WSGate {
-	public WSSGate(EngineProperties properties, Scheduler scheduler) {
+	public WSSGate(EngineProperties properties, Scheduler scheduler,AuthorizationManager am) {
 		super(properties, scheduler);
+		if (am == null) throw new IllegalArgumentException("Authorization manager can not be null");
+		this.am = am;
 	}
 
-	private AuthorizationManager am = new AuthorizationManager("sepa.jks","*sepa.jks*","SepaKey","*SepaKey*","SepaCertificate");
+	private AuthorizationManager am;
 	
 	@Override
 	public boolean start(){	
 		//Create an HTTP server to which attach the websocket
-		final HttpServer server = HttpServer.createSimpleServer(null, properties.getWssPort());
+		final HttpServer server = HttpServer.createSimpleServer(null, properties.getSecureSubscribePort());
 		
 		// Register the WebSockets add on with the HttpServer
         server.getListener("grizzly").registerAddOn(new WebSocketAddOn());
@@ -55,17 +59,24 @@ public class WSSGate extends WSGate {
         server.getListener("grizzly").setSecure(true);
 		
         // register the application
-        WebSocketEngine.getEngine().register("", properties.getWssPath(), this);
+        WebSocketEngine.getEngine().register("", properties.getSecureSubscribePath(), this);
 		
         //Start the server
         try {
 			server.start();
 		} catch (IOException e) {
-			logger.fatal("Failed to start SECURE WebSocket gate on port "+properties.getWssPort()+ " "+e.getMessage());
+			logger.fatal("Failed to start SECURE WebSocket gate on port "+properties.getSecureSubscribePort()+ " "+e.getMessage());
 			System.exit(1);
 		}
         
-		logger.info("Started on port "+properties.getWssPort()+properties.getWssPath());
+        String host = "localhost";
+	    try {
+			host = InetAddress.getLocalHost().getHostName();
+		} catch (UnknownHostException e) {
+			logger.warn(e.getMessage());
+		}
+	    
+	    logger.info("Listening for SECURE SPARQL SUBSCRIBE/UNSUBSCRIBE on wss://"+host+":"+properties.getSecureSubscribePort()+properties.getSecureSubscribePath());
 		
 		//Start the keep alive thread
 		if (properties.getKeepAlivePeriod() > 0) new KeepAlive().start();
