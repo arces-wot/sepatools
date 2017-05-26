@@ -3,13 +3,13 @@ SEPA is a publish-subscribe architecture designed to support information level i
 
 >The main drawback of Semantic Web technologies concerns the low level of performance that makes it difficult to achieve responsiveness and scalability required in many IoT applications…Semantic Web technologies have been designed to process data sets consisting of big amounts of Resource Description Framework (RDF) triples that evolve constantly but at a much slower rate compared to the rate of elementary events occurring in the physical environment.
 
-*A Semantic Publish-Subscribe Architecture for the Internet of Things, Luca Roffia, Francesco Morandi, Jussi Kiljander, Alfredo D’Elia, Fabio Vergari, Fabio Viola, Luciano Bononi, and Tullio Salmon Cinotti, IEEE Internet of Things Journal, DOI: 10.1109/JIOT.2016.2587380)*
+###### *A Semantic Publish-Subscribe Architecture for the Internet of Things, Luca Roffia, Francesco Morandi, Jussi Kiljander, Alfredo D’Elia, Fabio Vergari, Fabio Viola, Luciano Bononi, and Tullio Salmon Cinotti, IEEE Internet of Things Journal, DOI: 10.1109/JIOT.2016.2587380)*
 
 The SEPA is framed within W3C Recommendations as shown in the following figure.
 
 ![alt text][sepa]
 
-Please refer to [vaimee-documentation](https://github.com/vaimee/sepa-documentation) for a set of W3C Recommendation drafts about the SEPA. The SEPA, as an interoperability platform, aims supporting the development of [Web of Things applications] (https://www.w3.org/WoT/) </h2>
+Please refer to [vaimee-documentation](https://github.com/vaimee/sepa-documentation) for a set of W3C Recommendation drafts about the SEPA. The SEPA, as an interoperability platform, aims supporting the development of [Web of Things applications](https://www.w3.org/WoT/)
 
 ## HOW TO
 > Are you in hurry? You do not have time to read the following sections? You cannot wait trying SEPA? :smile:
@@ -34,22 +34,35 @@ The SEPA engine is designed to run on top of a [SPARQL 1.1 Processing Service](h
 
 There are several implementations SPARQL endpoints and the number of public available ones is increasing. The SEPA can be locally evaluated using one of them, like [Virtuoso](https://virtuoso.openlinksw.com/dataspace/doc/dav/wiki/Main/VOSSparqlProtocol), [Fuseki](https://jena.apache.org/documentation/serving_data/) or [Blazegraph](https://wiki.blazegraph.com/wiki/index.php/Main_Page) just to name a few. The current implementation has been tested on Blazegraph. 
 
-:coffee: [SEPA Engine](https://github.com/vaimee/sepatools/tree/master/build (build/SEPAengine.jar)
+:coffee: [SEPA Engine](build/SEPAengine.jar)
 
-## SEPA Client APIs
-:coffee: [Java API](https://github.com/vaimee/sepatools/tree/master/build (build/SEPapi.jar)
- 
-## SEPA Application Design Pattern
-If you to save you time, reuse your components and contribute to the community, please follow this pattern:
+## SEPA APIs (including Application Design Pattern libraries)
+If you want to save your time, reuse your components and contribute to the community, please follow this pattern:
 
 ![alt text][pattern]
 
 :star: Start implementing a new **SEPApp** :star:
 
-:coffee: [Java Application Design Library](https://github.com/vaimee/sepatools/tree/master/build (build/SEPattern.jar)
+:coffee: Java :coffee:
+[API](build/SEPapi.jar) & [Application Design Library](build/SEPattern.jar)
 
+:snake: Python :snake:
+[API](https://github.com/vaimee/sepa-Python3-kpi)
+
+:iphone: C :iphone:
+[API](https://github.com/vaimee/sepa-C-kpi)
+
+:gem: Ruby :gem:
+[API](https://github.com/vaimee/sepaRubyClientLibrary)
+ 
 ## SEPA Tools
-:coffee: [Java SEPA Dashboard](https://github.com/vaimee/sepatools/tree/master/build (build/SEPAdashboard.jar)
+Let's start with an essential tool: **the SEPA Dashboard** :clap:
+
+:coffee: Java :coffee:
+[Dashboard](build/SEPAdashboard.jar)
+
+:icecream: JavaScript :icecream: 
+[Dashboard](https://github.com/vaimee/sepa-dashboard)
 
 [sepa]: images/sepa.jpg "SPARQL Event Processing Architecture"
 [framework]: images/SW_framework.png "SEPA Framework"
