@@ -47,22 +47,22 @@ If you want to save your time, reuse and share components and contribute to the 
 
 :star: Start implementing a new **SEPApp** :star:
 
-:coffee: [Java API](build/SEPapi.jar) [Java ADP Library](build/SEPattern.jar):coffee:
+:coffee: [Java API](build/SEPapi.jar) [Java ADP Library](build/SEPattern.jar)
 
-:snake: [Python](https://github.com/vaimee/sepa-Python3-kpi) :snake:
+:snake: [Python](https://github.com/vaimee/sepa-Python3-kpi)
 
-:iphone: [C](https://github.com/vaimee/sepa-C-kpi) :iphone:
+:iphone: [C](https://github.com/vaimee/sepa-C-kpi)
 
-:gem: [Ruby](https://github.com/vaimee/sepaRubyClientLibrary) :gem:
+:gem: [Ruby](https://github.com/vaimee/sepaRubyClientLibrary)
  
  Want more? Contribute! :+1:
  
 ## SEPA Tools
 Let's start with an essential tool: **the SEPA Dashboard** :clap:
 
-:coffee: [Java](build/SEPAdashboard.jar) :coffee:
+:coffee: [Java](build/SEPAdashboard.jar)
 
-:icecream: [JavaScript](https://github.com/vaimee/sepa-dashboard) :icecream: 
+:icecream: [JavaScript](https://github.com/vaimee/sepa-dashboard)
 
  Want more? Contribute! :+1:
 
