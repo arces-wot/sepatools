@@ -20,8 +20,8 @@ Please refer to [vaimee-documentation](https://github.com/vaimee/sepa-documentat
 
 Here the steps to follow:
 
-1. `git clone https://github.com/vaimee/sepatools.git`
-2. Move to the `build` directory of the repository
+1. `git clone https://github.com/vaimee/sepatools.git` (or `download` a [ZIP](https://github.com/vaimee/sepatools/archive/master.zip) if you just want to evaluate it)
+2. Move to the `build` directory of the repository (first `unzip` the archive if you have preferred to download it on step 1)
 3. Open a shell (a command prompt) from that directory and type: `java -jar blazegraph.jar`
 4. Open a new shell (a command prompt) from the same directory and type: `java -jar SEPAEngine.jar -Dcom.sun.management.config.file=management.properties`
 5. The `-Dcom.sun.management.config.file=management.properties` command line argument allows to monitor the SEPA Engine using [JMX](http://www.oracle.com/technetwork/articles/java/javamanagement-140525.html). You can open a new shell (yes, the third one...sorry for that :smile:) and type `jconsole` . Once the console windows is up, select the **Remote Process** checkbox, type **localhost:5555** and use **root** as username and password (this is just a demo :bowtie:). Now you can see (and change) some engine parameters.
